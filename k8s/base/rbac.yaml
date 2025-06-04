@@ -1,0 +1,64 @@
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: virtual-ai-platform-sa
+  namespace: virtual-ai-platform
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: virtual-ai-agents-sa
+  namespace: virtual-ai-agents
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: virtual-ai-platform-role
+rules:
+- apiGroups: [""]
+  resources: ["pods", "services", "configmaps", "secrets"]
+  verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
+- apiGroups: ["apps"]
+  resources: ["deployments", "replicasets"]
+  verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
+- apiGroups: ["networking.k8s.io"]
+  resources: ["ingresses"]
+  verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: virtual-ai-agents-role
+rules:
+- apiGroups: [""]
+  resources: ["pods", "services", "configmaps"]
+  verbs: ["get", "list", "watch"]
+- apiGroups: ["apps"]
+  resources: ["deployments"]
+  verbs: ["get", "list", "watch"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: virtual-ai-platform-binding
+subjects:
+- kind: ServiceAccount
+  name: virtual-ai-platform-sa
+  namespace: virtual-ai-platform
+roleRef:
+  kind: ClusterRole
+  name: virtual-ai-platform-role
+  apiGroup: rbac.authorization.k8s.io
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: virtual-ai-agents-binding
+subjects:
+- kind: ServiceAccount
+  name: virtual-ai-agents-sa
+  namespace: virtual-ai-agents
+roleRef:
+  kind: ClusterRole
+  name: virtual-ai-agents-role
+  apiGroup: rbac.authorization.k8s.io

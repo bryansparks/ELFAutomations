@@ -1,0 +1,79 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: virtual-ai-web
+  labels:
+    app: virtual-ai-web
+    component: frontend
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: virtual-ai-web
+  template:
+    metadata:
+      labels:
+        app: virtual-ai-web
+        component: frontend
+    spec:
+      containers:
+      - name: web
+        image: virtual-ai-web:latest
+        ports:
+        - containerPort: 8080
+        env:
+        - name: PORT
+          value: "8080"
+        - name: FLASK_ENV
+          value: "production"
+        envFrom:
+        - secretRef:
+            name: virtual-ai-secrets
+        resources:
+          requests:
+            memory: "256Mi"
+            cpu: "250m"
+          limits:
+            memory: "512Mi"
+            cpu: "500m"
+        livenessProbe:
+          httpGet:
+            path: /api/status
+            port: 8080
+          initialDelaySeconds: 30
+          periodSeconds: 10
+        readinessProbe:
+          httpGet:
+            path: /api/status
+            port: 8080
+          initialDelaySeconds: 5
+          periodSeconds: 5
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: virtual-ai-web-service
+  labels:
+    app: virtual-ai-web
+spec:
+  type: LoadBalancer
+  ports:
+  - port: 80
+    targetPort: 8080
+    protocol: TCP
+  selector:
+    app: virtual-ai-web
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: virtual-ai-secrets
+type: Opaque
+stringData:
+  SUPABASE_URL: "YOUR_SUPABASE_URL"
+  SUPABASE_ANON_KEY: "YOUR_SUPABASE_ANON_KEY"
+  SUPABASE_PERSONAL_ACCESS_TOKEN: "YOUR_SUPABASE_PAT"
+  SUPABASE_PROJECT_ID: "YOUR_PROJECT_ID"
+  ANTHROPIC_API_KEY: "YOUR_ANTHROPIC_API_KEY"
+  OPENAI_API_KEY: "YOUR_OPENAI_API_KEY"
+  FLASK_SECRET_KEY: "your-production-secret-key"

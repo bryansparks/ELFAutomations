@@ -1,0 +1,31 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: virtual-ai-platform
+  labels:
+    name: virtual-ai-platform
+    tier: platform
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: virtual-ai-agents
+  labels:
+    name: virtual-ai-agents
+    tier: application
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: virtual-ai-monitoring
+  labels:
+    name: virtual-ai-monitoring
+    tier: monitoring
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: virtual-ai-data
+  labels:
+    name: virtual-ai-data
+    tier: data

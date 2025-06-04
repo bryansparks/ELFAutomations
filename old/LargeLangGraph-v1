@@ -1,0 +1,291 @@
+import os
+import yaml
+import logging
+import streamlit as st
+from typing import List, Dict, Any, Callable
+from enum import Enum
+from abc import ABC, abstractmethod
+from concurrent.futures import ThreadPoolExecutor
+from langchain.document_loaders import PyPDFLoader, Docx2txtLoader, UnstructuredExcelLoader, TextLoader, WebBaseLoader
+from langchain.text_splitter import RecursiveCharacterTextSplitter
+from langchain.embeddings import OpenAIEmbeddings
+from langchain.vectorstores import Chroma, FAISS
+from langchain.llms import OpenAI
+from langchain.retrievers import ContextualCompressionRetriever
+from langchain.retrievers.document_compressors import LLMChainExtractor
+from langchain.chains import RetrievalQA
+
+# Set up logging
+logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
+logger = logging.getLogger(__name__)
+
+# Configuration system
+def load_config(config_path: str) -> Dict[str, Any]:
+    with open(config_path, 'r') as file:
+        return yaml.safe_load(file)
+
+config = load_config('config.yaml')
+
+class RAGTechnique(Enum):
+    CRAG = "Corrective RAG"
+    RAPTOR = "RAPTOR RAG"
+
+class Node:
+    def __init__(self, name: str, process_func: Callable):
+        self.name = name
+        self.process = process_func
+
+class Edge:
+    def __init__(self, start_node: Node, end_node: Node, condition: Callable = None):
+        self.start_node = start_node
+        self.end_node = end_node
+        self.condition = condition
+
+class SubGraph:
+    def __init__(self, name: str):
+        self.name = name
+        self.nodes: List[Node] = []
+        self.edges: List[Edge] = []
+
+    def add_node(self, node: Node):
+        self.nodes.append(node)
+
+    def add_edge(self, edge: Edge):
+        self.edges.append(edge)
+
+class AdvancedLangGraph:
+    def __init__(self):
+        self.sub_graphs: Dict[str, SubGraph] = {}
+        self.decision_node: Node = None
+
+    def add_sub_graph(self, sub_graph: SubGraph):
+        self.sub_graphs[sub_graph.name] = sub_graph
+
+    def set_decision_node(self, decision_node: Node):
+        self.decision_node = decision_node
+
+    def process(self, input_data: Any) -> Any:
+        decision = self.decision_node.process(input_data)
+        selected_sub_graph = self.sub_graphs[decision]
+        return self.execute_sub_graph(selected_sub_graph, input_data)
+
+    def execute_sub_graph(self, sub_graph: SubGraph, input_data: Any) -> Any:
+        current_node = sub_graph.nodes[0]
+        while current_node:
+            try:
+                output = current_node.process(input_data)
+                next_node = None
+                for edge in sub_graph.edges:
+                    if edge.start_node == current_node and (not edge.condition or edge.condition(output)):
+                        next_node = edge.end_node
+                        break
+                current_node = next_node
+                input_data = output
+            except Exception as e:
+                logger.error(f"Error in node {current_node.name}: {str(e)}")
+                raise
+        return output
+
+# Abstracted Vector Database Interface
+class VectorDatabase(ABC):
+    @abstractmethod
+    def add_texts(self, texts: List[str], embeddings: List[List[float]]) -> None:
+        pass
+
+    @abstractmethod
+    def similarity_search(self, query: str, k: int) -> List[str]:
+        pass
+
+    @abstractmethod
+    def as_retriever(self):
+        pass
+
+class ChromaDB(VectorDatabase):
+    def __init__(self, persist_directory: str):
+        self.vector_store = Chroma(embedding_function=OpenAIEmbeddings(), persist_directory=persist_directory)
+
+    def add_texts(self, texts: List[str], embeddings: List[List[float]]) -> None:
+        self.vector_store.add_texts(texts, embeddings)
+
+    def similarity_search(self, query: str, k: int) -> List[str]:
+        return self.vector_store.similarity_search(query, k)
+
+    def as_retriever(self):
+        return self.vector_store.as_retriever()
+
+class FAISSDB(VectorDatabase):
+    def __init__(self, index_name: str):
+        self.vector_store = FAISS(embedding_function=OpenAIEmbeddings(), index_name=index_name)
+
+    def add_texts(self, texts: List[str], embeddings: List[List[float]]) -> None:
+        self.vector_store.add_texts(texts, embeddings)
+
+    def similarity_search(self, query: str, k: int) -> List[str]:
+        return self.vector_store.similarity_search(query, k)
+
+    def as_retriever(self):
+        return self.vector_store.as_retriever()
+
+# Abstracted Document Loader
+class DocumentLoader(ABC):
+    @abstractmethod
+    def load(self, file_path: str) -> List[str]:
+        pass
+
+class PDFLoader(DocumentLoader):
+    def load(self, file_path: str) -> List[str]:
+        loader = PyPDFLoader(file_path)
+        pages = loader.load_and_split()
+        return [p.page_content for p in pages]
+
+class DocxLoader(DocumentLoader):
+    def load(self, file_path: str) -> List[str]:
+        loader = Docx2txtLoader(file_path)
+        pages = loader.load_and_split()
+        return [p.page_content for p in pages]
+
+class ExcelLoader(DocumentLoader):
+    def load(self, file_path: str) -> List[str]:
+        loader = UnstructuredExcelLoader(file_path)
+        pages = loader.load_and_split()
+        return [p.page_content for p in pages]
+
+class TxtLoader(DocumentLoader):
+    def load(self, file_path: str) -> List[str]:
+        loader = TextLoader(file_path)
+        pages = loader.load_and_split()
+        return [p.page_content for p in pages]
+
+class WebLoader(DocumentLoader):
+    def load(self, url: str) -> List[str]:
+        loader = WebBaseLoader(url)
+        pages = loader.load_and_split()
+        return [p.page_content for p in pages]
+
+# Updated utility functions and base classes
+class BaseAgent:
+    def __init__(self, name: str):
+        self.name = name
+
+class DocumentProcessor(BaseAgent):
+    def __init__(self, name: str):
+        super().__init__(name)
+        self.text_splitter = RecursiveCharacterTextSplitter(chunk_size=1000, chunk_overlap=200)
+        self.loaders = {
+            '.pdf': PDFLoader(),
+            '.docx': DocxLoader(),
+            '.xlsx': ExcelLoader(),
+            '.txt': TxtLoader(),
+            'web': WebLoader()
+        }
+
+    def process(self, file_path: str) -> List[str]:
+        if file_path.startswith('http'):
+            loader = self.loaders['web']
+        else:
+            _, file_extension = os.path.splitext(file_path)
+            if file_extension.lower() not in self.loaders:
+                raise ValueError(f"Unsupported file type: {file_extension}")
+            loader = self.loaders[file_extension.lower()]
+        
+        texts = loader.load(file_path)
+        return self.text_splitter.split_text(texts)
+
+class Embedder(BaseAgent):
+    def __init__(self, name: str):
+        super().__init__(name)
+        self.embeddings = OpenAIEmbeddings()
+
+    def process(self, input_data: List[str]) -> List[List[float]]:
+        return self.embeddings.embed_documents(input_data)
+
+class VectorStoreManager(BaseAgent):
+    def __init__(self, name: str, vector_db: VectorDatabase):
+        super().__init__(name)
+        self.vector_db = vector_db
+
+    def process(self, input_data: Dict[str, Any]) -> None:
+        texts = input_data['texts']
+        embeddings = input_data['embeddings']
+        self.vector_db.add_texts(texts, embeddings)
+
+# CRAG and RAPTOR components (unchanged)
+...
+
+# Main system setup
+def setup_advanced_rag_system(vector_db: VectorDatabase) -> AdvancedLangGraph:
+    advanced_system = AdvancedLangGraph()
+
+    # Set up CRAG and RAPTOR sub-graphs (unchanged)
+    ...
+
+    return advanced_system
+
+# Parallel processing for document ingestion
+def process_document(file_path: str, document_processor: DocumentProcessor, embedder: Embedder, vector_store_manager: VectorStoreManager):
+    try:
+        texts = document_processor.process(file_path)
+        embeddings = embedder.process(texts)
+        vector_store_manager.process({"texts": texts, "embeddings": embeddings})
+        logger.info(f"Successfully processed: {file_path}")
+    except Exception as e:
+        logger.error(f"Error processing {file_path}: {str(e)}")
+
+def parallel_document_processing(file_paths: List[str], document_processor: DocumentProcessor, embedder: Embedder, vector_store_manager: VectorStoreManager):
+    with ThreadPoolExecutor(max_workers=config['max_workers']) as executor:
+        futures = [executor.submit(process_document, file_path, document_processor, embedder, vector_store_manager) for file_path in file_paths]
+        for future in futures:
+            future.result()  # This will raise any exceptions that occurred during processing
+
+# Streamlit UI
+def main():
+    st.title("Advanced RAG System")
+
+    # Select vector database
+    vector_db_type = st.selectbox("Select Vector Database", ["ChromaDB", "FAISSDB"])
+    if vector_db_type == "ChromaDB":
+        vector_db = ChromaDB("./chroma_db")
+    else:
+        vector_db = FAISSDB("my_faiss_index")
+
+    rag_system = setup_advanced_rag_system(vector_db)
+
+    # Document ingestion
+    st.header("Document Ingestion")
+    ingestion_type = st.radio("Select ingestion type", ["Local Directory", "Website URL"])
+
+    if ingestion_type == "Local Directory":
+        directory_path = st.text_input("Enter the path to the document directory")
+        if st.button("Process Documents") and directory_path:
+            document_processor = DocumentProcessor("Document Processor")
+            embedder = Embedder("Embedder")
+            vector_store_manager = VectorStoreManager("Vector Store Manager", vector_db)
+
+            file_paths = [os.path.join(directory_path, f) for f in os.listdir(directory_path) if os.path.isfile(os.path.join(directory_path, f))]
+            parallel_document_processing(file_paths, document_processor, embedder, vector_store_manager)
+            st.success("Documents processed successfully!")
+
+    else:  # Website URL
+        url = st.text_input("Enter the website URL")
+        if st.button("Process Website") and url:
+            document_processor = DocumentProcessor("Document Processor")
+            embedder = Embedder("Embedder")
+            vector_store_manager = VectorStoreManager("Vector Store Manager", vector_db)
+
+            process_document(url, document_processor, embedder, vector_store_manager)
+            st.success("Website processed successfully!")
+
+    # Query system
+    st.header("Query System")
+    query = st.text_input("Enter your query")
+    if st.button("Submit Query") and query:
+        document_sample = "This is a sample document."  # In a real scenario, you'd fetch this from the processed documents
+        input_data = {
+            "query": query,
+            "document_sample": document_sample
+        }
+        result = rag_system.process(input_data)
+        st.write("Result:", result)
+
+if __name__ == "__main__":
+    main()

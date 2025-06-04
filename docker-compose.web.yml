@@ -1,0 +1,80 @@
+version: '3.8'
+
+services:
+  # Virtual AI Company Web Dashboard
+  virtual-ai-web:
+    build:
+      context: ./web
+      dockerfile: Dockerfile
+    container_name: virtual-ai-web
+    ports:
+      - "8080:8080"
+    environment:
+      - PORT=8080
+      - FLASK_ENV=development
+      - FLASK_DEBUG=true
+    env_file:
+      - .env
+    volumes:
+      - ./web:/app
+      - ./agents:/app/agents
+      - ./mcp_servers:/app/mcp_servers
+      - ./reports:/app/reports
+    depends_on:
+      - postgres
+      - redis
+    networks:
+      - elf-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/api/status"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  # PostgreSQL Database (from main compose)
+  postgres:
+    image: postgres:15-alpine
+    container_name: elf-postgres-web
+    environment:
+      POSTGRES_DB: elfautomations
+      POSTGRES_USER: elfuser
+      POSTGRES_PASSWORD: elfpass
+      POSTGRES_HOST_AUTH_METHOD: trust
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_web_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U elfuser -d elfautomations"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - elf-network
+
+  # Redis Cache
+  redis:
+    image: redis:7-alpine
+    container_name: elf-redis-web
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_web_data:/data
+    command: redis-server --appendonly yes
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - elf-network
+
+volumes:
+  postgres_web_data:
+  redis_web_data:
+
+networks:
+  elf-network:
+    driver: bridge
