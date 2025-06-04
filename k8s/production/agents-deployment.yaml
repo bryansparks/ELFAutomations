@@ -1,0 +1,119 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: virtual-ai-agents
+  namespace: virtual-ai-platform
+  labels:
+    app: virtual-ai-agents
+    environment: production
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: virtual-ai-agents
+  template:
+    metadata:
+      labels:
+        app: virtual-ai-agents
+        environment: production
+    spec:
+      serviceAccountName: virtual-ai-agents-sa
+      containers:
+      - name: chief-agent
+        image: ghcr.io/bryansparks/elfautomations-agents:main-latest
+        env:
+        - name: ENVIRONMENT
+          value: "production"
+        - name: AGENT_TYPE
+          value: "chief"
+        - name: SUPABASE_URL
+          valueFrom:
+            secretKeyRef:
+              name: supabase-secrets
+              key: url
+        - name: SUPABASE_ANON_KEY
+          valueFrom:
+            secretKeyRef:
+              name: supabase-secrets
+              key: anon-key
+        - name: SUPABASE_PERSONAL_ACCESS_TOKEN
+          valueFrom:
+            secretKeyRef:
+              name: supabase-secrets
+              key: personal-access-token
+        - name: SUPABASE_PROJECT_ID
+          valueFrom:
+            secretKeyRef:
+              name: supabase-secrets
+              key: project-id
+        - name: ANTHROPIC_API_KEY
+          valueFrom:
+            secretKeyRef:
+              name: ai-api-secrets
+              key: anthropic-key
+        - name: OPENAI_API_KEY
+          valueFrom:
+            secretKeyRef:
+              name: ai-api-secrets
+              key: openai-key
+        resources:
+          requests:
+            memory: "1Gi"
+            cpu: "500m"
+          limits:
+            memory: "2Gi"
+            cpu: "1000m"
+        securityContext:
+          allowPrivilegeEscalation: false
+          readOnlyRootFilesystem: true
+          runAsNonRoot: true
+          runAsUser: 1000
+        volumeMounts:
+        - name: tmp
+          mountPath: /tmp
+        - name: agent-logs
+          mountPath: /app/logs
+      volumes:
+      - name: tmp
+        emptyDir: {}
+      - name: agent-logs
+        persistentVolumeClaim:
+          claimName: agent-logs-pvc
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: agent-logs-pvc
+  namespace: virtual-ai-platform
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 5Gi
+---
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: virtual-ai-agents-hpa
+  namespace: virtual-ai-platform
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: virtual-ai-agents
+  minReplicas: 2
+  maxReplicas: 5
+  metrics:
+  - type: Resource
+    resource:
+      name: cpu
+      target:
+        type: Utilization
+        averageUtilization: 70
+  - type: Resource
+    resource:
+      name: memory
+      target:
+        type: Utilization
+        averageUtilization: 80

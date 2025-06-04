@@ -1,0 +1,131 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: virtual-ai-web
+  namespace: virtual-ai-platform-staging
+  labels:
+    app: virtual-ai-web
+    environment: staging
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: virtual-ai-web
+  template:
+    metadata:
+      labels:
+        app: virtual-ai-web
+        environment: staging
+    spec:
+      serviceAccountName: virtual-ai-web-sa
+      containers:
+      - name: web
+        image: ghcr.io/bryansparks/elfautomations-web:develop-latest
+        ports:
+        - containerPort: 8080
+        env:
+        - name: ENVIRONMENT
+          value: "staging"
+        - name: SUPABASE_URL
+          valueFrom:
+            secretKeyRef:
+              name: supabase-secrets
+              key: url
+        - name: SUPABASE_ANON_KEY
+          valueFrom:
+            secretKeyRef:
+              name: supabase-secrets
+              key: anon-key
+        - name: SUPABASE_PERSONAL_ACCESS_TOKEN
+          valueFrom:
+            secretKeyRef:
+              name: supabase-secrets
+              key: personal-access-token
+        - name: SUPABASE_PROJECT_ID
+          valueFrom:
+            secretKeyRef:
+              name: supabase-secrets
+              key: project-id
+        - name: ANTHROPIC_API_KEY
+          valueFrom:
+            secretKeyRef:
+              name: ai-api-secrets
+              key: anthropic-key
+        - name: OPENAI_API_KEY
+          valueFrom:
+            secretKeyRef:
+              name: ai-api-secrets
+              key: openai-key
+        resources:
+          requests:
+            memory: "256Mi"
+            cpu: "250m"
+          limits:
+            memory: "512Mi"
+            cpu: "500m"
+        livenessProbe:
+          httpGet:
+            path: /api/status
+            port: 8080
+          initialDelaySeconds: 30
+          periodSeconds: 30
+        readinessProbe:
+          httpGet:
+            path: /api/status
+            port: 8080
+          initialDelaySeconds: 5
+          periodSeconds: 10
+        securityContext:
+          allowPrivilegeEscalation: false
+          readOnlyRootFilesystem: true
+          runAsNonRoot: true
+          runAsUser: 1000
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: virtual-ai-web-service
+  namespace: virtual-ai-platform-staging
+  labels:
+    app: virtual-ai-web
+    environment: staging
+spec:
+  selector:
+    app: virtual-ai-web
+  ports:
+  - port: 80
+    targetPort: 8080
+    protocol: TCP
+  type: ClusterIP
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: virtual-ai-web-sa
+  namespace: virtual-ai-platform-staging
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: virtual-ai-ingress
+  namespace: virtual-ai-platform-staging
+  annotations:
+    nginx.ingress.kubernetes.io/ssl-redirect: "false"
+    nginx.ingress.kubernetes.io/force-ssl-redirect: "false"
+    cert-manager.io/cluster-issuer: "letsencrypt-staging"
+spec:
+  tls:
+  - hosts:
+    - staging.virtual-ai.local
+    secretName: virtual-ai-staging-tls
+  rules:
+  - host: staging.virtual-ai.local
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: virtual-ai-web-service
+            port:
+              number: 80

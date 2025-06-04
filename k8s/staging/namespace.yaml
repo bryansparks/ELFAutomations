@@ -1,0 +1,30 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: virtual-ai-platform-staging
+  labels:
+    name: virtual-ai-platform-staging
+    environment: staging
+    managed-by: ci-cd
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: supabase-secrets
+  namespace: virtual-ai-platform-staging
+type: Opaque
+stringData:
+  url: "https://lcyzpqydoqpcsdltsuyq.supabase.co"
+  anon-key: "PLACEHOLDER_ANON_KEY"
+  personal-access-token: "PLACEHOLDER_PERSONAL_ACCESS_TOKEN"
+  project-id: "lcyzpqydoqpcsdltsuyq"
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: ai-api-secrets
+  namespace: virtual-ai-platform-staging
+type: Opaque
+stringData:
+  anthropic-key: "PLACEHOLDER_ANTHROPIC_KEY"
+  openai-key: "PLACEHOLDER_OPENAI_KEY"

@@ -1,0 +1,113 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: virtual-ai-agents
+  namespace: virtual-ai-platform-staging
+  labels:
+    app: virtual-ai-agents
+    environment: staging
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: virtual-ai-agents
+  template:
+    metadata:
+      labels:
+        app: virtual-ai-agents
+        environment: staging
+    spec:
+      serviceAccountName: virtual-ai-agents-sa
+      containers:
+      - name: chief-agent
+        image: ghcr.io/bryansparks/elfautomations-agents:develop-latest
+        env:
+        - name: ENVIRONMENT
+          value: "staging"
+        - name: AGENT_TYPE
+          value: "chief"
+        - name: SUPABASE_URL
+          valueFrom:
+            secretKeyRef:
+              name: supabase-secrets
+              key: url
+        - name: SUPABASE_ANON_KEY
+          valueFrom:
+            secretKeyRef:
+              name: supabase-secrets
+              key: anon-key
+        - name: SUPABASE_PERSONAL_ACCESS_TOKEN
+          valueFrom:
+            secretKeyRef:
+              name: supabase-secrets
+              key: personal-access-token
+        - name: SUPABASE_PROJECT_ID
+          valueFrom:
+            secretKeyRef:
+              name: supabase-secrets
+              key: project-id
+        - name: ANTHROPIC_API_KEY
+          valueFrom:
+            secretKeyRef:
+              name: ai-api-secrets
+              key: anthropic-key
+        - name: OPENAI_API_KEY
+          valueFrom:
+            secretKeyRef:
+              name: ai-api-secrets
+              key: openai-key
+        resources:
+          requests:
+            memory: "512Mi"
+            cpu: "250m"
+          limits:
+            memory: "1Gi"
+            cpu: "500m"
+        securityContext:
+          allowPrivilegeEscalation: false
+          readOnlyRootFilesystem: true
+          runAsNonRoot: true
+          runAsUser: 1000
+        volumeMounts:
+        - name: tmp
+          mountPath: /tmp
+        - name: agent-logs
+          mountPath: /app/logs
+      volumes:
+      - name: tmp
+        emptyDir: {}
+      - name: agent-logs
+        emptyDir: {}
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: virtual-ai-agents-sa
+  namespace: virtual-ai-platform-staging
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: virtual-ai-agents-role
+  namespace: virtual-ai-platform-staging
+rules:
+- apiGroups: [""]
+  resources: ["pods", "services", "configmaps"]
+  verbs: ["get", "list", "watch"]
+- apiGroups: ["kagent.io"]
+  resources: ["agents", "workflows"]
+  verbs: ["get", "list", "watch", "create", "update", "patch"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: virtual-ai-agents-binding
+  namespace: virtual-ai-platform-staging
+subjects:
+- kind: ServiceAccount
+  name: virtual-ai-agents-sa
+  namespace: virtual-ai-platform-staging
+roleRef:
+  kind: Role
+  name: virtual-ai-agents-role
+  apiGroup: rbac.authorization.k8s.io
