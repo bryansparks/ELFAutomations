@@ -57,13 +57,27 @@ services:
     image: grafana/grafana:latest
     container_name: elf-grafana
     ports:
-      - "3000:3000"
+      - "3001:3000"
     environment:
       - GF_SECURITY_ADMIN_PASSWORD=admin
     volumes:
       - grafana_data:/var/lib/grafana
       - ./tools/grafana/dashboards:/etc/grafana/provisioning/dashboards
       - ./tools/grafana/datasources:/etc/grafana/provisioning/datasources
+    depends_on:
+      - prometheus
+
+  # AgentGateway - MCP Infrastructure Foundation
+  agentgateway:
+    build:
+      context: .
+      dockerfile: docker/agentgateway.Dockerfile
+    container_name: elf-agentgateway
+    ports:
+      - "3000:3000"
+      - "9091:9091"
+    volumes:
+      - ./config/agentgateway:/app/config
 
   # Jaeger for Distributed Tracing
   jaeger:

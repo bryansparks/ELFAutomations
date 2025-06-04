@@ -1,0 +1,39 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: agentgateway-service
+  namespace: virtual-ai-platform
+  labels:
+    app: agentgateway
+    component: service
+spec:
+  type: ClusterIP
+  ports:
+  - port: 3000
+    targetPort: 3000
+    protocol: TCP
+    name: mcp
+  - port: 8080
+    targetPort: 8080
+    protocol: TCP
+    name: admin
+  selector:
+    app: agentgateway
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: agentgateway-metrics
+  namespace: virtual-ai-platform
+  labels:
+    app: agentgateway
+    component: metrics
+spec:
+  type: ClusterIP
+  ports:
+  - port: 9090
+    targetPort: 9090
+    protocol: TCP
+    name: metrics
+  selector:
+    app: agentgateway

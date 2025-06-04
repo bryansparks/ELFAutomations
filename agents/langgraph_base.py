@@ -57,7 +57,7 @@ class MCPToolCall(BaseModel):
 
 
 class AgentGatewayClient:
-    """Client for communicating with agentgateway.dev for MCP access."""
+    """Client for communicating with local AgentGateway for MCP access."""
     
     def __init__(self, gateway_url: str, agent_id: str, api_key: Optional[str] = None):
         self.gateway_url = gateway_url.rstrip('/')
@@ -68,7 +68,11 @@ class AgentGatewayClient:
     
     async def __aenter__(self):
         """Async context manager entry."""
-        headers = {"User-Agent": f"ELF-Agent/{self.agent_id}"}
+        headers = {
+            "User-Agent": f"ELF-Agent/{self.agent_id}",
+            "Accept": "text/event-stream",
+            "Cache-Control": "no-cache"
+        }
         if self.api_key:
             headers["Authorization"] = f"Bearer {self.api_key}"
         
@@ -86,44 +90,81 @@ class AgentGatewayClient:
     async def list_available_tools(self) -> List[Dict[str, Any]]:
         """List all available MCP tools through the gateway."""
         try:
-            async with self.session.get(f"{self.gateway_url}/api/v1/tools") as response:
+            # Use MCP protocol to list tools
+            mcp_request = {
+                "jsonrpc": "2.0",
+                "id": str(uuid.uuid4()),
+                "method": "tools/list",
+                "params": {}
+            }
+            
+            async with self.session.post(
+                f"{self.gateway_url}/mcp",
+                json=mcp_request,
+                headers={"Content-Type": "application/json"}
+            ) as response:
                 response.raise_for_status()
                 data = await response.json()
-                self.logger.info("Retrieved available tools", tool_count=len(data.get('tools', [])))
-                return data.get('tools', [])
+                
+                if "result" in data and "tools" in data["result"]:
+                    tools = data["result"]["tools"]
+                    self.logger.info("Retrieved available tools", tool_count=len(tools))
+                    return tools
+                else:
+                    self.logger.warning("No tools found in response", response=data)
+                    return []
+                    
         except Exception as e:
             self.logger.error("Failed to list available tools", error=str(e))
             return []
     
     async def call_mcp_tool(self, tool_call: MCPToolCall) -> Dict[str, Any]:
-        """Call an MCP tool through the agentgateway."""
-        payload = {
-            "tool_name": tool_call.tool_name,
-            "server_name": tool_call.server_name,
-            "arguments": tool_call.arguments,
-            "call_id": tool_call.call_id,
-            "agent_id": self.agent_id
+        """Call an MCP tool through the AgentGateway using MCP protocol."""
+        mcp_request = {
+            "jsonrpc": "2.0",
+            "id": tool_call.call_id,
+            "method": "tools/call",
+            "params": {
+                "name": f"{tool_call.server_name}/{tool_call.tool_name}",
+                "arguments": tool_call.arguments
+            }
         }
         
         try:
             async with self.session.post(
-                f"{self.gateway_url}/api/v1/tools/call",
-                json=payload
+                f"{self.gateway_url}/mcp",
+                json=mcp_request,
+                headers={"Content-Type": "application/json"}
             ) as response:
                 response.raise_for_status()
                 result = await response.json()
                 
-                self.logger.info(
-                    "MCP tool call successful",
-                    tool_name=tool_call.tool_name,
-                    call_id=tool_call.call_id
-                )
-                return result
+                if "result" in result:
+                    self.logger.info(
+                        "MCP tool call successful",
+                        tool_name=tool_call.tool_name,
+                        server_name=tool_call.server_name,
+                        call_id=tool_call.call_id
+                    )
+                    return result["result"]
+                elif "error" in result:
+                    error_msg = result["error"].get("message", "Unknown MCP error")
+                    self.logger.error(
+                        "MCP tool call error",
+                        tool_name=tool_call.tool_name,
+                        server_name=tool_call.server_name,
+                        call_id=tool_call.call_id,
+                        error=error_msg
+                    )
+                    raise Exception(f"MCP Error: {error_msg}")
+                else:
+                    raise Exception(f"Unexpected MCP response: {result}")
                 
         except Exception as e:
             self.logger.error(
                 "MCP tool call failed",
                 tool_name=tool_call.tool_name,
+                server_name=tool_call.server_name,
                 call_id=tool_call.call_id,
                 error=str(e)
             )
@@ -176,7 +217,7 @@ class LangGraphBaseAgent(ABC):
         name: str,
         department: str,
         system_prompt: str,
-        gateway_url: str = "https://agentgateway.dev",
+        gateway_url: str = "http://agentgateway-service:3000",
         gateway_api_key: str = None
     ):
         self.agent_id = agent_id

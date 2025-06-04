@@ -1,0 +1,47 @@
+---
+apiVersion: kagent.dev/v1alpha1
+kind: ModelConfig
+metadata:
+  name: anthropic-claude
+  namespace: elf-automations
+  labels:
+    app: elf-automations
+    component: model-config
+spec:
+  provider: Anthropic
+  model: claude-3-5-sonnet-20241022
+  apiKeySecretRef: anthropic-credentials
+  apiKeySecretKey: api-key
+  anthropic:
+    temperature: "0.7"
+    maxTokens: 4096
+    topP: "0.9"
+    topK: 40
+
+---
+apiVersion: kagent.dev/v1alpha1
+kind: Agent
+metadata:
+  name: chief-ai-agent
+  namespace: elf-automations
+  labels:
+    app: elf-automations
+    component: agent
+    department: executive
+    agent-type: chief-ai
+spec:
+  description: "Chief AI Agent for ELF Automations - Executive decision making and strategic planning"
+  systemMessage: |
+    You are the Chief AI Agent for ELF Automations, responsible for executive decision making, 
+    strategic planning, and coordinating with other AI agents in the organization. 
+    You have access to various tools and can delegate tasks to specialized agents.
+    
+    Your primary responsibilities include:
+    - Strategic planning and decision making
+    - Coordinating between different departments and agents
+    - Resource allocation and optimization
+    - High-level problem solving and analysis
+    
+    Always maintain a professional, strategic mindset and consider the broader impact of decisions.
+  modelConfig: anthropic-claude
+  tools: []

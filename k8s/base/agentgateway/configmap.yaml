@@ -1,0 +1,72 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: agentgateway-config
+  namespace: virtual-ai-platform
+  labels:
+    app: agentgateway
+    component: config
+data:
+  config.json: |
+    {
+      "type": "static",
+      "listeners": [
+        {
+          "name": "sse",
+          "protocol": "MCP",
+          "sse": {
+            "address": "[::]",
+            "port": 3000
+          }
+        },
+        {
+          "name": "admin",
+          "protocol": "HTTP",
+          "http": {
+            "address": "[::]",
+            "port": 8080
+          }
+        }
+      ],
+      "targets": {
+        "mcp": [
+          {
+            "name": "supabase",
+            "stdio": {
+              "cmd": "python",
+              "args": ["-m", "mcp_servers.supabase"],
+              "env": {
+                "SUPABASE_URL": "${SUPABASE_URL}",
+                "SUPABASE_ANON_KEY": "${SUPABASE_ANON_KEY}",
+                "SUPABASE_PERSONAL_ACCESS_TOKEN": "${SUPABASE_PERSONAL_ACCESS_TOKEN}",
+                "PROJECT_ID": "${PROJECT_ID}",
+                "PROJECT_NAME": "${PROJECT_NAME}"
+              }
+            }
+          },
+          {
+            "name": "business",
+            "stdio": {
+              "cmd": "python",
+              "args": ["-m", "mcp_servers.business_tools"],
+              "env": {
+                "SUPABASE_URL": "${SUPABASE_URL}",
+                "SUPABASE_ANON_KEY": "${SUPABASE_ANON_KEY}"
+              }
+            }
+          }
+        ]
+      },
+      "observability": {
+        "metrics": {
+          "prometheus": {
+            "enabled": true,
+            "port": 9090
+          }
+        },
+        "logging": {
+          "level": "info",
+          "format": "json"
+        }
+      }
+    }

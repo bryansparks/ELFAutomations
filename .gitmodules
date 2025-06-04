@@ -1,0 +1,6 @@
+[submodule "third-party/agentgateway"]
+	path = third-party/agentgateway
+	url = https://github.com/bryansparks/agentgateway.git
+[submodule "third-party/kagent"]
+	path = third-party/kagent
+	url = https://github.com/bryansparks/kagent.git

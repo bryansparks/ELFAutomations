@@ -1,0 +1,18 @@
+apiVersion: kagent.dev/v1alpha1
+kind: Team
+metadata:
+  name: chief-ai-agent
+  namespace: elf-automations
+  labels:
+    app: elf-automations
+    component: team
+    department: executive
+spec:
+  description: "Executive team for the Chief AI Agent"
+  maxTurns: 10
+  modelConfig: "anthropic-claude"
+  participants: ["chief-ai-agent"]
+  roundRobinTeamConfig: {}
+  terminationCondition:
+    maxMessageTermination:
+      maxMessages: 20

@@ -1,0 +1,42 @@
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: agentgateway-service-account
+  namespace: virtual-ai-platform
+  labels:
+    app: agentgateway
+    component: rbac
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: agentgateway-role
+  labels:
+    app: agentgateway
+    component: rbac
+rules:
+- apiGroups: [""]
+  resources: ["pods", "services", "configmaps", "secrets"]
+  verbs: ["get", "list", "watch"]
+- apiGroups: ["apps"]
+  resources: ["deployments", "replicasets"]
+  verbs: ["get", "list", "watch"]
+- apiGroups: ["metrics.k8s.io"]
+  resources: ["pods", "nodes"]
+  verbs: ["get", "list"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: agentgateway-role-binding
+  labels:
+    app: agentgateway
+    component: rbac
+subjects:
+- kind: ServiceAccount
+  name: agentgateway-service-account
+  namespace: virtual-ai-platform
+roleRef:
+  kind: ClusterRole
+  name: agentgateway-role
+  apiGroup: rbac.authorization.k8s.io
