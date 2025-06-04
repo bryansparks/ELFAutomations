@@ -1,0 +1,348 @@
+apiVersion: apiextensions.k8s.io/v1
+kind: CustomResourceDefinition
+metadata:
+  name: langgraphagents.kagent.io
+  labels:
+    app.kubernetes.io/name: kagent
+    app.kubernetes.io/component: crd
+    app.kubernetes.io/part-of: virtual-ai-platform
+spec:
+  group: kagent.io
+  versions:
+  - name: v1
+    served: true
+    storage: true
+    schema:
+      openAPIV3Schema:
+        type: object
+        properties:
+          spec:
+            type: object
+            required:
+              - name
+              - department
+              - agentClass
+              - agentGateway
+            properties:
+              name:
+                type: string
+                description: "Human-readable name for the agent"
+              department:
+                type: string
+                enum: ["executive", "sales", "marketing", "product", "customer-success", "back-office", "demonstration"]
+                description: "Department the agent belongs to"
+              role:
+                type: string
+                description: "Specific role within the department"
+              agentClass:
+                type: string
+                description: "Python class implementing the LangGraph agent"
+                pattern: "^[a-zA-Z_][a-zA-Z0-9_]*\\.[a-zA-Z_][a-zA-Z0-9_]*$"
+              systemPrompt:
+                type: string
+                description: "System prompt for the agent"
+              # LangGraph Configuration
+              langGraphConfig:
+                type: object
+                properties:
+                  checkpointer:
+                    type: string
+                    enum: ["memory", "redis", "postgres"]
+                    default: "memory"
+                  persistentState:
+                    type: boolean
+                    default: false
+                  maxIterations:
+                    type: integer
+                    minimum: 1
+                    maximum: 100
+                    default: 50
+                  timeoutSeconds:
+                    type: integer
+                    minimum: 30
+                    maximum: 3600
+                    default: 300
+              # LLM Configuration
+              llmConfig:
+                type: object
+                required:
+                  - provider
+                  - model
+                properties:
+                  provider:
+                    type: string
+                    enum: ["anthropic", "openai", "azure"]
+                  model:
+                    type: string
+                  apiKeySecret:
+                    type: string
+                    description: "Kubernetes secret containing API key"
+                  temperature:
+                    type: number
+                    minimum: 0
+                    maximum: 2
+                    default: 0.1
+                  maxTokens:
+                    type: integer
+                    minimum: 100
+                    maximum: 8000
+                    default: 4000
+              # Agent Gateway Configuration (MANDATORY)
+              agentGateway:
+                type: object
+                required:
+                  - url
+                properties:
+                  url:
+                    type: string
+                    format: uri
+                    description: "URL of the agentgateway.dev service"
+                    default: "https://agentgateway.dev"
+                  apiKeySecret:
+                    type: string
+                    description: "Kubernetes secret containing agentgateway API key"
+                  timeoutSeconds:
+                    type: integer
+                    minimum: 5
+                    maximum: 300
+                    default: 30
+                  retryAttempts:
+                    type: integer
+                    minimum: 0
+                    maximum: 10
+                    default: 3
+              # MCP Tool Configuration (accessed via agentgateway)
+              mcpTools:
+                type: array
+                description: "MCP tools available to this agent via agentgateway"
+                items:
+                  type: object
+                  required:
+                    - serverName
+                    - tools
+                  properties:
+                    serverName:
+                      type: string
+                      description: "Name of the MCP server"
+                    tools:
+                      type: array
+                      items:
+                        type: string
+                      description: "List of tool names from this server"
+                    priority:
+                      type: integer
+                      minimum: 1
+                      maximum: 10
+                      default: 5
+                      description: "Tool priority (1=highest)"
+              # Kubernetes Resource Configuration
+              resources:
+                type: object
+                properties:
+                  requests:
+                    type: object
+                    properties:
+                      memory:
+                        type: string
+                        default: "256Mi"
+                      cpu:
+                        type: string
+                        default: "100m"
+                  limits:
+                    type: object
+                    properties:
+                      memory:
+                        type: string
+                        default: "512Mi"
+                      cpu:
+                        type: string
+                        default: "500m"
+              # Scaling Configuration
+              replicas:
+                type: integer
+                minimum: 1
+                maximum: 10
+                default: 1
+              autoscaling:
+                type: object
+                properties:
+                  enabled:
+                    type: boolean
+                    default: false
+                  minReplicas:
+                    type: integer
+                    minimum: 1
+                    default: 1
+                  maxReplicas:
+                    type: integer
+                    minimum: 1
+                    maximum: 20
+                    default: 5
+                  targetCPUUtilizationPercentage:
+                    type: integer
+                    minimum: 10
+                    maximum: 100
+                    default: 70
+              # Health Check Configuration
+              healthCheck:
+                type: object
+                properties:
+                  enabled:
+                    type: boolean
+                    default: true
+                  intervalSeconds:
+                    type: integer
+                    minimum: 5
+                    maximum: 300
+                    default: 30
+                  timeoutSeconds:
+                    type: integer
+                    minimum: 1
+                    maximum: 60
+                    default: 10
+                  failureThreshold:
+                    type: integer
+                    minimum: 1
+                    maximum: 10
+                    default: 3
+              # Security Configuration
+              security:
+                type: object
+                properties:
+                  runAsNonRoot:
+                    type: boolean
+                    default: true
+                  readOnlyRootFilesystem:
+                    type: boolean
+                    default: true
+                  allowPrivilegeEscalation:
+                    type: boolean
+                    default: false
+                  capabilities:
+                    type: object
+                    properties:
+                      drop:
+                        type: array
+                        items:
+                          type: string
+                        default: ["ALL"]
+          status:
+            type: object
+            properties:
+              phase:
+                type: string
+                enum: ["Pending", "Creating", "Running", "Stopping", "Stopped", "Failed", "Unknown"]
+              conditions:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    type:
+                      type: string
+                    status:
+                      type: string
+                      enum: ["True", "False", "Unknown"]
+                    lastTransitionTime:
+                      type: string
+                      format: date-time
+                    reason:
+                      type: string
+                    message:
+                      type: string
+              replicas:
+                type: integer
+              readyReplicas:
+                type: integer
+              lastHeartbeat:
+                type: string
+                format: date-time
+              agentGatewayStatus:
+                type: object
+                properties:
+                  connected:
+                    type: boolean
+                  lastConnection:
+                    type: string
+                    format: date-time
+                  availableTools:
+                    type: integer
+              mcpStatus:
+                type: object
+                properties:
+                  connectedServers:
+                    type: array
+                    items:
+                      type: string
+                  totalTools:
+                    type: integer
+                  lastToolCall:
+                    type: string
+                    format: date-time
+    additionalPrinterColumns:
+    - name: Department
+      type: string
+      jsonPath: .spec.department
+    - name: Phase
+      type: string
+      jsonPath: .status.phase
+    - name: Replicas
+      type: integer
+      jsonPath: .status.replicas
+    - name: Ready
+      type: integer
+      jsonPath: .status.readyReplicas
+    - name: Gateway
+      type: boolean
+      jsonPath: .status.agentGatewayStatus.connected
+    - name: Age
+      type: date
+      jsonPath: .metadata.creationTimestamp
+  scope: Namespaced
+  names:
+    plural: langgraphagents
+    singular: langgraphagent
+    kind: LangGraphAgent
+    shortNames:
+    - lga
+    - lgagent
+---
+# RBAC for LangGraph Agent CRD
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: langgraph-agent-manager
+  labels:
+    app.kubernetes.io/name: kagent
+    app.kubernetes.io/component: rbac
+rules:
+- apiGroups: ["kagent.io"]
+  resources: ["langgraphagents"]
+  verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
+- apiGroups: ["kagent.io"]
+  resources: ["langgraphagents/status"]
+  verbs: ["get", "update", "patch"]
+- apiGroups: [""]
+  resources: ["pods", "services", "configmaps", "secrets"]
+  verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
+- apiGroups: ["apps"]
+  resources: ["deployments", "replicasets"]
+  verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
+- apiGroups: ["autoscaling"]
+  resources: ["horizontalpodautoscalers"]
+  verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: langgraph-agent-manager-binding
+  labels:
+    app.kubernetes.io/name: kagent
+    app.kubernetes.io/component: rbac
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: langgraph-agent-manager
+subjects:
+- kind: ServiceAccount
+  name: kagent-controller
+  namespace: virtual-ai-platform-staging

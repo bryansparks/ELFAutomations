@@ -258,6 +258,63 @@
                     </div>
                 </div>
             </div>
+            
+            <!-- Executive Task Submission Section -->
+            <div class="row mt-4">
+                <div class="col-12">
+                    <div class="analysis-section">
+                        <h3><i class="fas fa-tasks"></i> Executive Task Submission</h3>
+                        <p class="text-muted">Submit high-level tasks to the Chief AI Agent for execution and coordination</p>
+                        
+                        <div class="row">
+                            <div class="col-md-8">
+                                <div class="mb-3">
+                                    <label for="task-description" class="form-label">Task Description</label>
+                                    <textarea 
+                                        id="task-description" 
+                                        class="form-control" 
+                                        rows="4" 
+                                        placeholder="Describe the high-level task you want the Chief AI Agent to handle. Examples:&#10;• Develop a Q2 marketing strategy&#10;• Review and optimize our sales pipeline&#10;• Coordinate a cross-department project&#10;• Analyze customer satisfaction and recommend improvements"
+                                    ></textarea>
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="mb-3">
+                                    <label for="task-type" class="form-label">Task Type</label>
+                                    <select id="task-type" class="form-select">
+                                        <option value="general_executive_task">General Executive Task</option>
+                                        <option value="strategic_planning">Strategic Planning</option>
+                                        <option value="performance_review">Performance Review</option>
+                                        <option value="resource_allocation">Resource Allocation</option>
+                                        <option value="department_coordination">Department Coordination</option>
+                                    </select>
+                                </div>
+                                <div class="mb-3">
+                                    <label for="task-priority" class="form-label">Priority</label>
+                                    <select id="task-priority" class="form-select">
+                                        <option value="low">Low</option>
+                                        <option value="medium" selected>Medium</option>
+                                        <option value="high">High</option>
+                                        <option value="urgent">Urgent</option>
+                                    </select>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <button id="submit-task" class="btn btn-success">
+                            <i class="fas fa-paper-plane"></i> Submit Task to Chief AI Agent
+                        </button>
+                        
+                        <div id="task-result" class="mt-4" style="display: none;">
+                            <h5>Task Execution Result:</h5>
+                            <div class="alert alert-success">
+                                <div id="task-info" class="mb-2"></div>
+                                <pre id="task-response" style="white-space: pre-wrap; margin: 0;"></pre>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
         </div>
     </div>
     
@@ -426,8 +483,54 @@
             }
         }
         
+        // Submit task to Chief AI Agent
+        async function submitTask() {
+            const button = document.getElementById('submit-task');
+            const description = document.getElementById('task-description').value;
+            const type = document.getElementById('task-type').value;
+            const priority = document.getElementById('task-priority').value;
+            const resultDiv = document.getElementById('task-result');
+            const resultText = document.getElementById('task-response');
+            const taskInfo = document.getElementById('task-info');
+            
+            button.disabled = true;
+            button.innerHTML = '<span class="loading"></span> Submitting...';
+            
+            try {
+                const response = await fetch('/api/agent/task', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ description, type, priority })
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    const result = data.result;
+                    resultText.textContent = JSON.stringify(result, null, 2);
+                    taskInfo.innerHTML = `<strong>Task ID:</strong> ${data.task_id} • <strong>Submitted:</strong> ${data.submitted_at}`;
+                } else {
+                    resultText.textContent = `Error: ${data.error}`;
+                    taskInfo.textContent = '';
+                }
+                
+                resultDiv.style.display = 'block';
+                
+            } catch (error) {
+                console.error('Task submission failed:', error);
+                resultText.textContent = `Error: ${error.message}`;
+                resultDiv.style.display = 'block';
+            } finally {
+                button.disabled = false;
+                button.innerHTML = '<i class="fas fa-paper-plane"></i> Submit Task to Chief AI Agent';
+            }
+        }
+        
         // Event listeners
         document.getElementById('run-analysis').addEventListener('click', runAnalysis);
+        document.getElementById('submit-task').addEventListener('click', submitTask);
         
         // Initial load
         loadSystemStatus();

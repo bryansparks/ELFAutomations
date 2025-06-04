@@ -1,0 +1,289 @@
+apiVersion: kagent.io/v1
+kind: LangGraphAgent
+metadata:
+  name: demo-agent
+  namespace: virtual-ai-platform-staging
+  labels:
+    app.kubernetes.io/name: demo-agent
+    app.kubernetes.io/component: agent
+    app.kubernetes.io/part-of: virtual-ai-platform
+    department: demonstration
+    agent-type: demo
+spec:
+  name: "Demo Agent"
+  department: "demonstration"
+  role: "Infrastructure Testing and Validation"
+  agentClass: "chief_ai_agent.ChiefAIAgent"
+  systemPrompt: |
+    You are a demonstration AI agent for the Virtual AI Company Platform.
+
+    Your role is to showcase the foundational agent architecture using:
+    - LangGraph for stateful, graph-based workflows
+    - kagent for Kubernetes-native deployment
+    - MCP (Model Context Protocol) for standardized tool integration
+    - agentgateway.dev for centralized tool access
+
+    You can help with:
+    1. Demonstrating agent capabilities
+    2. Testing the infrastructure
+    3. Validating the technology stack
+    4. Providing examples for future agent development
+
+    Always be helpful, clear, and demonstrate best practices for agent behavior.
+    When you need to use tools, explain what you're doing and why.
+
+  # LangGraph Configuration
+  langGraphConfig:
+    checkpointer: "memory"
+    persistentState: false
+    maxIterations: 25
+    timeoutSeconds: 180
+
+  # LLM Configuration
+  llmConfig:
+    provider: "anthropic"
+    model: "claude-3-5-sonnet-20241022"
+    apiKeySecret: "ai-api-secrets"
+    temperature: 0.1
+    maxTokens: 4000
+
+  # Agent Gateway Configuration (MANDATORY)
+  agentGateway:
+    url: "https://agentgateway.dev"
+    apiKeySecret: "agentgateway-api-key"
+    timeoutSeconds: 30
+    retryAttempts: 3
+
+  # MCP Tools Configuration
+  mcpTools:
+  - serverName: "business_tools"
+    tools:
+      - "get_customers"
+      - "get_leads"
+      - "get_tasks"
+      - "get_business_metrics"
+      - "create_customer"
+      - "update_lead_score"
+    priority: 1
+  - serverName: "supabase"
+    tools:
+      - "execute_sql"
+      - "list_tables"
+      - "apply_migration"
+    priority: 2
+
+  # Resource Configuration
+  resources:
+    requests:
+      memory: "256Mi"
+      cpu: "100m"
+    limits:
+      memory: "512Mi"
+      cpu: "500m"
+
+  # Scaling Configuration
+  replicas: 1
+  autoscaling:
+    enabled: false
+    minReplicas: 1
+    maxReplicas: 3
+    targetCPUUtilizationPercentage: 70
+
+  # Health Check Configuration
+  healthCheck:
+    enabled: true
+    intervalSeconds: 30
+    timeoutSeconds: 10
+    failureThreshold: 3
+
+  # Security Configuration
+  security:
+    runAsNonRoot: true
+    readOnlyRootFilesystem: true
+    allowPrivilegeEscalation: false
+    capabilities:
+      drop: ["ALL"]
+
+---
+# Service for the Demo Agent
+apiVersion: v1
+kind: Service
+metadata:
+  name: demo-agent-service
+  namespace: virtual-ai-platform-staging
+  labels:
+    app.kubernetes.io/name: demo-agent
+    app.kubernetes.io/component: service
+spec:
+  selector:
+    app.kubernetes.io/name: demo-agent
+  ports:
+  - name: http
+    port: 8080
+    targetPort: 8080
+    protocol: TCP
+  - name: health
+    port: 8081
+    targetPort: 8081
+    protocol: TCP
+  type: ClusterIP
+
+---
+# ConfigMap for Demo Agent Configuration
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: demo-agent-config
+  namespace: virtual-ai-platform-staging
+  labels:
+    app.kubernetes.io/name: demo-agent
+    app.kubernetes.io/component: config
+data:
+  agent_id: "demo-agent-001"
+  log_level: "INFO"
+  environment: "staging"
+  # Agent Gateway Configuration
+  agent_gateway_url: "https://agentgateway.dev"
+  agent_gateway_timeout: "30"
+  agent_gateway_retries: "3"
+  # LangGraph Configuration
+  langgraph_checkpointer: "memory"
+  langgraph_max_iterations: "25"
+  langgraph_timeout: "180"
+  # Health Check Configuration
+  health_check_interval: "30"
+  health_check_timeout: "10"
+
+---
+# Deployment for Demo Agent (managed by kagent controller)
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: demo-agent
+  namespace: virtual-ai-platform-staging
+  labels:
+    app.kubernetes.io/name: demo-agent
+    app.kubernetes.io/component: agent
+    app.kubernetes.io/part-of: virtual-ai-platform
+    app.kubernetes.io/managed-by: kagent-controller
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: demo-agent
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: demo-agent
+        app.kubernetes.io/component: agent
+        department: demonstration
+    spec:
+      serviceAccountName: agent-service-account
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        runAsGroup: 1000
+        fsGroup: 1000
+      containers:
+      - name: demo-agent
+        image: virtual-ai-agents:develop-latest
+        imagePullPolicy: IfNotPresent
+        ports:
+        - containerPort: 8080
+          name: http
+          protocol: TCP
+        - containerPort: 8081
+          name: health
+          protocol: TCP
+        env:
+        - name: AGENT_ID
+          valueFrom:
+            configMapKeyRef:
+              name: demo-agent-config
+              key: agent_id
+        - name: AGENT_CLASS
+          value: "chief_ai_agent.ChiefAIAgent"
+        - name: LOG_LEVEL
+          valueFrom:
+            configMapKeyRef:
+              name: demo-agent-config
+              key: log_level
+        - name: ENVIRONMENT
+          valueFrom:
+            configMapKeyRef:
+              name: demo-agent-config
+              key: environment
+        # Agent Gateway Configuration
+        - name: AGENT_GATEWAY_URL
+          valueFrom:
+            configMapKeyRef:
+              name: demo-agent-config
+              key: agent_gateway_url
+        - name: AGENT_GATEWAY_API_KEY
+          valueFrom:
+            secretKeyRef:
+              name: agentgateway-api-key
+              key: api_key
+              optional: true
+        # LLM Configuration
+        - name: ANTHROPIC_API_KEY
+          valueFrom:
+            secretKeyRef:
+              name: ai-api-secrets
+              key: anthropic-key
+        - name: OPENAI_API_KEY
+          valueFrom:
+            secretKeyRef:
+              name: ai-api-secrets
+              key: openai-key
+              optional: true
+        # Supabase Configuration (for MCP access)
+        - name: SUPABASE_URL
+          valueFrom:
+            secretKeyRef:
+              name: supabase-secrets
+              key: url
+        - name: SUPABASE_ANON_KEY
+          valueFrom:
+            secretKeyRef:
+              name: supabase-secrets
+              key: anon-key
+        resources:
+          requests:
+            memory: "256Mi"
+            cpu: "100m"
+          limits:
+            memory: "512Mi"
+            cpu: "500m"
+        securityContext:
+          allowPrivilegeEscalation: false
+          readOnlyRootFilesystem: true
+          capabilities:
+            drop: ["ALL"]
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: 8081
+          initialDelaySeconds: 30
+          periodSeconds: 30
+          timeoutSeconds: 10
+          failureThreshold: 3
+        readinessProbe:
+          httpGet:
+            path: /ready
+            port: 8081
+          initialDelaySeconds: 10
+          periodSeconds: 10
+          timeoutSeconds: 5
+          failureThreshold: 3
+        volumeMounts:
+        - name: tmp
+          mountPath: /tmp
+        - name: cache
+          mountPath: /app/.cache
+      volumes:
+      - name: tmp
+        emptyDir: {}
+      - name: cache
+        emptyDir: {}
+      restartPolicy: Always
