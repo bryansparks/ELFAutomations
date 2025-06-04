@@ -18,10 +18,11 @@ RUN python -m venv /opt/venv
 ENV PATH="/opt/venv/bin:$PATH"
 
 # Copy requirements and install Python dependencies
-COPY requirements.txt web/requirements.txt ./
+COPY requirements.txt ./
+COPY web/requirements.txt ./web-requirements.txt
 RUN pip install --upgrade pip && \
     pip install -r requirements.txt && \
-    pip install -r web/requirements.txt
+    if [ -s web-requirements.txt ]; then pip install -r web-requirements.txt; fi
 
 # Production stage
 FROM python:3.11-slim as production
