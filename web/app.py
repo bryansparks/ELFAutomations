@@ -9,12 +9,14 @@ import asyncio
 import json
 import os
 import sys
+import time
 from datetime import datetime
 from pathlib import Path
 
 import structlog
 from flask import Flask, render_template, jsonify, request
 from dotenv import load_dotenv
+from prometheus_client import Counter, Histogram, Gauge, generate_latest, CONTENT_TYPE_LATEST
 
 # Import our components
 sys.path.append(str(Path(__file__).parent.parent))
@@ -43,8 +45,16 @@ structlog.configure(
 
 logger = structlog.get_logger(__name__)
 
+# Prometheus metrics
+REQUEST_COUNT = Counter('flask_requests_total', 'Total Flask requests', ['method', 'endpoint', 'status'])
+REQUEST_DURATION = Histogram('flask_request_duration_seconds', 'Flask request duration')
+ACTIVE_CONNECTIONS = Gauge('flask_active_connections', 'Active Flask connections')
+BUSINESS_METRICS = Gauge('business_metrics', 'Business metrics from Supabase', ['metric_type'])
+AGENT_TASK_COUNT = Counter('agent_tasks_total', 'Total agent tasks submitted', ['task_type', 'status'])
+AGENT_TASK_DURATION = Histogram('agent_task_duration_seconds', 'Agent task execution duration')
+
 # Load environment
-load_dotenv()
+load_dotenv(Path(__file__).parent.parent / '.env')
 
 # Initialize Flask app
 app = Flask(__name__)
@@ -53,6 +63,30 @@ app.secret_key = os.getenv('FLASK_SECRET_KEY', 'dev-secret-key-change-in-product
 # Global business tools instance
 business_tools = None
 
+@app.before_request
+def before_request():
+    request.start_time = time.time()
+    ACTIVE_CONNECTIONS.inc()
+
+@app.after_request
+def after_request(response):
+    ACTIVE_CONNECTIONS.dec()
+    
+    # Record request metrics
+    duration = time.time() - request.start_time
+    REQUEST_DURATION.observe(duration)
+    REQUEST_COUNT.labels(
+        method=request.method,
+        endpoint=request.endpoint or 'unknown',
+        status=response.status_code
+    ).inc()
+    
+    return response
+
+@app.route('/metrics')
+def metrics():
+    """Prometheus metrics endpoint."""
+    return generate_latest(), 200, {'Content-Type': CONTENT_TYPE_LATEST}
 
 async def get_business_tools():
     """Get or initialize business tools."""
@@ -105,7 +139,7 @@ def api_status():
 
 @app.route('/api/metrics')
 def api_metrics():
-    """Get business metrics."""
+    """Get business metrics from database."""
     async def _get_metrics():
         try:
             tools = await get_business_tools()
@@ -113,70 +147,56 @@ def api_metrics():
             if not tools.supabase_client:
                 return {'error': 'Supabase not connected'}
             
-            # Get table counts
-            metrics = {}
-            
-            tables = ['customers', 'leads', 'tasks', 'business_metrics', 'agent_activities']
-            for table in tables:
-                try:
-                    result = tools.supabase_client.table(table).select('id', count='exact').execute()
-                    metrics[f'{table}_count'] = result.count if result.count is not None else 0
-                except Exception as e:
-                    metrics[f'{table}_count'] = 0
-                    logger.warning(f"Failed to count {table}", error=str(e))
+            # Get counts from each table
+            customers_result = tools.supabase_client.table('customers').select('*', count='exact').execute()
+            leads_result = tools.supabase_client.table('leads').select('*', count='exact').execute()
+            tasks_result = tools.supabase_client.table('tasks').select('*', count='exact').execute()
+            business_metrics_result = tools.supabase_client.table('business_metrics').select('*', count='exact').execute()
+            agent_activities_result = tools.supabase_client.table('agent_activities').select('*', count='exact').execute()
             
             # Get lead quality metrics
-            try:
-                leads_result = tools.supabase_client.table('leads').select('*').execute()
-                if leads_result.data:
-                    scores = [lead.get('score', 0) for lead in leads_result.data if lead.get('score')]
-                    high_quality = [lead for lead in leads_result.data if lead.get('score', 0) > 80]
-                    
-                    metrics['average_lead_score'] = sum(scores) / len(scores) if scores else 0
-                    metrics['high_quality_leads'] = len(high_quality)
-                    metrics['lead_quality_rate'] = (len(high_quality) / len(leads_result.data)) * 100 if leads_result.data else 0
-                else:
-                    metrics.update({
-                        'average_lead_score': 0,
-                        'high_quality_leads': 0,
-                        'lead_quality_rate': 0
-                    })
-            except Exception as e:
-                logger.warning("Failed to get lead metrics", error=str(e))
-                metrics.update({
-                    'average_lead_score': 0,
-                    'high_quality_leads': 0,
-                    'lead_quality_rate': 0
-                })
+            high_quality_leads = tools.supabase_client.table('leads').select('*', count='exact').gte('score', 80).execute()
+            all_leads = tools.supabase_client.table('leads').select('score').execute()
+            
+            # Calculate average lead score
+            lead_scores = [lead['score'] for lead in all_leads.data if lead['score'] is not None]
+            avg_lead_score = sum(lead_scores) / len(lead_scores) if lead_scores else 0
             
             # Get task completion metrics
-            try:
-                tasks_result = tools.supabase_client.table('tasks').select('*').execute()
-                if tasks_result.data:
-                    completed = [task for task in tasks_result.data if task.get('status') == 'completed']
-                    pending = [task for task in tasks_result.data if task.get('status') == 'pending']
-                    
-                    metrics['completed_tasks'] = len(completed)
-                    metrics['pending_tasks'] = len(pending)
-                    metrics['task_completion_rate'] = (len(completed) / len(tasks_result.data)) * 100 if tasks_result.data else 0
-                else:
-                    metrics.update({
-                        'completed_tasks': 0,
-                        'pending_tasks': 0,
-                        'task_completion_rate': 0
-                    })
-            except Exception as e:
-                logger.warning("Failed to get task metrics", error=str(e))
-                metrics.update({
-                    'completed_tasks': 0,
-                    'pending_tasks': 0,
-                    'task_completion_rate': 0
-                })
+            completed_tasks = tools.supabase_client.table('tasks').select('*', count='exact').eq('status', 'completed').execute()
+            pending_tasks = tools.supabase_client.table('tasks').select('*', count='exact').eq('status', 'pending').execute()
+            
+            total_tasks = tasks_result.count
+            completed_count = completed_tasks.count
+            completion_rate = (completed_count / total_tasks * 100) if total_tasks > 0 else 0
+            
+            metrics = {
+                'customers_count': customers_result.count,
+                'leads_count': leads_result.count,
+                'tasks_count': total_tasks,
+                'business_metrics_count': business_metrics_result.count,
+                'agent_activities_count': agent_activities_result.count,
+                'high_quality_leads': high_quality_leads.count,
+                'average_lead_score': avg_lead_score,
+                'lead_quality_rate': (high_quality_leads.count / leads_result.count * 100) if leads_result.count > 0 else 0,
+                'completed_tasks': completed_count,
+                'pending_tasks': pending_tasks.count,
+                'task_completion_rate': completion_rate
+            }
+            
+            # Update Prometheus business metrics
+            BUSINESS_METRICS.labels(metric_type='customers').set(customers_result.count)
+            BUSINESS_METRICS.labels(metric_type='leads').set(leads_result.count)
+            BUSINESS_METRICS.labels(metric_type='high_quality_leads').set(high_quality_leads.count)
+            BUSINESS_METRICS.labels(metric_type='tasks_total').set(total_tasks)
+            BUSINESS_METRICS.labels(metric_type='tasks_completed').set(completed_count)
+            BUSINESS_METRICS.labels(metric_type='task_completion_rate').set(completion_rate)
+            BUSINESS_METRICS.labels(metric_type='average_lead_score').set(avg_lead_score)
             
             return metrics
             
         except Exception as e:
-            logger.error("Metrics collection failed", error=str(e))
+            logger.error("Failed to fetch metrics", error=str(e))
             return {'error': str(e)}
     
     # Run async function
@@ -238,6 +258,104 @@ def api_agent_analyze():
         return jsonify(result)
     finally:
         loop.close()
+
+
+@app.route('/api/agent/task', methods=['POST'])
+def api_agent_task():
+    """Submit a task to the Chief AI Agent."""
+    start_time = time.time()
+    task_type = 'unknown'
+    status = 'failed'
+    
+    try:
+        # Get task data from request
+        data = request.get_json()
+        if not data:
+            AGENT_TASK_COUNT.labels(task_type='unknown', status='failed').inc()
+            return jsonify({'error': 'No JSON data provided'}), 400
+        
+        description = data.get('description', '').strip()
+        task_type = data.get('type', 'general_executive')
+        priority = data.get('priority', 'medium')
+        
+        if not description:
+            AGENT_TASK_COUNT.labels(task_type=task_type, status='failed').inc()
+            return jsonify({'error': 'Task description is required'}), 400
+        
+        logger.info("Received agent task", task_type=task_type, priority=priority)
+        
+        # Create task object
+        task = {
+            'description': description,
+            'type': task_type,
+            'priority': priority,
+            'timestamp': datetime.now().isoformat()
+        }
+        
+        # Execute task using Chief AI Agent
+        async def _execute_task():
+            try:
+                # Initialize agent if needed
+                if not hasattr(api_agent_task, '_agent'):
+                    from agents.executive.chief_ai_agent import ChiefAIAgent
+                    api_agent_task._agent = ChiefAIAgent()
+                
+                # Execute the task
+                result = await api_agent_task._agent._execute_task_impl(task)
+                return result
+                
+            except Exception as e:
+                logger.error("Task execution failed", error=str(e), task_type=task_type)
+                raise e
+        
+        # Run the async task
+        loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(loop)
+        try:
+            result = loop.run_until_complete(_execute_task())
+            status = 'success'
+            
+            # Record successful task metrics
+            duration = time.time() - start_time
+            AGENT_TASK_COUNT.labels(task_type=task_type, status='success').inc()
+            AGENT_TASK_DURATION.observe(duration)
+            
+            logger.info("Task completed successfully", task_type=task_type, duration=duration)
+            
+            return jsonify({
+                'status': 'success',
+                'task': task,
+                'result': result,
+                'execution_time': duration
+            })
+            
+        except Exception as e:
+            status = 'failed'
+            duration = time.time() - start_time
+            AGENT_TASK_COUNT.labels(task_type=task_type, status='failed').inc()
+            AGENT_TASK_DURATION.observe(duration)
+            
+            logger.error("Task execution failed", error=str(e), task_type=task_type, duration=duration)
+            return jsonify({
+                'status': 'error',
+                'error': str(e),
+                'task': task,
+                'execution_time': duration
+            }), 500
+        finally:
+            loop.close()
+            
+    except Exception as e:
+        duration = time.time() - start_time
+        AGENT_TASK_COUNT.labels(task_type=task_type, status='failed').inc()
+        AGENT_TASK_DURATION.observe(duration)
+        
+        logger.error("Request processing failed", error=str(e))
+        return jsonify({
+            'status': 'error',
+            'error': str(e),
+            'execution_time': duration
+        }), 500
 
 
 @app.route('/api/database/tables')
