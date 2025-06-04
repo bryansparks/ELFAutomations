@@ -1,5 +1,5 @@
 # Multi-stage build for web dashboard
-FROM python:3.11-slim as builder
+FROM python:3.13-slim as builder
 
 # Set environment variables
 ENV PYTHONDONTWRITEBYTECODE=1 \
@@ -25,7 +25,7 @@ RUN pip install --upgrade pip && \
     if [ -s web-requirements.txt ]; then pip install -r web-requirements.txt; fi
 
 # Production stage
-FROM python:3.11-slim as production
+FROM python:3.13-slim as production
 
 # Set environment variables
 ENV PYTHONDONTWRITEBYTECODE=1 \
