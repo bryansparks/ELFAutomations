@@ -42,6 +42,3 @@ uvicorn[standard]>=0.24.0
 
 # CrewAI Agent Framework  
 crewai>=0.70.0
-
-# Google A2A Protocol SDK
-a2a-sdk>=0.1.0

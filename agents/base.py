@@ -13,9 +13,10 @@ from enum import Enum
 from typing import Any, Dict, List, Optional, Union
 
 import structlog
-from langchain_anthropic import ChatAnthropic
-from langchain_core.messages import BaseMessage, HumanMessage, SystemMessage
-from langgraph.graph import StateGraph
+# Removed LangChain imports - using CrewAI instead
+# from langchain_anthropic import ChatAnthropic
+# from langchain_core.messages import BaseMessage, HumanMessage, SystemMessage
+# from langgraph.graph import StateGraph
 from pydantic import BaseModel, Field, field_validator, ConfigDict
 
 logger = structlog.get_logger(__name__)
@@ -129,7 +130,8 @@ class BaseAgent(ABC):
         self.state = AgentState(agent_id=agent_id)
         
         # Initialize LLM
-        self.llm = self._initialize_llm()
+        # COMMENTED OUT - LangChain dependency removed for CrewAI migration
+        # self.llm = self._initialize_llm()
         
         # Initialize logger with agent context
         self.logger = logger.bind(
@@ -148,18 +150,19 @@ class BaseAgent(ABC):
         
         self.logger.info("Agent initialized", config=config.model_dump())
     
-    def _initialize_llm(self) -> ChatAnthropic:
-        """Initialize the language model."""
-        if self.config.model.startswith("claude"):
-            return ChatAnthropic(
-                model=self.config.model,
-                max_tokens=self.config.max_tokens,
-                temperature=self.config.temperature,
-                timeout=self.config.timeout_seconds,
-            )
-        else:
-            # Add support for other models as needed
-            raise ValueError(f"Unsupported model: {self.config.model}")
+    # COMMENTED OUT - LangChain dependency removed for CrewAI migration
+    # def _initialize_llm(self) -> ChatAnthropic:
+    #     """Initialize the language model."""
+    #     if self.config.model.startswith("claude"):
+    #         return ChatAnthropic(
+    #             model=self.config.model,
+    #             max_tokens=self.config.max_tokens,
+    #             temperature=self.config.temperature,
+    #             timeout=self.config.timeout_seconds,
+    #         )
+    #     else:
+    #         # Add support for other models as needed
+    #         raise ValueError(f"Unsupported model: {self.config.model}")
     
     def _default_system_prompt(self) -> str:
         """Generate default system prompt for the agent."""
@@ -279,22 +282,25 @@ Always respond in a structured format and provide clear reasoning for your decis
         """
         try:
             # Build messages
-            messages = [SystemMessage(content=self.system_prompt)]
+            # messages = [SystemMessage(content=self.system_prompt)]
             
-            if context:
-                context_str = f"Context: {context}\n\n"
-                prompt = context_str + prompt
+            # if context:
+            #     context_str = f"Context: {context}\n\n"
+            #     prompt = context_str + prompt
             
-            messages.append(HumanMessage(content=prompt))
+            # messages.append(HumanMessage(content=prompt))
             
-            # Get response from LLM
-            self.logger.debug("Sending prompt to LLM", prompt_length=len(prompt))
+            # # Get response from LLM
+            # self.logger.debug("Sending prompt to LLM", prompt_length=len(prompt))
             
-            response = await self.llm.ainvoke(messages)
+            # response = await self.llm.ainvoke(messages)
             
-            self.logger.debug("Received LLM response", response_length=len(response.content))
+            # self.logger.debug("Received LLM response", response_length=len(response.content))
             
-            return response.content
+            # return response.content
+            
+            # COMMENTED OUT - LangChain dependency removed for CrewAI migration
+            pass
             
         except Exception as e:
             self.logger.error("Error in LLM interaction", error=str(e))

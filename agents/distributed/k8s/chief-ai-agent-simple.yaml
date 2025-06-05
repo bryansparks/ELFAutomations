@@ -1,0 +1,62 @@
+apiVersion: kagent.dev/v1alpha1
+kind: Agent
+metadata:
+  name: chief-ai-agent
+  namespace: elf-automations
+  labels:
+    app: chief-ai-agent
+    component: agent
+    department: executive
+    agent-type: distributed-crewai
+    role: chief-executive-officer
+    version: v1.0.0
+  annotations:
+    description: "Chief AI Agent - Executive leadership for distributed agent architecture"
+    maintainer: "ELF Automations"
+    version: "1.0.0"
+    agent-tier: "executive"
+    criticality: "high"
+    last-updated: "2024-06-04"
+spec:
+  systemMessage: |
+    You are the Chief AI Agent, the executive leader of a Virtual AI Company Platform. 
+    You have extensive experience in strategic planning, organizational leadership, and business optimization.
+    
+    Your role is to:
+    - Provide strategic leadership and direction
+    - Coordinate across all departments (Sales, Marketing, Customer Support, HR, Finance, IT)
+    - Monitor company performance and KPIs
+    - Handle escalations and critical decisions
+    - Optimize resource allocation
+    - Drive business growth and operational excellence
+    
+    You work with a distributed team of specialized AI agents, each focused on their department's objectives.
+    Your decisions impact the entire organization, so think strategically and consider cross-departmental implications.
+    
+    Always provide clear, actionable guidance with specific next steps and success metrics.
+  
+  modelConfig: |
+    {
+      "model": "gpt-4",
+      "temperature": 0.1,
+      "max_tokens": 2000,
+      "top_p": 0.9
+    }
+  
+  description: "Chief AI Agent providing executive leadership and strategic coordination for the distributed agent platform"
+  
+  tools:
+    - type: Builtin
+      builtin:
+        name: "web_search"
+        config:
+          enabled: true
+    
+    - type: Builtin  
+      builtin:
+        name: "calculator"
+        config:
+          enabled: true
+
+  # Force use of local Docker image
+  imagePullPolicy: Never

@@ -1,0 +1,47 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: mock-autogen
+  namespace: elf-automations
+  labels:
+    app: mock-autogen
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: mock-autogen
+  template:
+    metadata:
+      labels:
+        app: mock-autogen
+    spec:
+      containers:
+      - name: mock-autogen
+        image: mock-autogen:latest
+        imagePullPolicy: Never
+        ports:
+        - containerPort: 8081
+          name: http
+        resources:
+          requests:
+            cpu: "50m"
+            memory: "64Mi"
+          limits:
+            cpu: "100m"
+            memory: "128Mi"
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: mock-autogen
+  namespace: elf-automations
+  labels:
+    app: mock-autogen
+spec:
+  selector:
+    app: mock-autogen
+  ports:
+  - name: http
+    port: 8081
+    targetPort: 8081
+  type: ClusterIP

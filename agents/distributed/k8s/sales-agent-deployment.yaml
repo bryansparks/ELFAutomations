@@ -1,0 +1,209 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: sales-agent
+  namespace: elf-automations
+  labels:
+    app: sales-agent
+    component: distributed-agent
+    department: sales
+    agent-type: sales
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: sales-agent
+  template:
+    metadata:
+      labels:
+        app: sales-agent
+        component: distributed-agent
+        department: sales
+        agent-type: sales
+    spec:
+      containers:
+      - name: sales-agent
+        image: elf-automations/sales-agent:latest
+        ports:
+        - containerPort: 8081
+          name: a2a-port
+          protocol: TCP
+        - containerPort: 8080
+          name: health-port
+          protocol: TCP
+        env:
+        - name: AGENT_ID
+          value: "sales-agent"
+        - name: AGENT_ROLE
+          value: "Senior Sales Development Representative"
+        - name: AGENT_DEPARTMENT
+          value: "sales"
+        - name: A2A_PORT
+          value: "8081"
+        - name: HEALTH_PORT
+          value: "8080"
+        - name: DISCOVERY_ENDPOINT
+          value: "http://discovery-service:8080"
+        - name: KUBERNETES_NAMESPACE
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.namespace
+        - name: SERVICE_NAME
+          value: "sales-agent-service"
+        - name: LOG_LEVEL
+          value: "INFO"
+        resources:
+          requests:
+            memory: "256Mi"
+            cpu: "250m"
+          limits:
+            memory: "512Mi"
+            cpu: "500m"
+        livenessProbe:
+          httpGet:
+            path: /health/live
+            port: health-port
+          initialDelaySeconds: 30
+          periodSeconds: 10
+          timeoutSeconds: 5
+          failureThreshold: 3
+        readinessProbe:
+          httpGet:
+            path: /health/ready
+            port: health-port
+          initialDelaySeconds: 10
+          periodSeconds: 5
+          timeoutSeconds: 3
+          failureThreshold: 3
+        lifecycle:
+          preStop:
+            exec:
+              command: ["/bin/sh", "-c", "sleep 10"]
+      terminationGracePeriodSeconds: 30
+      restartPolicy: Always
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: sales-agent-service
+  namespace: elf-automations
+  labels:
+    app: sales-agent
+    component: distributed-agent
+    department: sales
+spec:
+  selector:
+    app: sales-agent
+  ports:
+  - name: a2a
+    port: 8081
+    targetPort: 8081
+    protocol: TCP
+  - name: health
+    port: 8080
+    targetPort: 8080
+    protocol: TCP
+  type: ClusterIP
+
+---
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: sales-agent-hpa
+  namespace: elf-automations
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: sales-agent
+  minReplicas: 1
+  maxReplicas: 5
+  metrics:
+  - type: Resource
+    resource:
+      name: cpu
+      target:
+        type: Utilization
+        averageUtilization: 70
+  - type: Resource
+    resource:
+      name: memory
+      target:
+        type: Utilization
+        averageUtilization: 80
+  behavior:
+    scaleUp:
+      stabilizationWindowSeconds: 60
+      policies:
+      - type: Percent
+        value: 100
+        periodSeconds: 15
+    scaleDown:
+      stabilizationWindowSeconds: 300
+      policies:
+      - type: Percent
+        value: 50
+        periodSeconds: 60
+
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: sales-agent-config
+  namespace: elf-automations
+data:
+  agent-config.yaml: |
+    agent:
+      id: "sales-agent"
+      role: "Senior Sales Development Representative"
+      goal: "Qualify leads, conduct outreach, and drive revenue growth through strategic sales activities"
+      backstory: |
+        You are an experienced Sales Development Representative with expertise in 
+        lead qualification, cold outreach, and sales process optimization. You excel at 
+        identifying high-value prospects, crafting compelling outreach messages, and 
+        collaborating with marketing and customer success teams to drive revenue growth.
+      department: "sales"
+      capabilities:
+        - "lead_qualification"
+        - "cold_outreach"
+        - "prospect_research"
+        - "sales_pipeline_management"
+        - "crm_integration"
+        - "follow_up_automation"
+    
+    a2a:
+      port: 8081
+      discovery_endpoint: "http://discovery-service:8080"
+      message_timeout: 30
+      retry_attempts: 3
+    
+    health:
+      port: 8080
+      check_interval: 30
+      startup_timeout: 60
+    
+    scaling:
+      min_replicas: 1
+      max_replicas: 5
+      target_cpu_utilization: 70
+      target_memory_utilization: 80
+
+---
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: sales-agent-metrics
+  namespace: elf-automations
+  labels:
+    app: sales-agent
+    component: distributed-agent
+spec:
+  selector:
+    matchLabels:
+      app: sales-agent
+  endpoints:
+  - port: health
+    path: /metrics
+    interval: 30s
+    scrapeTimeout: 10s

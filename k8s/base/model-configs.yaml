@@ -1,0 +1,38 @@
+---
+apiVersion: kagent.dev/v1alpha1
+kind: ModelConfig
+metadata:
+  name: default-model-config
+  namespace: elf-automations
+  labels:
+    app: kagent
+    component: model-config
+    type: default
+spec:
+  provider: "OpenAI"
+  model: "gpt-4"
+  apiKeySecretRef: "api-keys"
+  apiKeySecretKey: "openai-api-key"
+  openAI:
+    temperature: "0.1"
+    maxTokens: 2000
+    topP: "0.9"
+---
+apiVersion: kagent.dev/v1alpha1
+kind: ModelConfig
+metadata:
+  name: gpt4-executive-config
+  namespace: elf-automations
+  labels:
+    app: kagent
+    component: model-config
+    type: executive
+spec:
+  provider: "OpenAI"
+  model: "gpt-4"
+  apiKeySecretRef: "api-keys"
+  apiKeySecretKey: "openai-api-key"
+  openAI:
+    temperature: "0.1"
+    maxTokens: 2000
+    topP: "0.9"

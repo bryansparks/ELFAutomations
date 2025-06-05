@@ -1,0 +1,137 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: distributed-agents-a2a
+  namespace: elf-automations
+  labels:
+    app: distributed-agents
+    component: a2a-communication
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: distributed-agents
+  template:
+    metadata:
+      labels:
+        app: distributed-agents
+        component: a2a-communication
+    spec:
+      containers:
+      - name: distributed-agents
+        image: elf-automations/distributed-agent:v16-a2a-server-complete
+        imagePullPolicy: Never
+        securityContext:
+          runAsUser: 1000
+          runAsGroup: 1000
+          runAsNonRoot: true
+        ports:
+        - containerPort: 8090
+          name: chief-a2a
+        - containerPort: 8091
+          name: health
+        - containerPort: 8092
+          name: sales-a2a
+        - containerPort: 8093
+          name: marketing-a2a
+        env:
+        - name: AGENT_ID
+          value: "distributed-agents"
+        - name: AGENT_ROLE
+          value: "Multi-Agent System"
+        - name: DEPARTMENT
+          value: "Executive"
+        - name: A2A_HOST
+          value: "0.0.0.0"
+        - name: A2A_PORT
+          value: "8090"
+        - name: LOG_LEVEL
+          value: "INFO"
+        - name: PYTHONPATH
+          value: "/app"
+        - name: DISCOVERY_ENDPOINT
+          value: "http://discovery-service:8080"
+        - name: OPENAI_API_KEY
+          valueFrom:
+            secretKeyRef:
+              name: api-keys
+              key: openai-api-key
+        command: ["python", "/app/run_distributed_agents.py"]
+        args: []
+        resources:
+          requests:
+            cpu: 500m
+            memory: 1Gi
+          limits:
+            cpu: 1000m
+            memory: 2Gi
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: 8091
+          initialDelaySeconds: 30
+          periodSeconds: 30
+          timeoutSeconds: 10
+          failureThreshold: 3
+        readinessProbe:
+          httpGet:
+            path: /ready
+            port: 8091
+          initialDelaySeconds: 10
+          periodSeconds: 10
+          timeoutSeconds: 5
+          failureThreshold: 3
+        volumeMounts:
+        - name: agent-data
+          mountPath: /app/data
+      volumes:
+      - name: agent-data
+        emptyDir: {}
+      securityContext:
+        fsGroup: 2000
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: distributed-agents-service
+  namespace: elf-automations
+  labels:
+    app: distributed-agents
+spec:
+  selector:
+    app: distributed-agents
+  ports:
+  - name: chief-a2a
+    port: 8090
+    targetPort: 8090
+    protocol: TCP
+  - name: health
+    port: 8091
+    targetPort: 8091
+    protocol: TCP
+  - name: sales-a2a
+    port: 8092
+    targetPort: 8092
+    protocol: TCP
+  - name: marketing-a2a
+    port: 8093
+    targetPort: 8093
+    protocol: TCP
+  type: ClusterIP
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: discovery-service
+  namespace: elf-automations
+  labels:
+    app: discovery
+spec:
+  selector:
+    app: discovery
+  ports:
+  - name: http
+    port: 8080
+    targetPort: 8080
+    protocol: TCP
+  type: ClusterIP

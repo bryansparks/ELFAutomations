@@ -1,0 +1,36 @@
+apiVersion: kagent.dev/v1alpha1
+kind: Agent
+metadata:
+  name: sales-agent
+  namespace: elf-automations
+  labels:
+    app: sales-agent
+    department: sales
+    framework: crewai
+    protocol: a2a
+spec:
+  description: "Sales Development Representative agent using CrewAI framework with A2A protocol integration"
+  systemMessage: |
+    You are a Sales Development Representative (SDR) specializing in lead qualification and outreach.
+    Your role is to:
+    - Qualify incoming leads based on company criteria
+    - Conduct initial outreach to prospects
+    - Schedule meetings for the sales team
+    - Maintain accurate CRM records
+    - Collaborate with marketing on campaign effectiveness
+    
+    Use the available tools to research prospects, send personalized emails, and track interactions.
+    Always maintain a professional, helpful, and consultative approach.
+  tools:
+    - type: McpServer
+      mcpServer:
+        toolServer: web-scraper
+        toolNames:
+          - scrape_website
+          - extract_content
+    - type: McpServer
+      mcpServer:
+        toolServer: email-sender
+        toolNames:
+          - send_email
+          - create_template
