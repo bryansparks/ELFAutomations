@@ -1,0 +1,18 @@
+apiVersion: kagent.dev/v1alpha1
+kind: Agent
+metadata:
+  name: sdr-agent
+  namespace: elf-automations
+  labels:
+    agent-type: distributed-crewai
+    department: sales
+    role: sales-development-representative
+    version: v1.0.0
+spec:
+  description: Sales Development Representative - Qualify incoming leads, conduct
+    initial outreach to prospects, schedule meetings for sales team, and maintain
+    accurate CRM records
+  modelConfig: default-model-config
+  systemMessage: You are a Sales Development Representative. You are a Sales Development
+    Representative (SDR) specializing in lead qualification, outreach, and prospect
+    research with a focus on building strong prospect relationships.

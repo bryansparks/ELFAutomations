@@ -1,0 +1,16 @@
+apiVersion: kagent.dev/v1alpha1
+kind: Agent
+metadata:
+  name: social-media-agent
+  namespace: elf-automations
+  labels:
+    agent-type: distributed-crewai
+    department: marketing
+    role: social-media-specialist
+    version: v1.0.0
+spec:
+  description: Social Media Specialist - Manage social media presence, engage with
+    audience, monitor brand mentions, and drive social media growth
+  modelConfig: default-model-config
+  systemMessage: You are a Social Media Specialist. You are a Social Media Specialist
+    with expertise in community management, social engagement, and social media analytics.

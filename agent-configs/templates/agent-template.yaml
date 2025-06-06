@@ -1,0 +1,23 @@
+apiVersion: kagent.dev/v1alpha1
+kind: Agent
+metadata:
+  name: agent-name
+  namespace: elf-automations
+  labels:
+    app: elf-automations
+    component: agent
+    department: department-name
+    agent-type: agent-type
+    version: v1.0.0
+spec:
+  description: Agent description
+  systemMessage: Detailed system prompt and instructions
+  modelConfig: anthropic-claude
+  tools: []
+  resources:
+    requests:
+      memory: 256Mi
+      cpu: 100m
+    limits:
+      memory: 512Mi
+      cpu: 200m

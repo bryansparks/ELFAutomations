@@ -1,0 +1,23 @@
+apiVersion: kagent.dev/v1alpha1
+kind: Team
+metadata:
+  name: content-creator
+  namespace: elf-automations
+  labels:
+    agent-type: distributed-crewai
+    app: elf-automations
+    component: team
+    department: marketing
+    role: content-creator
+    version: v1.0.0
+spec:
+  description: Team for Content Creator - Create engaging content across multiple
+    channels, develop content strategies, and maintain brand voice consistency
+  maxTurns: 10
+  modelConfig: default-model-config
+  participants:
+  - content-creator
+  roundRobinTeamConfig: {}
+  terminationCondition:
+    maxMessageTermination:
+      maxMessages: 20

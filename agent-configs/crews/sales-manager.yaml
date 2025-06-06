@@ -1,0 +1,23 @@
+apiVersion: kagent.dev/v1alpha1
+kind: Team
+metadata:
+  name: sales-manager
+  namespace: elf-automations
+  labels:
+    agent-type: distributed-crewai
+    app: elf-automations
+    component: team
+    department: sales
+    role: sales-manager
+    version: v1.0.0
+spec:
+  description: Team for Sales Manager - Lead and coordinate sales team activities,
+    optimize sales processes, achieve revenue targets, and manage sales pipeline
+  maxTurns: 10
+  modelConfig: default-model-config
+  participants:
+  - sales-manager
+  roundRobinTeamConfig: {}
+  terminationCondition:
+    maxMessageTermination:
+      maxMessages: 20

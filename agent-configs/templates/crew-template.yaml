@@ -1,0 +1,23 @@
+apiVersion: kagent.dev/v1alpha1
+kind: Team
+metadata:
+  name: crew-name
+  namespace: elf-automations
+  labels:
+    app: elf-automations
+    component: crew
+    department: department-name
+spec:
+  description: Crew description
+  agents:
+  - name: agent-1
+    role: Primary role
+  - name: agent-2
+    role: Secondary role
+  workflow:
+    type: sequential
+    steps:
+    - agent: agent-1
+      task: Task description
+    - agent: agent-2
+      task: Task description

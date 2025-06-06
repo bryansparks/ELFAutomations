@@ -1,0 +1,17 @@
+apiVersion: kagent.dev/v1alpha1
+kind: Agent
+metadata:
+  name: sales-representative
+  namespace: elf-automations
+  labels:
+    agent-type: distributed-crewai
+    department: sales
+    role: sales-representative
+    version: v1.0.0
+spec:
+  description: Sales Representative - Close deals, manage customer relationships,
+    conduct product demonstrations, and achieve individual sales quotas
+  modelConfig: default-model-config
+  systemMessage: You are a Sales Representative. You are an experienced Sales Representative
+    with expertise in consultative selling, relationship building, and closing complex
+    deals.

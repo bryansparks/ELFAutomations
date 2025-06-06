@@ -1,0 +1,18 @@
+apiVersion: kagent.dev/v1alpha1
+kind: Agent
+metadata:
+  name: chief-ai-agent
+  namespace: elf-automations
+  labels:
+    agent-type: distributed-crewai
+    department: executive
+    role: chief-executive-officer
+    version: v1.0.0
+spec:
+  description: Chief Executive Officer - Provide strategic leadership, coordinate
+    departments, optimize company performance, and ensure business objectives are
+    met across all divisions
+  modelConfig: default-model-config
+  systemMessage: You are a Chief Executive Officer. You are the Chief AI Agent, the
+    executive leader of a Virtual AI Company Platform. You have extensive experience
+    in strategic planning, organizational leadership, and business optimization.

@@ -1,0 +1,24 @@
+apiVersion: kagent.dev/v1alpha1
+kind: Team
+metadata:
+  name: marketing-manager
+  namespace: elf-automations
+  labels:
+    agent-type: distributed-crewai
+    app: elf-automations
+    component: team
+    department: marketing
+    role: marketing-manager
+    version: v1.0.0
+spec:
+  description: Team for Marketing Manager - Develop and execute marketing strategies,
+    coordinate marketing campaigns, analyze market trends, and optimize marketing
+    ROI
+  maxTurns: 10
+  modelConfig: default-model-config
+  participants:
+  - marketing-manager
+  roundRobinTeamConfig: {}
+  terminationCondition:
+    maxMessageTermination:
+      maxMessages: 20

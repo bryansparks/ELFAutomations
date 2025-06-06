@@ -1,0 +1,24 @@
+apiVersion: kagent.dev/v1alpha1
+kind: Team
+metadata:
+  name: sdr-agent
+  namespace: elf-automations
+  labels:
+    agent-type: distributed-crewai
+    app: elf-automations
+    component: team
+    department: sales
+    role: sales-development-representative
+    version: v1.0.0
+spec:
+  description: Team for Sales Development Representative - Qualify incoming leads,
+    conduct initial outreach to prospects, schedule meetings for sales team, and maintain
+    accurate CRM records
+  maxTurns: 10
+  modelConfig: default-model-config
+  participants:
+  - sdr-agent
+  roundRobinTeamConfig: {}
+  terminationCondition:
+    maxMessageTermination:
+      maxMessages: 20

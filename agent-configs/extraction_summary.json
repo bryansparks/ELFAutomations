@@ -1,0 +1,23 @@
+{
+  "extraction_date": "2025-06-05T18:22:33.431368",
+  "agents_extracted": 7,
+  "teams_extracted": 7,
+  "agent_files": [
+    "agent-configs/agents/executive/chief-ai-agent.yaml",
+    "agent-configs/agents/marketing/content-creator.yaml",
+    "agent-configs/agents/marketing/marketing-manager.yaml",
+    "agent-configs/agents/sales/sales-manager.yaml",
+    "agent-configs/agents/sales/sales-representative.yaml",
+    "agent-configs/agents/sales/sdr-agent.yaml",
+    "agent-configs/agents/marketing/social-media-agent.yaml"
+  ],
+  "team_files": [
+    "agent-configs/crews/chief-ai-agent.yaml",
+    "agent-configs/crews/content-creator.yaml",
+    "agent-configs/crews/marketing-manager.yaml",
+    "agent-configs/crews/sales-manager.yaml",
+    "agent-configs/crews/sales-representative.yaml",
+    "agent-configs/crews/sdr-agent.yaml",
+    "agent-configs/crews/social-media-agent.yaml"
+  ]
+}

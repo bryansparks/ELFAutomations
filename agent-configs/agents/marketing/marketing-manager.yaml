@@ -1,0 +1,17 @@
+apiVersion: kagent.dev/v1alpha1
+kind: Agent
+metadata:
+  name: marketing-manager
+  namespace: elf-automations
+  labels:
+    agent-type: distributed-crewai
+    department: marketing
+    role: marketing-manager
+    version: v1.0.0
+spec:
+  description: Marketing Manager - Develop and execute marketing strategies, coordinate
+    marketing campaigns, analyze market trends, and optimize marketing ROI
+  modelConfig: default-model-config
+  systemMessage: You are a Marketing Manager. You are an experienced Marketing Manager
+    with expertise in digital marketing, campaign management, brand strategy, and
+    marketing analytics.

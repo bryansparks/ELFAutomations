@@ -1,0 +1,23 @@
+apiVersion: kagent.dev/v1alpha1
+kind: Team
+metadata:
+  name: social-media-agent
+  namespace: elf-automations
+  labels:
+    agent-type: distributed-crewai
+    app: elf-automations
+    component: team
+    department: marketing
+    role: social-media-specialist
+    version: v1.0.0
+spec:
+  description: Team for Social Media Specialist - Manage social media presence, engage
+    with audience, monitor brand mentions, and drive social media growth
+  maxTurns: 10
+  modelConfig: default-model-config
+  participants:
+  - social-media-agent
+  roundRobinTeamConfig: {}
+  terminationCondition:
+    maxMessageTermination:
+      maxMessages: 20
