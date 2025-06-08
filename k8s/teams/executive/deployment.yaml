@@ -1,0 +1,78 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: executive-team
+  namespace: elf-teams
+  labels:
+    app: executive-team
+    team: executive
+    department: executive
+    app.kubernetes.io/name: executive-team
+    app.kubernetes.io/part-of: elf-automations
+    app.kubernetes.io/managed-by: argocd
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: executive-team
+      team: executive
+  template:
+    metadata:
+      labels:
+        app: executive-team
+        team: executive
+        department: executive
+    spec:
+      serviceAccountName: executive-team-sa
+      containers:
+      - name: executive-team
+        image: ghcr.io/bryansparks/elfautomations-executive-team:latest
+        imagePullPolicy: Always
+        ports:
+        - containerPort: 8090
+          name: http
+          protocol: TCP
+        env:
+        - name: TEAM_NAME
+          value: "executive"
+        - name: TEAM_PORT
+          value: "8090"
+        - name: AGENTGATEWAY_URL
+          value: "http://agentgateway.agentgateway.svc.cluster.local:8080"
+        - name: OPENAI_API_KEY
+          valueFrom:
+            secretKeyRef:
+              name: llm-api-keys
+              key: OPENAI_API_KEY
+        - name: ANTHROPIC_API_KEY
+          valueFrom:
+            secretKeyRef:
+              name: llm-api-keys
+              key: ANTHROPIC_API_KEY
+        volumeMounts:
+        - name: config
+          mountPath: /app/config
+          readOnly: true
+        resources:
+          requests:
+            memory: "2Gi"
+            cpu: "1000m"
+          limits:
+            memory: "4Gi"
+            cpu: "2000m"
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: http
+          initialDelaySeconds: 30
+          periodSeconds: 10
+        readinessProbe:
+          httpGet:
+            path: /ready
+            port: http
+          initialDelaySeconds: 5
+          periodSeconds: 5
+      volumes:
+      - name: config
+        configMap:
+          name: executive-team-config

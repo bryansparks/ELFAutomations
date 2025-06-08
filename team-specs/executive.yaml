@@ -1,0 +1,74 @@
+name: Executive Leadership Team
+department: executive
+size: 3
+framework: crewai
+description: "The executive leadership team responsible for strategic decision-making and company-wide coordination"
+purpose: "Provide strategic leadership, make executive decisions, and ensure all departments work together effectively"
+
+members:
+  - name: Chief AI Officer
+    role: Chief Executive Officer
+    goal: Oversee all AI operations and strategic direction
+    backstory: Seasoned AI executive with extensive leadership experience in building and scaling AI-driven organizations
+    capabilities:
+      - strategic_planning
+      - decision_making
+      - delegation
+      - vision_setting
+      - stakeholder_management
+    allow_delegation: true
+
+  - name: Chief Strategy Officer
+    role: Chief Strategy Officer
+    goal: Develop and implement company-wide strategies
+    backstory: Strategic thinker with deep market insights and experience in competitive positioning
+    capabilities:
+      - strategy_development
+      - market_analysis
+      - competitive_intelligence
+      - innovation_planning
+    allow_delegation: true
+
+  - name: Chief Operations Officer
+    role: Chief Operations Officer
+    goal: Ensure smooth operations across all departments
+    backstory: Operations expert focused on efficiency, scalability, and cross-functional coordination
+    capabilities:
+      - operations_management
+      - process_optimization
+      - resource_allocation
+      - performance_monitoring
+    allow_delegation: true
+
+external_tools:
+  - mcp_business_tools
+  - mcp_report_generator
+  - mcp_analytics
+
+delegations:
+  - marketing
+  - sales
+  - engineering
+  - operations
+  - qa
+
+port: 8090
+
+resources:
+  requests:
+    memory: 2Gi
+    cpu: 1000m
+  limits:
+    memory: 4Gi
+    cpu: 2000m
+
+scaling:
+  replicas: 1
+  minReplicas: 1
+  maxReplicas: 1
+  targetCPU: 70
+
+llm_config:
+  model: gpt-4-turbo-preview
+  temperature: 0.7
+  max_tokens: 2000

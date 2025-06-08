@@ -1,0 +1,17 @@
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: executive-team-rolebinding
+  namespace: elf-teams
+  labels:
+    app: executive-team
+    team: executive
+    department: executive
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: executive-team-role
+subjects:
+- kind: ServiceAccount
+  name: executive-team-sa
+  namespace: elf-teams

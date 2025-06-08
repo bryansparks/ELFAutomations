@@ -1,0 +1,22 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: executive-team
+  namespace: elf-teams
+  labels:
+    app: executive-team
+    team: executive
+    department: executive
+    app.kubernetes.io/name: executive-team
+    app.kubernetes.io/part-of: elf-automations
+    app.kubernetes.io/managed-by: argocd
+spec:
+  type: ClusterIP
+  selector:
+    app: executive-team
+    team: executive
+  ports:
+  - name: http
+    port: 8090
+    targetPort: 8090
+    protocol: TCP
