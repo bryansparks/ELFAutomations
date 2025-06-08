@@ -27,7 +27,7 @@ spec:
       containers:
       - name: executive-team
         image: ghcr.io/bryansparks/elfautomations-executive-team:latest
-        imagePullPolicy: Always
+        imagePullPolicy: Never
         ports:
         - containerPort: 8090
           name: http
