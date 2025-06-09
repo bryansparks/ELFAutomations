@@ -1,0 +1,35 @@
+a2a_port: 8080
+accepts_requests: true
+capabilities:
+- Chief Executive Officer
+- Chief Technology Officer
+- Chief Marketing Officer
+- Chief Operations Officer
+- Chief Financial Officer
+communication_pattern:
+  Chief Executive Officer:
+  - Chief Technology Officer
+  - Chief Marketing Officer
+  - Chief Operations Officer
+  - Chief Financial Officer
+  Chief Financial Officer:
+  - Chief Executive Officer
+  - Chief Marketing Officer
+  - Chief Operations Officer
+  Chief Marketing Officer:
+  - Chief Executive Officer
+  - Chief Technology Officer
+  - Chief Financial Officer
+  Chief Operations Officer:
+  - Chief Executive Officer
+  - Chief Technology Officer
+  - Chief Financial Officer
+  Chief Technology Officer:
+  - Chief Executive Officer
+  - Chief Operations Officer
+  - Chief Marketing Officer
+internal_communication:
+  framework: CrewAI
+  log_path: /logs/executive-team_internal_comms.log
+  logging: true
+team_name: executive-team
