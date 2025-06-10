@@ -205,3 +205,4 @@ dev/
 # OS generated files
 Thumbs.db
 ehthumbs.db
+tools/team_factory.py.backup
