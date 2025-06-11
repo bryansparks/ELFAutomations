@@ -13,6 +13,7 @@ This tool:
 import argparse
 import json
 import os
+import re
 import sys
 from dataclasses import dataclass, field
 from datetime import datetime
@@ -73,6 +74,16 @@ class TeamMember:
 
 
 @dataclass
+class SubTeamRecommendation:
+    """Recommendation for creating sub-teams"""
+
+    name: str
+    purpose: str
+    required_capabilities: List[str]
+    rationale: str
+
+
+@dataclass
 class TeamSpecification:
     """Complete team specification"""
 
@@ -86,16 +97,24 @@ class TeamSpecification:
     communication_pattern: Dict[str, List[str]]
     size_validation: str
     natural_language_description: str
+    is_free_agent: bool = False  # Not tied to org structure
+    a2a_capabilities: List[str] = field(
+        default_factory=list
+    )  # Capabilities to register with A2A
+    reports_to: Optional[str] = None  # None for free agents
+    sub_team_recommendations: List[SubTeamRecommendation] = field(default_factory=list)
+    create_sub_teams: bool = False  # Whether to create recommended sub-teams
 
 
 class TeamFactory:
     """Factory for creating teams from natural language descriptions"""
 
-    def __init__(self):
+    def __init__(self, analyze_mcp_optimization=True):
         self.console = console
         self.project_root = Path(__file__).parent.parent
         self.teams_dir = self.project_root / "teams"
         self.teams_dir.mkdir(exist_ok=True)
+        self.analyze_mcp_optimization = analyze_mcp_optimization
 
         # Team size guidelines from AI Team Size Patterns document
         self.MIN_TEAM_SIZE = 2
@@ -161,6 +180,47 @@ class TeamFactory:
             "Chief Product Officer": ["product-team", "design-team", "research-team"],
         }
 
+    def sanitize_team_name(self, name: str, max_length: int = 50) -> str:
+        """
+        Sanitize team name for filesystem and Docker compatibility
+
+        Args:
+            name: Raw team name
+            max_length: Maximum length for the name
+
+        Returns:
+            Sanitized name safe for filesystem and Docker
+        """
+        # Convert to lowercase
+        name = name.lower()
+
+        # Replace spaces and special characters with hyphens
+        name = re.sub(r"[^a-z0-9\-]", "-", name)
+
+        # Remove multiple consecutive hyphens
+        name = re.sub(r"-+", "-", name)
+
+        # Remove leading/trailing hyphens
+        name = name.strip("-")
+
+        # Truncate if too long
+        if len(name) > max_length:
+            # Try to truncate at a word boundary
+            truncated = name[:max_length]
+            last_hyphen = truncated.rfind("-")
+            if (
+                last_hyphen > max_length * 0.6
+            ):  # If we can keep at least 60% of the name
+                name = truncated[:last_hyphen]
+            else:
+                name = truncated.rstrip("-")
+
+        # Ensure name is not empty
+        if not name:
+            name = "custom-team"
+
+        return name
+
     def create_team(self):
         """Main entry point for team creation"""
         self.console.print(
@@ -187,9 +247,9 @@ class TeamFactory:
         # Update team spec with organizational info
         team_spec.department = department
         if subteam:
-            team_spec.name = f"{department}-{subteam}-team"
+            team_spec.name = self.sanitize_team_name(f"{department}-{subteam}-team")
         else:
-            team_spec.name = f"{department}-team"
+            team_spec.name = self.sanitize_team_name(f"{department}-team")
 
         # Configure manager's A2A reporting if needed
         if reports_to and team_spec.members:
@@ -451,19 +511,22 @@ class TeamFactory:
         # Determine department
         if "marketing" in keywords:
             department = "marketing"
-            team_name = "marketing-team"
+            team_name = self.sanitize_team_name("marketing-team")
         elif "sales" in keywords:
             department = "sales"
-            team_name = "sales-team"
+            team_name = self.sanitize_team_name("sales-team")
         elif "engineering" in keywords or "development" in keywords:
             department = "engineering"
-            team_name = "engineering-team"
+            team_name = self.sanitize_team_name("engineering-team")
         elif "executive" in keywords or "leadership" in keywords:
             department = "executive"
-            team_name = "executive-team"
+            team_name = self.sanitize_team_name("executive-team")
+        elif "research" in keywords or "free agent" in keywords:
+            department = "free-agent"
+            team_name = self.sanitize_team_name("research-team")
         else:
             department = "general"
-            team_name = "custom-team"
+            team_name = self.sanitize_team_name("custom-team")
 
         # Create sample team based on department
         if department == "marketing":
@@ -677,6 +740,177 @@ class TeamFactory:
                     ),
                 ),
             ]
+        elif department == "free-agent":
+            # Research team - free agent pattern
+            members = [
+                TeamMember(
+                    role="Research Team Lead",
+                    responsibilities=[
+                        "Coordinate research requests from various teams",
+                        "Prioritize research tasks",
+                        "Manage sub-team specializations",
+                        "Ensure research quality and accuracy",
+                        "Register capabilities with A2A discovery",
+                    ],
+                    skills=[
+                        "Research methodology",
+                        "Team coordination",
+                        "Quality control",
+                        "A2A service management",
+                    ],
+                    system_prompt="You are the Research Team Lead for a free agent research service. You coordinate research requests from various teams across the organization via A2A discovery. You manage specialized sub-teams for different research domains and ensure high-quality, accurate research deliverables.",
+                    communicates_with=[
+                        "Web Research Specialist",
+                        "Academic Research Specialist",
+                        "Social Media Analyst",
+                        "Technical Research Specialist",
+                    ],
+                    manages_teams=[
+                        "web-research-subteam",
+                        "academic-research-subteam",
+                        "social-research-subteam",
+                    ],
+                ),
+                TeamMember(
+                    role="Web Research Specialist",
+                    responsibilities=[
+                        "Search and analyze web content",
+                        "Extract key insights from websites",
+                        "Summarize online articles and blogs",
+                        "Track online trends and discussions",
+                        "Validate information sources",
+                    ],
+                    skills=[
+                        "Web scraping",
+                        "Content analysis",
+                        "Information synthesis",
+                        "Source validation",
+                    ],
+                    system_prompt="You are a Web Research Specialist who excels at finding, analyzing, and synthesizing information from websites, blogs, and online resources. You validate sources and provide comprehensive summaries of web content.",
+                    communicates_with=[
+                        "Research Team Lead",
+                        "Academic Research Specialist",
+                        "Technical Research Specialist",
+                    ],
+                    personality_traits=["detail-oriented", "analyzer"],
+                ),
+                TeamMember(
+                    role="Academic Research Specialist",
+                    responsibilities=[
+                        "Find and analyze academic papers",
+                        "Search scholarly databases",
+                        "Summarize research findings",
+                        "Track citations and references",
+                        "Evaluate research quality",
+                    ],
+                    skills=[
+                        "Academic database search",
+                        "Paper analysis",
+                        "Citation tracking",
+                        "Research methodology",
+                    ],
+                    system_prompt="You are an Academic Research Specialist who finds and analyzes scholarly papers, research publications, and academic resources. You understand research methodologies and can evaluate the quality and relevance of academic sources.",
+                    communicates_with=[
+                        "Research Team Lead",
+                        "Web Research Specialist",
+                        "Technical Research Specialist",
+                    ],
+                    personality_traits=["analyzer", "detail-oriented"],
+                ),
+                TeamMember(
+                    role="Social Media Analyst",
+                    responsibilities=[
+                        "Search Twitter/X for relevant posts",
+                        "Analyze social media trends",
+                        "Track sentiment and engagement",
+                        "Monitor brand mentions",
+                        "Identify influencers and thought leaders",
+                    ],
+                    skills=[
+                        "Social media APIs",
+                        "Sentiment analysis",
+                        "Trend identification",
+                        "Engagement metrics",
+                    ],
+                    system_prompt="You are a Social Media Analyst specializing in Twitter/X and other social platforms. You track trends, analyze sentiment, and identify key conversations and influencers in specific domains.",
+                    communicates_with=[
+                        "Research Team Lead",
+                        "Web Research Specialist",
+                    ],
+                    personality_traits=["innovator", "analyzer"],
+                ),
+                TeamMember(
+                    role="Technical Research Specialist",
+                    responsibilities=[
+                        "Research technical documentation",
+                        "Analyze code repositories",
+                        "Evaluate technical solutions",
+                        "Track technology trends",
+                        "Assess technical feasibility",
+                    ],
+                    skills=[
+                        "Technical documentation analysis",
+                        "Code comprehension",
+                        "Technology assessment",
+                        "API documentation",
+                    ],
+                    system_prompt="You are a Technical Research Specialist who researches technical topics, analyzes documentation, evaluates technologies, and provides insights on technical feasibility and best practices.",
+                    communicates_with=[
+                        "Research Team Lead",
+                        "Web Research Specialist",
+                        "Academic Research Specialist",
+                    ],
+                    personality_traits=["detail-oriented", "pragmatist"],
+                ),
+            ]
+
+            # Set up A2A capabilities for the research team
+            a2a_capabilities = [
+                "web_research",
+                "academic_research",
+                "paper_analysis",
+                "social_media_research",
+                "twitter_search",
+                "technical_research",
+                "documentation_analysis",
+                "trend_analysis",
+                "competitive_research",
+                "market_research",
+            ]
+
+            # Sub-team recommendations for research team
+            sub_team_recommendations = [
+                SubTeamRecommendation(
+                    name="web-research-subteam",
+                    purpose="Specialized team for deep web research and content analysis",
+                    required_capabilities=[
+                        "web_scraping",
+                        "content_extraction",
+                        "api_integration",
+                    ],
+                    rationale="Web research often requires specialized tools and APIs for different websites. A dedicated sub-team can maintain these integrations.",
+                ),
+                SubTeamRecommendation(
+                    name="academic-research-subteam",
+                    purpose="Specialized team for academic database access and paper analysis",
+                    required_capabilities=[
+                        "arxiv_search",
+                        "pubmed_search",
+                        "semantic_scholar",
+                    ],
+                    rationale="Academic research requires access to specialized databases and understanding of academic conventions. A sub-team can maintain these specialized connections.",
+                ),
+                SubTeamRecommendation(
+                    name="social-research-subteam",
+                    purpose="Specialized team for multi-platform social media analysis",
+                    required_capabilities=[
+                        "twitter_api",
+                        "linkedin_search",
+                        "reddit_analysis",
+                    ],
+                    rationale="Each social platform has unique APIs and data structures. A dedicated sub-team can specialize in platform-specific research.",
+                ),
+            ]
         else:
             # Default small team
             members = [
@@ -781,6 +1015,16 @@ class TeamFactory:
         for member in members:
             communication_pattern[member.role] = member.communicates_with
 
+        # Initialize A2A capabilities and sub-team recommendations if not set
+        if "a2a_capabilities" not in locals():
+            a2a_capabilities = []
+        if "sub_team_recommendations" not in locals():
+            sub_team_recommendations = []
+
+        # Determine if this is a free agent team
+        is_free_agent = department == "free-agent"
+        reports_to = None if is_free_agent else self._determine_reports_to(department)
+
         return TeamSpecification(
             name=team_name,
             purpose=f"Team created from: {description[:100]}...",
@@ -792,7 +1036,24 @@ class TeamFactory:
             communication_pattern=communication_pattern,
             size_validation=self._validate_team_size(len(members)),
             natural_language_description=description,
+            is_free_agent=is_free_agent,
+            a2a_capabilities=a2a_capabilities,
+            reports_to=reports_to,
+            sub_team_recommendations=sub_team_recommendations,
         )
+
+    def _determine_reports_to(self, department: str) -> Optional[str]:
+        """Determine reporting structure based on department"""
+        reporting_map = {
+            "marketing": "Chief Marketing Officer",
+            "engineering": "Chief Technology Officer",
+            "sales": "Chief Sales Officer",
+            "operations": "Chief Operations Officer",
+            "finance": "Chief Financial Officer",
+            "executive": None,  # Executives don't report up
+            "general": "Chief Executive Officer",
+        }
+        return reporting_map.get(department, "Chief Executive Officer")
 
     def _validate_team_size(self, size: int) -> str:
         """Validate team size according to Two-Pizza Rule"""
@@ -1054,6 +1315,81 @@ class TeamFactory:
         # Display communication pattern
         self._display_communication_pattern(team_spec)
 
+        # Display A2A capabilities for free agent teams
+        if team_spec.is_free_agent and team_spec.a2a_capabilities:
+            self.console.print("\n[bold cyan]A2A Service Capabilities:[/bold cyan]")
+            capabilities_panel = Panel(
+                "\n".join(f"  • {cap}" for cap in team_spec.a2a_capabilities),
+                title="Registered Capabilities",
+                border_style="yellow",
+            )
+            self.console.print(capabilities_panel)
+
+        # Check for MCP optimization opportunities
+        if hasattr(self, "analyze_mcp_optimization") and self.analyze_mcp_optimization:
+            from tools.analyze_mcp_optimization import MCPOptimizationAnalyzer
+            from tools.mcp_wishlist_manager import integrate_with_team_factory
+
+            analyzer = MCPOptimizationAnalyzer()
+            suggestions = analyzer.analyze_team(team_spec)
+
+            # Collect all suggested MCPs
+            all_suggested_mcps = []
+            convert_count = 0
+            for role, suggestion in suggestions.items():
+                if suggestion.suggested_mcps:
+                    all_suggested_mcps.extend(suggestion.suggested_mcps)
+                if suggestion.recommendation == "convert":
+                    convert_count += 1
+
+            if all_suggested_mcps:
+                unique_mcps = list(set(all_suggested_mcps))
+                self.console.print(
+                    f"\n[bold cyan]📊 MCP Optimization Analysis:[/bold cyan]"
+                )
+                self.console.print(
+                    f"  • {convert_count} roles could be converted to MCP usage"
+                )
+                self.console.print(
+                    f"  • {len(unique_mcps)} unique MCPs could replace agent code"
+                )
+
+                # Check which MCPs don't exist yet
+                missing_mcps = integrate_with_team_factory(team_spec.name, unique_mcps)
+
+                if missing_mcps:
+                    self.console.print(
+                        f"\n[yellow]Note: {len(missing_mcps)} MCPs have been added to the wish list for future development.[/yellow]"
+                    )
+
+        # Display sub-team recommendations
+        if team_spec.sub_team_recommendations:
+            self.console.print(
+                "\n[bold yellow]⚠️  Sub-Team Recommendations:[/bold yellow]"
+            )
+            self.console.print(
+                "\nThis team's capabilities would be maximized with the following sub-teams:\n"
+            )
+            for rec in team_spec.sub_team_recommendations:
+                rec_panel = Panel(
+                    f"[bold]Sub-team:[/bold] {rec.name}\n"
+                    f"[bold]Purpose:[/bold] {rec.purpose}\n"
+                    f"[bold]Required Capabilities:[/bold] {', '.join(rec.required_capabilities)}\n"
+                    f"[bold]Rationale:[/bold] {rec.rationale}",
+                    border_style="yellow",
+                )
+                self.console.print(rec_panel)
+
+            if Confirm.ask(
+                "\nWould you like to create these sub-teams as well?", default=True
+            ):
+                self.console.print(
+                    "[green]Sub-teams will be created after the main team.[/green]"
+                )
+                team_spec.create_sub_teams = True
+            else:
+                team_spec.create_sub_teams = False
+
         # Ask for confirmation or refinement
         if Confirm.ask("\nWould you like to proceed with this team composition?"):
             return team_spec
@@ -1193,11 +1529,11 @@ Team agents for {team_name}
         agent_imports = []
 
         for member in team_spec.members:
-            # Convert role to filename
+            # Convert role to filename and function name
             filename = member.role.lower().replace(" ", "_") + ".py"
-            class_name = member.role.replace(" ", "") + "Agent"
+            function_name = member.role.lower().replace(" ", "_") + "_agent"
 
-            agent_imports.append(f"from .{filename[:-3]} import {class_name}")
+            agent_imports.append(f"from .{filename[:-3]} import {function_name}")
 
             # Generate enhanced prompt for this member
             enhanced_prompt = self._generate_enhanced_prompt(member, team_spec)
@@ -1233,21 +1569,41 @@ import json"""
         if self.manages_teams:
             self._init_a2a_client()"""
 
-            agent_content = f'''#!/usr/bin/env python3
-"""
-{member.role} Agent for {team_spec.name}
+            # Generate agent function name
+            function_name = member.role.lower().replace(" ", "_") + "_agent"
+
+            # Generate enhanced prompt for this member
+            enhanced_prompt = self._generate_enhanced_prompt(member, team_spec)
+
+            # Create goal from first 2 responsibilities
+            goal = (
+                " ".join(member.responsibilities[:2])
+                if member.responsibilities
+                else f"Support the {team_spec.name} objectives"
+            )
+
+            # Determine if manager
+            is_manager = bool(member.manages_teams)
+
+            agent_content = f'''"""
+{member.role} Agent
 """
 
 from crewai import Agent
-from typing import Optional, List, Dict, Any
+from typing import Optional, Any, Union
+from langchain_openai import ChatOpenAI
+from langchain_anthropic import ChatAnthropic
+from elf_automations.shared.a2a import A2AClient
+from elf_automations.shared.utils import LLMFactory
 import logging
-import os
-from datetime import datetime
-from tools.conversation_logging_system import ConversationLogger, MessageType
-{llm_import}{a2a_imports}
 
+logger = logging.getLogger(__name__)
 
-class {class_name}:
+def {function_name}(
+    llm: Optional[Union[ChatOpenAI, ChatAnthropic]] = None,
+    a2a_client: Optional[A2AClient] = None,
+    tools: Optional[list] = None
+) -> Agent:
     """
     {member.role} implementation
 
@@ -1501,25 +1857,48 @@ Framework: CrewAI
 Department: {team_spec.department}
 """
 
+import sys
+from pathlib import Path
+# Add project root to path for imports
+sys.path.insert(0, str(Path(__file__).parent.parent.parent))
+
 from crewai import Crew, Process, Task
 from typing import List, Dict, Any, Optional
 import logging
-from pathlib import Path
+
+# Import ElfAutomations shared modules
+try:
+    from elf_automations.shared.utils import setup_team_logging, LLMFactory
+    from elf_automations.shared.a2a import A2AClient
+except ImportError:
+    # Fallback for development
+    setup_team_logging = None
+    LLMFactory = None
+    A2AClient = None
 
 # Import all team agents
-from agents import (
-{chr(10).join(f"    {member.role.replace(' ', '')}Agent," for member in team_spec.members)}
-)
+try:
+    # For module execution
+    from .agents import (
+{chr(10).join(f"        {member.role.replace(' ', '_').lower()}_agent," for member in team_spec.members)}
+    )
+except ImportError:
+    # For direct execution
+    from agents import (
+{chr(10).join(f"        {member.role.replace(' ', '_').lower()}_agent," for member in team_spec.members)}
+    )
 
 # Set up logging for natural language communication tracking
-log_dir = Path("/logs")
-log_dir.mkdir(exist_ok=True)
-
-logging.basicConfig(
-    filename=log_dir / '{team_spec.name}_communications.log',
-    level=logging.INFO,
-    format='%(asctime)s - %(name)s - %(message)s'
-)
+if setup_team_logging:
+    logger = setup_team_logging("{team_spec.name}")
+else:
+    # Fallback logging
+    logger = logging.getLogger("{team_spec.name}")
+    handler = logging.FileHandler(f'/tmp/{team_spec.name}_communications.log')
+    formatter = logging.Formatter('%(asctime)s - %(name)s - %(message)s')
+    handler.setFormatter(formatter)
+    logger.addHandler(handler)
+    logger.setLevel(logging.INFO)
 
 
 class {team_spec.name.replace("-", " ").title().replace(" ", "")}Crew:
@@ -3652,11 +4031,20 @@ data:
 
     def _generate_a2a_config(self, team_spec: TeamSpecification, config_dir: Path):
         """Generate A2A communication configuration"""
+        # For free agent teams, use their registered capabilities
+        # For regular teams, use member roles as capabilities
+        if team_spec.is_free_agent and team_spec.a2a_capabilities:
+            capabilities = team_spec.a2a_capabilities
+        else:
+            capabilities = [member.role for member in team_spec.members]
+
         a2a_config = {
             "team_name": team_spec.name,
-            "capabilities": [member.role for member in team_spec.members],
+            "capabilities": capabilities,
             "accepts_requests": True,
             "a2a_port": 8080,
+            "is_free_agent": team_spec.is_free_agent,
+            "reports_to": team_spec.reports_to,
             "internal_communication": {
                 "framework": team_spec.framework,
                 "logging": True,

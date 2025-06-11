@@ -13,7 +13,7 @@ executive_directive = {
     "task": "Do marketing stuff for new product"
 }
 
-# ❌ Too rigid  
+# ❌ Too rigid
 executive_directive = {
     "task": "Create exactly 5 blog posts with these titles...",
     "social_posts": "Post at 9am, 12pm, 3pm with this exact text..."
@@ -38,14 +38,14 @@ executive_directive = {
             "Positive sentiment in dev communities"
         ]
     },
-    
+
     "executive_discussion_summary": {
         "ceo_emphasis": "This is our technical credibility moment",
         "cfo_concern": "Must show ROI within Q2",
         "cto_input": "Highlight our API-first approach",
         "sales_exec_need": "Create materials our team can use"
     },
-    
+
     "creative_freedom": {
         "encouraged": [
             "Innovative campaign formats",
@@ -57,7 +57,7 @@ executive_directive = {
             "Overpromising on features"
         ]
     },
-    
+
     "delegation_type": "OUTCOME_FOCUSED",  # Not task-focused
     "check_in_points": ["Weekly strategy sync", "Pre-launch review"]
 }
@@ -73,17 +73,17 @@ executive_directive = {
 class ExecutiveToTeamBridge:
     def create_directive(self, executive_discussion: List[Message]) -> Directive:
         """Transform executive discussion into rich directive"""
-        
+
         return Directive(
             # Capture the essence of executive thinking
             strategic_intent=self.extract_strategic_themes(executive_discussion),
-            
+
             # Preserve important constraints and concerns
             guardrails=self.identify_constraints(executive_discussion),
-            
+
             # Allow for innovation
             innovation_space=self.define_creative_boundaries(executive_discussion),
-            
+
             # Success looks like...
             outcome_vision=self.synthesize_success_criteria(executive_discussion)
         )
@@ -98,23 +98,23 @@ class ExecutiveToTeamBridge:
 class MarketingTeamLeader:
     async def interpret_directive(self, directive: Directive) -> TeamPlan:
         """Translate executive intent into creative execution"""
-        
+
         # Team discussion with full context
         await self.share_with_team(f"""
         The executives need us to {directive.strategic_intent}.
-        
+
         Key context: {directive.strategic_context}
-        
+
         They care about: {directive.success_metrics}
-        
+
         We have freedom to: {directive.creative_freedom}
-        
+
         What's our most creative approach here?
         """)
-        
+
         # Team collaborates with full autonomy
         plan = await self.team.brainstorm_approach(directive)
-        
+
         return plan
 ```
 
@@ -126,20 +126,20 @@ class MarketingTeamLeader:
 class TeamFeedbackLoop:
     async def clarify_directive(self, directive: Directive) -> RefinedDirective:
         """Teams can ask for clarification or suggest improvements"""
-        
+
         if self.needs_clarification(directive):
             clarification_request = {
                 "unclear_aspects": ["Developer community definition"],
                 "resource_concerns": ["Timeline aggressive given budget"],
                 "alternative_proposal": ["Phase approach: awareness → trials"]
             }
-            
+
             # Executive team receives and discusses feedback
             refined = await self.executive_team.refine_directive(
                 original=directive,
                 team_feedback=clarification_request
             )
-            
+
         return refined
 ```
 
@@ -153,7 +153,7 @@ Instead of task lists, executives provide strategic briefs:
 # Q2 Product Launch Brief
 
 ## Strategic Intent
-Position ourselves as the developer-friendly AI platform before 
+Position ourselves as the developer-friendly AI platform before
 competitors solidify their positions.
 
 ## Executive Context
@@ -183,19 +183,19 @@ competitors solidify their positions.
 ```python
 class OutcomeFocusedDirective:
     """Focus on outcomes, not activities"""
-    
+
     def __init__(self):
         self.outcome = "Establish thought leadership in AI developer tools"
-        
+
         # NOT: "Write 5 blog posts, 20 tweets, 3 webinars"
         # BUT: "Whatever it takes to be seen as the expert"
-        
+
         self.success_indicators = [
             "Developers referencing our content",
             "Inbound requests for expertise",
             "Community choosing our approaches"
         ]
-        
+
         self.team_autonomy = [
             "Choose content formats",
             "Decide distribution channels",
@@ -209,7 +209,7 @@ class OutcomeFocusedDirective:
 ```python
 class ContextualDirective:
     """Preserve rich context from executive discussion"""
-    
+
     def __init__(self, executive_transcript: List[Message]):
         # Don't just extract tasks - preserve the thinking
         self.context = {
@@ -217,11 +217,11 @@ class ContextualDirective:
             "board_pressure": "Show technical differentiation",
             "customer_feedback": "Love the API, want more examples",
             "internal_debate": "Balance ease-of-use with power",
-            
+
             # Include the actual discussion flavor
             "ceo_quote": "I want developers to feel like we GET them",
             "cto_vision": "Make the complex feel simple",
-            
+
             # Emotional context matters
             "urgency_level": "High but not panic",
             "risk_tolerance": "Moderate - some experiments OK",
@@ -239,7 +239,7 @@ EXECUTIVE_CULTURE = {
     "delegation_style": "CONTEXT_RICH",
     "directive_components": [
         "strategic_intent",
-        "success_vision", 
+        "success_vision",
         "constraints",
         "creative_freedom",
         "executive_context"
@@ -260,10 +260,10 @@ class TeamLeaderBase:
     def receive_directive(self, directive: Directive):
         # First, understand deeply
         self.analyze_strategic_intent(directive)
-        
+
         # Then, envision success
         self.visualize_outcomes(directive)
-        
+
         # Finally, unleash creativity
         self.brainstorm_with_team(
             context=directive,
@@ -277,19 +277,19 @@ class TeamLeaderBase:
 ```python
 class CulturalFeedbackLoop:
     """Continuous improvement of delegation culture"""
-    
+
     def __init__(self):
         self.patterns = {
             "successful_delegations": [],
             "failed_delegations": [],
             "clarification_requests": []
         }
-    
+
     def learn_from_interaction(self, delegation_event):
         """Learn what makes delegation effective"""
         if delegation_event.required_clarification:
             self.analyze_gap(delegation_event)
-        
+
         if delegation_event.outcome_exceeded_expectations:
             self.capture_success_pattern(delegation_event)
 ```
@@ -335,15 +335,15 @@ class CulturalHealthMetrics:
             # Directive quality
             "average_context_richness": 0.0,  # 0-1 score
             "clarification_requests_per_directive": 0.0,  # Lower is better
-            
+
             # Team autonomy
             "creative_solutions_proposed": 0,  # Higher is better
             "directive_modifications": 0,  # Some is healthy
-            
+
             # Outcome achievement
             "objectives_met": 0.0,  # Percentage
             "innovation_index": 0.0,  # Unexpected positive outcomes
-            
+
             # Communication health
             "feedback_loops_completed": 0,
             "context_preservation_score": 0.0

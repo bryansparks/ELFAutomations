@@ -1,0 +1,14 @@
+constraints: []
+description: 'Team created from: "Product management team with PM, analyst, UX researcher,
+  and competitive intel. Creates PRDs and pr...'
+goals: []
+key_relationships:
+- Engineering
+- Marketing
+name: product-team
+purpose: Product management, product requirements, provide the "what" to engineering
+  so they can do the "how"
+success_metrics:
+- Quality of descriptions for new products or sufficient description to engineering
+  for enhancements to products
+- Quality of the Product requirements documentation

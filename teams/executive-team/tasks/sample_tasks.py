@@ -3,8 +3,9 @@
 Sample tasks for executive-team
 """
 
-from crewai import Task
 from typing import List
+
+from crewai import Task
 
 
 def create_strategic_planning_task(agent) -> Task:
@@ -16,7 +17,7 @@ def create_strategic_planning_task(agent) -> Task:
         Provide specific recommendations and action items.
         """,
         agent=agent,
-        expected_output="A detailed strategic plan with specific goals and timelines"
+        expected_output="A detailed strategic plan with specific goals and timelines",
     )
 
 
@@ -31,17 +32,17 @@ def create_status_report_task(agent) -> Task:
         4. Recommendations for next steps
         """,
         agent=agent,
-        expected_output="A structured status report with clear insights and recommendations"
+        expected_output="A structured status report with clear insights and recommendations",
     )
 
 
 def get_all_tasks(agents: dict) -> List[Task]:
     """Get all tasks for the team"""
     tasks = []
-    
+
     # Add tasks based on team composition
     if "Chief Executive Officer" in agents:
         tasks.append(create_strategic_planning_task(agents["Chief Executive Officer"]))
-    
+
     # Add more tasks as needed
     return tasks

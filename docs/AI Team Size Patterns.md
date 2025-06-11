@@ -78,11 +78,11 @@ size: 3
 agents:
   - role: Content Lead
     focus: Strategy and coordination
-    
+
   - role: Technical Writer
     focus: Deep technical content
-    
-  - role: Creative Writer  
+
+  - role: Creative Writer
     focus: Marketing and narrative
 
 optimal_because:
@@ -101,16 +101,16 @@ size: 5
 agents:
   - role: Marketing Manager
     focus: Strategy and coordination
-    
+
   - role: Content Creator
     focus: Content production
-    
+
   - role: Social Media Manager
     focus: Community engagement
-    
+
   - role: SEO Specialist
     focus: Search optimization
-    
+
   - role: Analytics Expert
     focus: Performance measurement
 
@@ -125,27 +125,27 @@ optimal_because:
 
 ```yaml
 # teams/engineering-team.yaml
-name: engineering-team  
+name: engineering-team
 size: 7
 agents:
   - role: Engineering Manager
     focus: Technical leadership
-    
+
   - role: Backend Developer
     focus: API development
-    
+
   - role: Frontend Developer
     focus: UI implementation
-    
+
   - role: DevOps Engineer
     focus: Infrastructure
-    
+
   - role: QA Engineer
     focus: Quality assurance
-    
+
   - role: Security Engineer
     focus: Security review
-    
+
   - role: Database Expert
     focus: Data architecture
 
@@ -161,7 +161,7 @@ borderline_because:
 ```python
 class MegaTeamAntiPattern:
     """Signs you're creating a mega-team to avoid delegation"""
-    
+
     warning_signs = [
         "More than 8 agents in one team",
         "Multiple management layers within team",
@@ -170,10 +170,10 @@ class MegaTeamAntiPattern:
         "Context gets lost in conversation",
         "No clear team purpose"
     ]
-    
+
     consequences = [
         "Slow decision making",
-        "Context window overflow", 
+        "Context window overflow",
         "Unclear responsibilities",
         "Black box behavior",
         "Lost effectiveness"
@@ -188,14 +188,14 @@ bloated_team = Team(
     agents=[
         # Executive layer (should be separate team)
         CEO(), CFO(),
-        
+
         # Middle management (should be separate)
         MarketingManager(), SalesManager(),
-        
+
         # Individual contributors (too many)
         Writer1(), Writer2(), Designer1(), Designer2(),
         Developer1(), Developer2(), Developer3(),
-        
+
         # Support functions (should be separate)
         HRAgent(), LegalAgent()
     ]
@@ -269,7 +269,7 @@ example:
 ### Vertical Teams (Hierarchy)
 ```yaml
 composition: vertical
-size: 4-6  
+size: 4-6
 structure:
   - 1 manager
   - 1-2 senior agents
@@ -277,7 +277,7 @@ structure:
 example:
   - Engineering Manager
   - Senior Backend Dev
-  - Senior Frontend Dev  
+  - Senior Frontend Dev
   - Junior Developer
   - QA Engineer
 ```
@@ -307,7 +307,7 @@ When a team grows too large, split it:
 mega_marketing_team = Team(
     agents=[
         MarketingVP(),
-        BrandManager(), ContentLead(), 
+        BrandManager(), ContentLead(),
         Writer1(), Writer2(), Writer3(),
         SocialMedia1(), SocialMedia2(),
         SEO(), SEM(), Analytics(), Email()
@@ -348,23 +348,23 @@ class TeamSizeValidator:
     MIN_SIZE = 2  # Below this, not really a team
     OPTIMAL_SIZE = 5  # Sweet spot
     MAX_SIZE = 7  # Absolute maximum
-    
+
     def validate_team(self, team: Team) -> ValidationResult:
         size = len(team.agents)
-        
+
         if size < self.MIN_SIZE:
             return ValidationResult(
                 valid=False,
                 issue="Team too small - consider merging"
             )
-        
+
         if size > self.MAX_SIZE:
             return ValidationResult(
                 valid=False,
                 issue="Team too large - split into sub-teams",
                 suggestion=self.suggest_split(team)
             )
-        
+
         return ValidationResult(valid=True)
 ```
 
@@ -373,10 +373,10 @@ class TeamSizeValidator:
 class TeamSplitter:
     def split_team(self, large_team: Team) -> List[Team]:
         """Intelligently split large teams based on roles"""
-        
+
         # Group by function
         functional_groups = self.group_by_function(large_team.agents)
-        
+
         # Create sub-teams
         sub_teams = []
         for function, agents in functional_groups.items():
@@ -385,7 +385,7 @@ class TeamSplitter:
             else:
                 # Further split if needed
                 sub_teams.extend(self.split_by_specialization(agents))
-        
+
         return sub_teams
 ```
 
@@ -399,9 +399,9 @@ class TeamHealthMetrics:
             "decision_speed": self.measure_decision_time(team),
             "context_clarity": self.measure_context_sharing(team)
         }
-        
+
         return sum(scores.values()) / len(scores)
-    
+
     def score_size(self, size: int) -> float:
         if size == 5:
             return 1.0  # Optimal
@@ -416,7 +416,7 @@ class TeamHealthMetrics:
 The two-pizza rule isn't arbitrary - it reflects fundamental limits on effective collaboration, whether human or AI. By keeping teams small and focused, we:
 
 1. **Preserve effective collaboration** within teams
-2. **Force proper delegation culture** between teams  
+2. **Force proper delegation culture** between teams
 3. **Maintain system transparency** (no black boxes)
 4. **Ensure scalability** (small teams are easier to replicate)
 

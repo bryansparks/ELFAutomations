@@ -1,0 +1,82 @@
+#!/usr/bin/env python3
+"""
+ElfAutomations Credential Management CLI
+"""
+
+import sys
+from pathlib import Path
+
+import click
+
+sys.path.append(str(Path(__file__).parent.parent))
+
+from elf_automations.shared.credentials import CredentialManager, CredentialType
+from elf_automations.shared.utils.logging import setup_logger
+
+logger = setup_logger(__name__)
+
+
+@click.group()
+def cli():
+    """ElfAutomations Credential Management"""
+    pass
+
+
+@cli.command()
+@click.option("--name", required=True, help="Credential name")
+@click.option("--value", required=True, help="Credential value")
+@click.option("--type", default="api_key", help="Credential type")
+@click.option("--team", help="Team name (optional)")
+def create(name, value, type, team):
+    """Create a new credential"""
+    cred_manager = CredentialManager()
+
+    cred_type = CredentialType(type)
+    credential = cred_manager.create_credential(
+        name=name, value=value, type=cred_type, team=team
+    )
+
+    click.echo(f"Created credential: {name}")
+
+
+@cli.command()
+@click.option("--team", help="Filter by team")
+def list(team):
+    """List credentials"""
+    cred_manager = CredentialManager()
+
+    credentials = cred_manager.list_credentials(team)
+
+    for cred in credentials:
+        click.echo(f"{cred.name} ({cred.type.value}) - Team: {cred.team or 'global'}")
+
+
+@cli.command()
+@click.option("--name", required=True, help="Credential name")
+@click.option("--team", help="Team name")
+def rotate(name, team):
+    """Rotate a credential"""
+    cred_manager = CredentialManager()
+
+    new_value = cred_manager.rotate_credential(name, team)
+    click.echo(f"Rotated {name}")
+
+
+@cli.command()
+@click.option("--days", default=7, help="Number of days to audit")
+def audit(days):
+    """View audit logs"""
+    from elf_automations.shared.credentials import AuditLogger
+
+    audit = AuditLogger()
+    report = audit.get_access_report(days)
+
+    click.echo(f"\nAudit Report - {report['period']}")
+    click.echo(f"Total events: {report['total_events']}")
+    click.echo("\nBy event type:")
+    for event_type, count in report["by_event_type"].items():
+        click.echo(f"  {event_type}: {count}")
+
+
+if __name__ == "__main__":
+    cli()

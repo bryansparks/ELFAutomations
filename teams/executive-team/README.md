@@ -3,9 +3,9 @@
 ## Overview
 The executive team provides strategic leadership and coordinates all departments within ElfAutomations.
 
-**Framework**: CrewAI  
-**Department**: Executive  
-**Process Type**: Hierarchical (5 members)  
+**Framework**: CrewAI
+**Department**: Executive
+**Process Type**: Hierarchical (5 members)
 **Default LLM**: OpenAI GPT-4 (via CrewAI defaults)
 
 ## Team Members
@@ -47,7 +47,7 @@ The executive team provides strategic leadership and coordinates all departments
 The team follows a hierarchical communication pattern with the CEO as the top-level manager who can delegate tasks to other C-suite executives. Executives communicate naturally using CrewAI's built-in collaboration features:
 
 - **CEO** communicates with: CTO, CMO, COO, CFO
-- **CTO** communicates with: CEO, COO, CMO  
+- **CTO** communicates with: CEO, COO, CMO
 - **CMO** communicates with: CEO, CTO, CFO
 - **COO** communicates with: CEO, CTO, CFO
 - **CFO** communicates with: CEO, CMO, COO
@@ -144,7 +144,7 @@ Once deployed, the team exposes the following endpoints:
 ### Team Configuration
 See `config/team_config.yaml` for agent definitions and team settings.
 
-### A2A Configuration  
+### A2A Configuration
 See `config/a2a_config.yaml` for inter-team communication settings.
 
 ### LLM Configuration
@@ -159,7 +159,7 @@ Currently uses CrewAI defaults (OpenAI GPT-4). To use a different LLM provider:
    from langchain_openai import ChatOpenAI
    # or
    from langchain_anthropic import ChatAnthropic
-   
+
    agent = Agent(
        role="...",
        goal="...",

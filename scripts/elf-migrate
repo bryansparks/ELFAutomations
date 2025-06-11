@@ -1,0 +1,325 @@
+#!/usr/bin/env python3
+"""
+ElfAutomations Database Migration Tool
+"""
+
+import sys
+from datetime import datetime
+from pathlib import Path
+
+import click
+from tabulate import tabulate
+
+sys.path.append(str(Path(__file__).parent.parent))
+
+from elf_automations.shared.database import (
+    MigrationManager,
+    SchemaValidator,
+    SupabaseExecutor,
+)
+from elf_automations.shared.utils.logging import setup_logger
+
+logger = setup_logger(__name__)
+
+
+@click.group()
+@click.pass_context
+def cli(ctx):
+    """ElfAutomations Database Migration Tool"""
+    # Initialize migration manager
+    executor = SupabaseExecutor()
+    ctx.obj = {
+        "manager": MigrationManager(
+            migrations_dir=Path("migrations"), executor=executor
+        ),
+        "validator": SchemaValidator(),
+        "executor": executor,
+    }
+
+
+@cli.command()
+@click.argument("name")
+@click.option("--description", "-d", help="Migration description")
+@click.pass_context
+def create(ctx, name, description):
+    """Create a new migration file"""
+    manager = ctx.obj["manager"]
+
+    migration_path = manager.create_migration(name, description or "")
+    click.echo(f"✓ Created migration: {migration_path}")
+    click.echo("\nNext steps:")
+    click.echo("1. Edit the migration file to add your schema changes")
+    click.echo("2. Add rollback SQL in the DOWN section")
+    click.echo("3. Run 'elf-migrate validate' to check for issues")
+    click.echo("4. Run 'elf-migrate up' to apply the migration")
+
+
+@cli.command()
+@click.option("--pending", is_flag=True, help="Show only pending migrations")
+@click.pass_context
+def list(ctx, pending):
+    """List all migrations"""
+    manager = ctx.obj["manager"]
+
+    if pending:
+        migrations = manager.get_pending_migrations()
+        click.echo(f"\nPending Migrations ({len(migrations)}):")
+    else:
+        migrations = manager.discover_migrations()
+        click.echo(f"\nAll Migrations ({len(migrations)}):")
+
+    if not migrations:
+        click.echo("No migrations found")
+        return
+
+    # Get status for each migration
+    table_data = []
+    for migration in migrations:
+        status = manager.get_migration_status(migration)
+
+        table_data.append(
+            [
+                migration.version,
+                migration.name,
+                status.value,
+                migration.executed_at.strftime("%Y-%m-%d %H:%M")
+                if migration.executed_at
+                else "-",
+            ]
+        )
+
+    headers = ["Version", "Name", "Status", "Executed At"]
+    click.echo(tabulate(table_data, headers=headers, tablefmt="grid"))
+
+
+@cli.command()
+@click.argument("migration_file", required=False)
+@click.pass_context
+def validate(ctx, migration_file):
+    """Validate migration SQL"""
+    manager = ctx.obj["manager"]
+    validator = ctx.obj["validator"]
+
+    if migration_file:
+        # Validate specific file
+        migration_path = Path(migration_file)
+        if not migration_path.exists():
+            click.echo(f"Error: Migration file not found: {migration_file}", err=True)
+            sys.exit(1)
+
+        sql_content = migration_path.read_text()
+        results = validator.validate_migration(sql_content)
+
+        click.echo(f"\nValidating: {migration_path.name}")
+
+    else:
+        # Validate all pending migrations
+        pending = manager.get_pending_migrations()
+        if not pending:
+            click.echo("No pending migrations to validate")
+            return
+
+        click.echo(f"\nValidating {len(pending)} pending migrations...")
+
+        all_results = []
+        for migration in pending:
+            sql_content = migration.sql_file.read_text()
+            results = validator.validate_migration(sql_content)
+
+            if results:
+                click.echo(f"\n{migration.filename}:")
+                validator.print_results()
+                all_results.extend(results)
+
+        if not all_results:
+            click.echo("\n✓ All migrations passed validation")
+        else:
+            summary = validator.get_summary()
+            if summary["errors"] > 0:
+                sys.exit(1)
+
+
+@cli.command()
+@click.option("--target", help="Migrate up to specific version")
+@click.option(
+    "--dry-run", is_flag=True, help="Show what would be done without executing"
+)
+@click.option("--skip-validation", is_flag=True, help="Skip validation checks")
+@click.pass_context
+def up(ctx, target, dry_run, skip_validation):
+    """Run pending migrations"""
+    manager = ctx.obj["manager"]
+    validator = ctx.obj["validator"]
+
+    # Get pending migrations
+    pending = manager.get_pending_migrations()
+
+    if not pending:
+        click.echo("✓ Database is up to date - no pending migrations")
+        return
+
+    # Filter by target if specified
+    if target:
+        pending = [m for m in pending if m.version <= target]
+        if not pending:
+            click.echo(f"No migrations to run up to version {target}")
+            return
+
+    click.echo(
+        f"\n{'[DRY RUN] ' if dry_run else ''}Found {len(pending)} pending migrations:"
+    )
+    for migration in pending:
+        click.echo(f"  - {migration.version}: {migration.name}")
+
+    # Validate first unless skipped
+    if not skip_validation and not dry_run:
+        click.echo("\nValidating migrations...")
+
+        has_errors = False
+        for migration in pending:
+            sql_content = migration.sql_file.read_text()
+            results = validator.validate_migration(sql_content)
+
+            if validator.has_errors():
+                click.echo(f"\n✗ Validation failed for {migration.filename}")
+                validator.print_results()
+                has_errors = True
+
+        if has_errors:
+            click.echo("\nMigration aborted due to validation errors")
+            sys.exit(1)
+
+    # Confirm execution
+    if not dry_run:
+        if not click.confirm("\nProceed with migration?"):
+            click.echo("Migration cancelled")
+            return
+
+    # Run migrations
+    click.echo("\nRunning migrations...")
+    results = manager.migrate(target_version=target, dry_run=dry_run)
+
+    # Show results
+    click.echo(f"\n{'[DRY RUN] ' if dry_run else ''}Migration Results:")
+    click.echo(f"  ✓ Executed: {len(results['executed'])}")
+    click.echo(f"  ✗ Failed: {len(results['failed'])}")
+    click.echo(f"  ⊘ Skipped: {len(results['skipped'])}")
+
+    if results["failed"]:
+        click.echo("\nFailed migrations:")
+        for name in results["failed"]:
+            click.echo(f"  - {name}")
+        sys.exit(1)
+
+
+@cli.command()
+@click.argument("version")
+@click.option(
+    "--dry-run", is_flag=True, help="Show what would be done without executing"
+)
+@click.pass_context
+def down(ctx, version, dry_run):
+    """Rollback a specific migration"""
+    manager = ctx.obj["manager"]
+
+    if not click.confirm(
+        f"{'[DRY RUN] ' if dry_run else ''}Rollback migration {version}?"
+    ):
+        click.echo("Rollback cancelled")
+        return
+
+    success = manager.rollback_migration(version, dry_run=dry_run)
+
+    if success:
+        click.echo(
+            f"✓ {'[DRY RUN] ' if dry_run else ''}Successfully rolled back {version}"
+        )
+    else:
+        click.echo(f"✗ Failed to rollback {version}", err=True)
+        sys.exit(1)
+
+
+@cli.command()
+@click.pass_context
+def status(ctx):
+    """Show migration status"""
+    manager = ctx.obj["manager"]
+    executor = ctx.obj["executor"]
+
+    # Test connection
+    click.echo("Testing database connection...")
+    if executor.test_connection():
+        click.echo("✓ Database connection successful")
+    else:
+        click.echo("✗ Database connection failed", err=True)
+        sys.exit(1)
+
+    # Get status
+    status = manager.get_status()
+
+    click.echo("\nMigration Status:")
+    click.echo(f"  Current Version: {status['current_version'] or 'None'}")
+    click.echo(f"  Pending: {status['pending_count']}")
+    click.echo(f"  Executed: {status['executed_count']}")
+    click.echo(f"  Failed: {status['failed_count']}")
+
+    if status["last_migration"]:
+        last = status["last_migration"]
+        click.echo(f"\n  Last Migration:")
+        click.echo(f"    Version: {last['version']}")
+        click.echo(f"    Name: {last['name']}")
+        click.echo(f"    Executed: {last['executed_at']}")
+
+    # Show schema info
+    click.echo("\nDatabase Schema:")
+    schema_info = executor.get_schema_info()
+    click.echo(f"  Tables: {len(schema_info['tables'])}")
+    click.echo(f"  Views: {len(schema_info['views'])}")
+    click.echo(f"  Indexes: {len(schema_info['indexes'])}")
+
+
+@cli.command()
+@click.pass_context
+def init(ctx):
+    """Initialize migration system"""
+    manager = ctx.obj["manager"]
+
+    click.echo("Initializing migration system...")
+
+    # Create migrations directory
+    manager.migrations_dir.mkdir(exist_ok=True)
+    click.echo(f"✓ Created migrations directory: {manager.migrations_dir}")
+
+    # Create initial migration for existing schemas
+    existing_schemas = [
+        ("team_registry", "Team registry and organizational structure"),
+        ("cost_monitoring", "API usage and cost tracking"),
+        ("business_tables", "Core business operations"),
+    ]
+
+    for name, description in existing_schemas:
+        sql_file = Path(f"sql/create_{name}.sql")
+        if sql_file.exists():
+            # Create migration for existing schema
+            migration_path = manager.create_migration(
+                f"initial_{name}", f"Initial migration for {description}"
+            )
+
+            # Copy SQL content
+            content = sql_file.read_text()
+
+            # Update migration file
+            migration_content = migration_path.read_text()
+            migration_content = migration_content.replace(
+                "-- Add your schema changes here", content
+            )
+            migration_path.write_text(migration_content)
+
+            click.echo(f"✓ Created migration for {name}")
+
+    click.echo("\nMigration system initialized!")
+    click.echo("Run 'elf-migrate status' to check the current state")
+
+
+if __name__ == "__main__":
+    cli()

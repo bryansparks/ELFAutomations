@@ -1,0 +1,30 @@
+company:
+  mission: Revolutionize business operations through intelligent agent teams
+  name: ElfAutomations
+  priorities:
+  - Scale customer acquisition
+  - Maintain system reliability
+  - Expand team capabilities
+  stage: Series A startup, 50 customers, growing 20% monthly
+  values:
+  - Transparency
+  - Innovation
+  - Collaboration
+  - Results
+  vision: Every company powered by collaborative AI teams
+principles:
+  collaboration:
+  - Skeptics improve outcomes when constructive
+  - Managers guide, not micromanage
+  - Share knowledge generously
+  - Celebrate small wins
+  communication:
+  - Time-box discussions to 15 minutes maximum
+  - Always state assumptions explicitly
+  - Use 'yes, and' instead of 'no, but'
+  - Document decisions for future reference
+  decision_making:
+  - Data beats opinions, but intuition matters
+  - Perfect is the enemy of good enough
+  - Fail fast, learn faster
+  - Measure twice, cut once

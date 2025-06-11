@@ -107,13 +107,13 @@ This architecture embraces the reality of collaborative AI while maintaining sca
 ```python
 class TeamRuntime:
     """Manages a team's agents and internal communication"""
-    
+
     def __init__(self, team_config: TeamConfig):
         self.config = team_config
         self.framework = self._load_framework()  # CrewAI, LangGraph, etc.
         self.agents = self._initialize_agents()
         self.a2a_server = A2AServer(port=config.port)
-        
+
     async def handle_request(self, request: TeamRequest) -> TeamResponse:
         """Handle external requests to the team"""
         # Internal collaboration happens here
@@ -159,7 +159,7 @@ agents:
     goal: Create engaging content
   - role: Social Media Manager
     goal: Manage social presence
-    
+
 communication:
   internal: natural_language  # CrewAI native
   external: a2a_protocol      # Structured messages
@@ -176,19 +176,19 @@ scaling:
 ```python
 class HybridTeam(Team):
     """Team using multiple frameworks for different tasks"""
-    
+
     def __init__(self):
         # CrewAI for creative tasks
         self.creative_crew = Crew(
             agents=[ContentCreator(), Designer()],
             process=Process.collaborative
         )
-        
+
         # LangGraph for analytical tasks
         self.analytics_graph = StateGraph()
         self.analytics_graph.add_node("data_collector", collect_data)
         self.analytics_graph.add_node("analyzer", analyze_metrics)
-        
+
     async def handle_request(self, request: TeamRequest):
         if request.type == "creative":
             return await self.creative_crew.kickoff(request.task)
@@ -204,11 +204,11 @@ class HybridTeam(Team):
 # High-throughput data processing team
 class DataProcessingTeam(Team):
     """Optimized for parallel data processing"""
-    
+
     def __init__(self):
         self.processor_pool = ProcessorPool(workers=10)
         self.framework = "custom"  # Not CrewAI or LangGraph
-        
+
     async def handle_request(self, request: TeamRequest):
         # Distribute work across processors
         results = await self.processor_pool.map(
@@ -233,7 +233,7 @@ members:
     agents: [ProductSpecialist, DemoExpert]
   - department: engineering
     agents: [TechnicalAdvisor]
-    
+
 workflows:
   - name: product_launch
     stages:
@@ -254,21 +254,21 @@ class TeamWithTools:
     def __init__(self, team_name: str, gateway_url: str):
         self.team_name = team_name
         self.gateway = AgentGatewayClient(gateway_url)
-        
+
     async def execute_with_tools(self, task: str):
         # Discover tools available to this team
         tools = await self.gateway.discover_tools(
             team=self.team_name,
             capabilities_needed=["crm", "analytics"]
         )
-        
+
         # Team uses tools collectively
         customer_data = await self.gateway.call_tool(
             tool="crm_lookup",
             params={"segment": "enterprise"},
             team_context=self.team_name
         )
-        
+
         # Agents within team collaborate using this data
         return await self.process_with_team(task, customer_data)
 ```
@@ -329,7 +329,7 @@ class TeamRequest:
     task_type: str
     content: Dict[str, Any]
     priority: str = "normal"
-    
+
 @dataclass
 class TeamResponse:
     request_id: str
@@ -341,11 +341,11 @@ class Team(ABC):
     @abstractmethod
     async def handle_request(self, request: TeamRequest) -> TeamResponse:
         pass
-    
+
     @abstractmethod
     def get_capabilities(self) -> List[str]:
         pass
-    
+
     @abstractmethod
     def health_check(self) -> Dict[str, Any]:
         pass
@@ -418,25 +418,25 @@ spec:
 ```python
 class A2ATeamClient:
     """Client for inter-team communication"""
-    
+
     def __init__(self, team_name: str):
         self.team_name = team_name
         self.discovery = TeamDiscoveryService()
-        
-    async def request_from_team(self, 
-                               target_team: str, 
+
+    async def request_from_team(self,
+                               target_team: str,
                                capability: str,
                                task: Dict[str, Any]) -> Any:
         # Discover team endpoint
         endpoint = await self.discovery.find_team(target_team)
-        
+
         # Send A2A request
         request = TeamRequest(
             request_id=str(uuid.uuid4()),
             task_type=capability,
             content=task
         )
-        
+
         response = await self._send_a2a_request(endpoint, request)
         return response.result
 ```
@@ -493,7 +493,7 @@ spec:
 from prometheus_client import Counter, Histogram, Gauge
 
 team_requests_total = Counter(
-    'team_requests_total', 
+    'team_requests_total',
     'Total requests handled by team',
     ['team_name', 'request_type']
 )

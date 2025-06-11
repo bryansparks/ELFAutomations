@@ -92,7 +92,7 @@ CREATE INDEX idx_audit_log_created ON team_audit_log(created_at);
 
 -- View: Complete team hierarchy
 CREATE OR REPLACE VIEW team_hierarchy AS
-SELECT 
+SELECT
     t.name AS team_name,
     t.display_name,
     t.department,
@@ -107,7 +107,7 @@ WHERE tr.relationship_type = 'reports_to';
 
 -- View: Executive team management overview
 CREATE OR REPLACE VIEW executive_overview AS
-SELECT 
+SELECT
     em.executive_role,
     em.executive_team,
     t.name AS managed_team,
@@ -119,7 +119,7 @@ ORDER BY em.executive_role, t.name;
 
 -- View: Team composition summary
 CREATE OR REPLACE VIEW team_composition AS
-SELECT 
+SELECT
     t.name AS team_name,
     t.department,
     COUNT(tm.id) AS member_count,
@@ -139,7 +139,7 @@ RETURNS TABLE (
 ) AS $$
 BEGIN
     RETURN QUERY
-    SELECT 
+    SELECT
         t.name,
         t.id,
         t.department,
@@ -171,7 +171,7 @@ BEGIN
     INSERT INTO teams (name, display_name, department, placement, purpose, framework, llm_provider, llm_model)
     VALUES (p_team_name, p_display_name, p_department, p_placement, p_purpose, p_framework, p_llm_provider, p_llm_model)
     RETURNING id INTO v_team_id;
-    
+
     -- Create reporting relationship if specified
     IF p_reports_to IS NOT NULL THEN
         -- Determine if reporting to executive or team
@@ -179,7 +179,7 @@ BEGIN
             -- Reporting to executive
             INSERT INTO team_relationships (child_team_id, parent_entity_type, parent_entity_name)
             VALUES (v_team_id, 'executive', p_reports_to);
-            
+
             -- Add to executive management
             INSERT INTO executive_management (executive_role, managed_team_id)
             VALUES (p_reports_to, v_team_id)
@@ -190,11 +190,11 @@ BEGIN
             VALUES (v_team_id, 'team', p_reports_to);
         END IF;
     END IF;
-    
+
     -- Log the creation
     INSERT INTO team_audit_log (team_id, action, description, performed_by)
     VALUES (v_team_id, 'created', 'Team registered via team-factory.py', 'team-factory');
-    
+
     RETURN v_team_id;
 END;
 $$ LANGUAGE plpgsql;

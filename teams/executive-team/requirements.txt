@@ -1,0 +1,18 @@
+# Core dependencies
+crewai>=0.70.0
+langchain>=0.1.0
+langchain-openai>=0.0.5
+langchain-anthropic>=0.1.0
+
+# Server dependencies
+fastapi>=0.104.0
+uvicorn>=0.24.0
+pydantic>=2.0.0
+
+# A2A dependencies
+redis>=5.0.0
+aioredis>=2.0.0
+
+# Utilities
+python-dotenv>=1.0.0
+PyYAML>=6.0

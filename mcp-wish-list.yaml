@@ -1,0 +1,95 @@
+wish_list:
+- name: twitter-mcp
+  requested_by: research-team, product-team
+  date_requested: '2025-06-10'
+  priority: high
+  capabilities_needed:
+  - search_tweets
+  - get_user_timeline
+  - analyze_engagement
+  - get_timeline
+  use_case: Monitor competitor mentions and sentiment on Twitter/X
+  similar_existing: []
+  estimated_complexity: medium
+- name: arxiv-mcp
+  requested_by: research-team, product-team
+  date_requested: '2025-06-10'
+  priority: medium
+  capabilities_needed:
+  - search_papers
+  - get_abstracts
+  - download_pdfs
+  - get_paper_details
+  - download_pdf
+  use_case: Search and analyze academic papers for research tasks
+  similar_existing: []
+  estimated_complexity: medium
+- name: web-scraper-mcp
+  requested_by: marketing-team, product-team
+  date_requested: '2025-06-10'
+  priority: high
+  capabilities_needed:
+  - scrape_url
+  - extract_structured_data
+  - monitor_changes
+  - extract_content
+  - follow_links
+  use_case: Monitor competitor websites for pricing and feature changes
+  similar_existing: []
+  estimated_complexity: medium
+- name: analytics-mcp
+  requested_by: product-team
+  date_requested: '2025-06-10'
+  priority: medium
+  capabilities_needed: []
+  use_case: product-team needs this MCP for their operations
+  similar_existing: []
+  estimated_complexity: medium
+- name: content-parser-mcp
+  requested_by: product-team
+  date_requested: '2025-06-10'
+  priority: medium
+  capabilities_needed: []
+  use_case: product-team needs this MCP for their operations
+  similar_existing: []
+  estimated_complexity: medium
+- name: github-mcp
+  requested_by: product-team
+  date_requested: '2025-06-10'
+  priority: medium
+  capabilities_needed: []
+  use_case: product-team needs this MCP for their operations
+  similar_existing: []
+  estimated_complexity: medium
+- name: docs-parser-mcp
+  requested_by: product-team
+  date_requested: '2025-06-10'
+  priority: medium
+  capabilities_needed: []
+  use_case: product-team needs this MCP for their operations
+  similar_existing: []
+  estimated_complexity: medium
+- name: pubmed-mcp
+  requested_by: product-team
+  date_requested: '2025-06-10'
+  priority: medium
+  capabilities_needed: []
+  use_case: product-team needs this MCP for their operations
+  similar_existing: []
+  estimated_complexity: medium
+- name: linkedin-mcp
+  requested_by: product-team
+  date_requested: '2025-06-10'
+  priority: medium
+  capabilities_needed: []
+  use_case: product-team needs this MCP for their operations
+  similar_existing: []
+  estimated_complexity: medium
+- name: database-mcp
+  requested_by: product-team
+  date_requested: '2025-06-10'
+  priority: medium
+  capabilities_needed: []
+  use_case: product-team needs this MCP for their operations
+  similar_existing: []
+  estimated_complexity: medium

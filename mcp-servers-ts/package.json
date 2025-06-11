@@ -11,7 +11,10 @@
     "clean": "rm -rf dist",
     "type-check": "tsc --noEmit",
     "lint": "eslint src --ext .ts",
-    "test": "jest"
+    "test": "jest",
+    "start:supabase": "tsx src/supabase/server.ts",
+    "start:business-tools": "tsx src/business-tools/server.ts",
+    "start:team-registry": "tsx src/team-registry/server.ts"
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.0.0",

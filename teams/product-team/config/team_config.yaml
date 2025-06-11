@@ -1,0 +1,77 @@
+team:
+  name: product-team
+  department: product
+  framework: crewai
+  purpose: "Define product strategy, create PRDs, and ensure product-market fit"
+
+agents:
+  - name: senior_product_manager
+    role: "Senior Product Manager"
+    is_manager: true
+    llm_provider: openai
+    llm_model: gpt-4
+    capabilities:
+      - product_strategy
+      - prd_creation
+      - stakeholder_management
+      - feature_prioritization
+      - a2a_communication
+
+  - name: business_analyst
+    role: "Business Analyst"
+    is_manager: false
+    llm_provider: openai
+    llm_model: gpt-4
+    capabilities:
+      - market_research
+      - requirements_gathering
+      - competitive_analysis
+      - data_analysis
+
+  - name: technical_product_manager
+    role: "Technical Product Manager"
+    is_manager: false
+    llm_provider: openai
+    llm_model: gpt-4
+    capabilities:
+      - technical_requirements
+      - api_design
+      - architecture_planning
+      - engineering_collaboration
+
+  - name: ux_researcher
+    role: "UX Researcher"
+    is_manager: false
+    llm_provider: openai
+    llm_model: gpt-4
+    capabilities:
+      - user_interviews
+      - usability_testing
+      - persona_creation
+      - journey_mapping
+
+  - name: competitive_intelligence_analyst
+    role: "Competitive Intelligence Analyst"
+    is_manager: false
+    llm_provider: openai
+    llm_model: gpt-4
+    capabilities:
+      - market_monitoring
+      - competitor_tracking
+      - trend_analysis
+      - strategic_insights
+
+communication:
+  process_type: hierarchical
+  manager: senior_product_manager
+  patterns:
+    - from: senior_product_manager
+      to: [business_analyst, technical_product_manager, ux_researcher, competitive_intelligence_analyst]
+    - from: business_analyst
+      to: [senior_product_manager, ux_researcher]
+    - from: technical_product_manager
+      to: [senior_product_manager]
+    - from: ux_researcher
+      to: [senior_product_manager, business_analyst]
+    - from: competitive_intelligence_analyst
+      to: [senior_product_manager]

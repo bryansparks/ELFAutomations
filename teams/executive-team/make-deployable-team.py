@@ -18,21 +18,21 @@ from pathlib import Path
 def create_deployable_team():
     """Create a deployable version of the team"""
     team_dir = Path(__file__).parent
-    
+
     print("🚀 Creating deployable team package...")
-    
+
     # Create team_server.py - the main entry point
     create_team_server(team_dir)
-    
+
     # Create Dockerfile
     create_dockerfile(team_dir)
-    
+
     # Create requirements.txt
     create_requirements(team_dir)
-    
+
     # Create a simple health check endpoint
     create_health_check(team_dir)
-    
+
     print("✅ Team is ready for containerization!")
     print("📦 Next steps:")
     print("   1. Build: docker build -t elf-automations/executive-team .")
@@ -93,7 +93,7 @@ async def get_capabilities():
     \"\"\"Get team capabilities\"\"\"
     if not crew_instance:
         raise HTTPException(status_code=503, detail="Team not initialized")
-    
+
     return crew_instance.get_team_status()
 
 @app.post("/task")
@@ -101,14 +101,14 @@ async def execute_task(request: Dict[str, Any]):
     \"\"\"Execute a task with the team via A2A protocol\"\"\"
     if not crew_instance:
         raise HTTPException(status_code=503, detail="Team not initialized")
-    
+
     try:
         task_description = request.get("description", "")
         context = request.get("context", {})
-        
+
         # Execute the task
         result = crew_instance.execute_task(task_description, context)
-        
+
         return JSONResponse(content=result)
     except Exception as e:
         logger.error(f"Error executing task: {e}")
@@ -119,9 +119,9 @@ if __name__ == "__main__":
     port = int(os.getenv("PORT", "8090"))
     uvicorn.run(app, host="0.0.0.0", port=port)
 """
-    
+
     server_file = team_dir / "team_server.py"
-    with open(server_file, 'w') as f:
+    with open(server_file, "w") as f:
         f.write(server_content)
     os.chmod(server_file, 0o755)
 
@@ -159,9 +159,9 @@ EXPOSE 8090
 # Run the server
 CMD ["python", "team_server.py"]
 """
-    
+
     dockerfile = team_dir / "Dockerfile"
-    with open(dockerfile, 'w') as f:
+    with open(dockerfile, "w") as f:
         f.write(dockerfile_content)
 
 
@@ -186,9 +186,9 @@ aioredis>=2.0.0
 python-dotenv>=1.0.0
 PyYAML>=6.0
 """
-    
+
     requirements_file = team_dir / "requirements.txt"
-    with open(requirements_file, 'w') as f:
+    with open(requirements_file, "w") as f:
         f.write(requirements_content)
 
 
@@ -198,9 +198,9 @@ def create_health_check(team_dir: Path):
 # Simple health check for K8s
 curl -f http://localhost:8090/health || exit 1
 """
-    
+
     health_check = team_dir / "health_check.sh"
-    with open(health_check, 'w') as f:
+    with open(health_check, "w") as f:
         f.write(health_check_content)
     os.chmod(health_check, 0o755)
 

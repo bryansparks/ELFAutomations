@@ -8,18 +8,19 @@ Framework: CrewAI
 Department: executive
 """
 
-from crewai import Crew, Process, Task
-from typing import List, Dict, Any, Optional
 import logging
 from pathlib import Path
+from typing import Any, Dict, List, Optional
+
+from crewai import Crew, Process, Task
 
 # Import all team agents
 from agents import (
     ChiefExecutiveOfficerAgent,
-    ChiefTechnologyOfficerAgent,
+    ChiefFinancialOfficerAgent,
     ChiefMarketingOfficerAgent,
     ChiefOperationsOfficerAgent,
-    ChiefFinancialOfficerAgent,
+    ChiefTechnologyOfficerAgent,
 )
 
 # Set up logging for natural language communication tracking
@@ -27,65 +28,85 @@ log_dir = Path("/logs")
 log_dir.mkdir(exist_ok=True)
 
 logging.basicConfig(
-    filename=log_dir / 'executive-team_communications.log',
+    filename=log_dir / "executive-team_communications.log",
     level=logging.INFO,
-    format='%(asctime)s - %(name)s - %(message)s'
+    format="%(asctime)s - %(name)s - %(message)s",
 )
 
 
 class ExecutiveTeamCrew:
     """
     Orchestrates the executive-team using CrewAI
-    
+
     This team follows the communication patterns defined in the team specification,
     ensuring efficient collaboration between team members.
     """
-    
+
     def __init__(self, tools: Optional[Dict[str, List]] = None):
         self.logger = logging.getLogger("executive-team")
         self.tools = tools or {}
         self.agents = self._initialize_agents()
         self.crew = self._create_crew()
-        
+
         # Log team initialization
         self.logger.info(f"Initialized executive-team with {len(self.agents)} agents")
-    
+
     def _initialize_agents(self) -> Dict[str, Any]:
         """Initialize all team agents with their tools"""
         agents = {}
-        
+
         # Initialize Chief Executive Officer
         chief_executive_officer_tools = self.tools.get("Chief Executive Officer", [])
-        agents["Chief Executive Officer"] = ChiefExecutiveOfficerAgent(tools=chief_executive_officer_tools)
-        self.logger.info(f"Initialized Chief Executive Officer with {len(chief_executive_officer_tools)} tools")
-        
+        agents["Chief Executive Officer"] = ChiefExecutiveOfficerAgent(
+            tools=chief_executive_officer_tools
+        )
+        self.logger.info(
+            f"Initialized Chief Executive Officer with {len(chief_executive_officer_tools)} tools"
+        )
+
         # Initialize Chief Technology Officer
         chief_technology_officer_tools = self.tools.get("Chief Technology Officer", [])
-        agents["Chief Technology Officer"] = ChiefTechnologyOfficerAgent(tools=chief_technology_officer_tools)
-        self.logger.info(f"Initialized Chief Technology Officer with {len(chief_technology_officer_tools)} tools")
-        
+        agents["Chief Technology Officer"] = ChiefTechnologyOfficerAgent(
+            tools=chief_technology_officer_tools
+        )
+        self.logger.info(
+            f"Initialized Chief Technology Officer with {len(chief_technology_officer_tools)} tools"
+        )
+
         # Initialize Chief Marketing Officer
         chief_marketing_officer_tools = self.tools.get("Chief Marketing Officer", [])
-        agents["Chief Marketing Officer"] = ChiefMarketingOfficerAgent(tools=chief_marketing_officer_tools)
-        self.logger.info(f"Initialized Chief Marketing Officer with {len(chief_marketing_officer_tools)} tools")
-        
+        agents["Chief Marketing Officer"] = ChiefMarketingOfficerAgent(
+            tools=chief_marketing_officer_tools
+        )
+        self.logger.info(
+            f"Initialized Chief Marketing Officer with {len(chief_marketing_officer_tools)} tools"
+        )
+
         # Initialize Chief Operations Officer
         chief_operations_officer_tools = self.tools.get("Chief Operations Officer", [])
-        agents["Chief Operations Officer"] = ChiefOperationsOfficerAgent(tools=chief_operations_officer_tools)
-        self.logger.info(f"Initialized Chief Operations Officer with {len(chief_operations_officer_tools)} tools")
-        
+        agents["Chief Operations Officer"] = ChiefOperationsOfficerAgent(
+            tools=chief_operations_officer_tools
+        )
+        self.logger.info(
+            f"Initialized Chief Operations Officer with {len(chief_operations_officer_tools)} tools"
+        )
+
         # Initialize Chief Financial Officer
         chief_financial_officer_tools = self.tools.get("Chief Financial Officer", [])
-        agents["Chief Financial Officer"] = ChiefFinancialOfficerAgent(tools=chief_financial_officer_tools)
-        self.logger.info(f"Initialized Chief Financial Officer with {len(chief_financial_officer_tools)} tools")
-        
+        agents["Chief Financial Officer"] = ChiefFinancialOfficerAgent(
+            tools=chief_financial_officer_tools
+        )
+        self.logger.info(
+            f"Initialized Chief Financial Officer with {len(chief_financial_officer_tools)} tools"
+        )
+
         return agents
-    
+
     def _create_crew(self) -> Crew:
         """Create the crew with all agents"""
         # Get CrewAI agent instances
         crew_agents = [agent.get_agent() for agent in self.agents.values()]
-        
+
         return Crew(
             agents=crew_agents,
             process=Process.hierarchical,
@@ -93,41 +114,41 @@ class ExecutiveTeamCrew:
             memory=True,  # Enable memory for context preservation
             embedder={
                 "provider": "openai",
-                "config": {"model": "text-embedding-3-small"}
-            }
+                "config": {"model": "text-embedding-3-small"},
+            },
         )
-    
-    def execute_task(self, task_description: str, context: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
+
+    def execute_task(
+        self, task_description: str, context: Optional[Dict[str, Any]] = None
+    ) -> Dict[str, Any]:
         """
         Execute a task with the team
-        
+
         Args:
             task_description: Natural language description of the task
             context: Optional context for the task
-            
+
         Returns:
             Result of the task execution
         """
         self.logger.info(f"Team received task: {task_description}")
         if context:
             self.logger.info(f"Task context: {context}")
-        
+
         # Create a task for the crew
         task = Task(
             description=task_description,
-            expected_output="Comprehensive result addressing all aspects of the task"
+            expected_output="Comprehensive result addressing all aspects of the task",
         )
-        
+
         # Execute with the crew
-        result = self.crew.kickoff(inputs={"task": task_description, "context": context or {}})
-        
+        result = self.crew.kickoff(
+            inputs={"task": task_description, "context": context or {}}
+        )
+
         self.logger.info(f"Team completed task. Result: {result}")
-        return {
-            "status": "completed",
-            "result": result,
-            "team": "executive-team"
-        }
-    
+        return {"status": "completed", "result": result, "team": "executive-team"}
+
     def get_team_status(self) -> Dict[str, Any]:
         """Get the current status of the team"""
         return {
@@ -135,12 +156,40 @@ class ExecutiveTeamCrew:
             "framework": "CrewAI",
             "agents": list(self.agents.keys()),
             "status": "active",
-            "communication_pattern": {'Chief Executive Officer': ['Chief Technology Officer', 'Chief Marketing Officer', 'Chief Operations Officer', 'Chief Financial Officer'], 'Chief Technology Officer': ['Chief Executive Officer', 'Chief Operations Officer', 'Chief Marketing Officer'], 'Chief Marketing Officer': ['Chief Executive Officer', 'Chief Technology Officer', 'Chief Financial Officer'], 'Chief Operations Officer': ['Chief Executive Officer', 'Chief Technology Officer', 'Chief Financial Officer'], 'Chief Financial Officer': ['Chief Executive Officer', 'Chief Marketing Officer', 'Chief Operations Officer']}
+            "communication_pattern": {
+                "Chief Executive Officer": [
+                    "Chief Technology Officer",
+                    "Chief Marketing Officer",
+                    "Chief Operations Officer",
+                    "Chief Financial Officer",
+                ],
+                "Chief Technology Officer": [
+                    "Chief Executive Officer",
+                    "Chief Operations Officer",
+                    "Chief Marketing Officer",
+                ],
+                "Chief Marketing Officer": [
+                    "Chief Executive Officer",
+                    "Chief Technology Officer",
+                    "Chief Financial Officer",
+                ],
+                "Chief Operations Officer": [
+                    "Chief Executive Officer",
+                    "Chief Technology Officer",
+                    "Chief Financial Officer",
+                ],
+                "Chief Financial Officer": [
+                    "Chief Executive Officer",
+                    "Chief Marketing Officer",
+                    "Chief Operations Officer",
+                ],
+            },
         }
 
 
 # Create a singleton instance
 _orchestrator_instance = None
+
 
 def get_orchestrator(tools: Optional[Dict[str, List]] = None):
     """Get or create the team orchestrator instance"""
