@@ -2,4 +2,4 @@
 
 from .project_aware_mixin import ProjectAwareMixin
 
-__all__ = ['ProjectAwareMixin']
+__all__ = ["ProjectAwareMixin"]
