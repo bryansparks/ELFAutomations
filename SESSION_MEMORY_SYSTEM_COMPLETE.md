@@ -59,7 +59,7 @@ self.init_memory("{team_name}")
 # In task analysis
 relevant_learnings = self.team_memory.get_relevant_learnings(context)
 
-# In task execution  
+# In task execution
 self.start_episode(task_description)
 self.record_action("Started execution", details)
 

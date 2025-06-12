@@ -143,17 +143,17 @@ interface MemoryTools {
   // Storage
   'store_memory': (content, type, context) => MemoryEntry
   'store_team_learning': (team_id, pattern, outcome) => Learning
-  
+
   // Retrieval
   'retrieve_memories': (query, filters?, top_k?) => Memory[]
   'get_similar_experiences': (situation, team_id?) => Experience[]
   'find_successful_patterns': (task_type) => Pattern[]
-  
+
   // Learning
   'analyze_outcome': (action, result, context) => Analysis
   'update_pattern_confidence': (pattern_id, success) => void
   'get_team_insights': (team_id, timeframe?) => Insights
-  
+
   // Management
   'create_collection': (name, description, config) => Collection
   'prune_old_memories': (retention_policy) => Stats
@@ -224,13 +224,13 @@ def memory_curator():
 # elf_automations/shared/tools/memory_tools.py
 class StoreMemoryTool(BaseTool):
     """Store important interactions or decisions in memory"""
-    
+
 class RetrieveMemoryTool(BaseTool):
     """Retrieve relevant memories for current context"""
-    
+
 class LearnFromOutcomeTool(BaseTool):
     """Record outcome of actions for future learning"""
-    
+
 class FindSimilarCasesTool(BaseTool):
     """Find how similar situations were handled before"""
 ```
@@ -241,12 +241,12 @@ class FindSimilarCasesTool(BaseTool):
 class MemoryAwareTeam:
     def __init__(self):
         self.memory_client = MemoryClient()
-        
+
     async def before_task(self, task):
         """Retrieve relevant memories before starting task"""
         memories = await self.memory_client.get_relevant_memories(task)
         return self.augment_context_with_memories(task, memories)
-    
+
     async def after_task(self, task, result):
         """Store outcome for learning"""
         await self.memory_client.store_outcome(task, result)

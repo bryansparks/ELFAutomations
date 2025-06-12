@@ -62,7 +62,7 @@ from elf_automations.shared.tools.registry_tools import (
 def marketing_manager():
     # Initialize registry client
     registry_client = TeamRegistryClient()
-    
+
     return Agent(
         role="Marketing Manager",
         goal="Lead marketing initiatives and coordinate teams",
@@ -88,7 +88,7 @@ Regular agents may need limited registry access:
 # In team member agent
 def content_writer():
     registry_client = TeamRegistryClient()
-    
+
     return Agent(
         role="Content Writer",
         goal="Create compelling marketing content",
@@ -109,7 +109,7 @@ Executives need comprehensive registry access:
 # In executive agent (e.g., chief_marketing_officer.py)
 def chief_marketing_officer():
     registry_client = TeamRegistryClient()
-    
+
     return Agent(
         role="Chief Marketing Officer",
         goal="Drive company-wide marketing strategy",
@@ -137,12 +137,12 @@ Modify the team factory to generate registry-aware agents:
 
 def _generate_agent_file(agent_info, team_name, framework):
     """Generate agent file with registry awareness."""
-    
+
     # Add registry imports based on role
     imports = [
         "from elf_automations.shared.registry import TeamRegistryClient",
     ]
-    
+
     # Add registry tools for managers
     if agent_info.get('is_manager'):
         imports.append(
@@ -152,7 +152,7 @@ def _generate_agent_file(agent_info, team_name, framework):
             "    FindCollaboratorsTool"
             ")"
         )
-    
+
     # ... rest of generation logic
 ```
 
@@ -164,10 +164,10 @@ Teams should register themselves when created:
 # In team factory's registration method
 def _register_team_via_mcp(team_name, team_type, parent_team, agents):
     """Register team using MCP instead of direct Supabase."""
-    
+
     mcp_client = MCPClient()
     registry_client = TeamRegistryClient(mcp_client)
-    
+
     # Register team
     team = registry_client.register_team_sync(
         name=team_name,
@@ -179,12 +179,12 @@ def _register_team_via_mcp(team_name, team_type, parent_team, agents):
             'llm_provider': llm_provider
         }
     )
-    
+
     # Register team members
     for agent in agents:
         # Extract capabilities from agent's tools and role
         capabilities = _extract_capabilities(agent)
-        
+
         registry_client.add_team_member_sync(
             team_name=team_name,
             agent_name=agent['name'],
@@ -204,7 +204,7 @@ class MarketingTeam:
     def __init__(self):
         self.registry_client = TeamRegistryClient()
         self._register_team()
-    
+
     def _register_team(self):
         """Register team on startup if not already registered."""
         try:
@@ -217,11 +217,11 @@ class MarketingTeam:
                     type="marketing",
                     parent_name="executive-team"
                 )
-                
+
                 # Register members
                 for agent in self.agents:
                     self._register_agent(agent)
-                    
+
         except Exception as e:
             logger.warning(f"Could not register team: {e}")
 ```
@@ -379,7 +379,7 @@ Solution: Check capability naming consistency, use registry client to list all c
 ```
 Registry queries taking too long
 ```
-Solution: 
+Solution:
 - Enable caching in registry client
 - Check AgentGateway performance
 - Consider local registry cache

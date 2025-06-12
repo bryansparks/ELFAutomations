@@ -67,15 +67,15 @@ A dedicated MCP server that provides:
 -- Projects table
 projects (
   id, name, description, status, priority,
-  created_by_team, owner_team, start_date, 
+  created_by_team, owner_team, start_date,
   end_date, progress_percentage
 )
 
--- Tasks table  
+-- Tasks table
 tasks (
   id, project_id, title, description, status,
   assigned_team, created_by_team, priority,
-  estimated_hours, actual_hours, 
+  estimated_hours, actual_hours,
   start_date, due_date, completed_date
 )
 

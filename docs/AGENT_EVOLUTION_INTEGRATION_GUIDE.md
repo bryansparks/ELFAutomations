@@ -56,17 +56,17 @@ from elf_automations.shared.utils.supabase_client import get_supabase_client
 def create_evolved_agent(team_id: str, agent_role: str, base_config: dict):
     # Get Supabase client
     supabase = get_supabase_client()
-    
+
     # Create evolved loader
     loader = EvolvedAgentLoader(supabase)
-    
+
     # Load evolved configuration
     evolved_config = loader.load_evolved_agent_config(
         team_id=team_id,
         agent_role=agent_role,
         base_config=base_config
     )
-    
+
     # Create agent with evolved prompt
     agent = Agent(
         role=agent_role,
@@ -77,10 +77,10 @@ def create_evolved_agent(team_id: str, agent_role: str, base_config: dict):
         tools=base_config.get('tools', []),
         llm=base_config['llm']
     )
-    
+
     # Apply additional evolutions
     agent = loader.apply_evolution_to_agent(agent, evolved_config)
-    
+
     return agent
 ```
 
@@ -144,7 +144,7 @@ def {role}_agent(
     """
     Create {role} agent with optional evolution support.
     """
-    
+
     # Base configuration
     base_config = {{
         'role': '{role}',
@@ -154,28 +154,28 @@ def {role}_agent(
         'tools': tools or [],
         'llm': llm or LLMFactory.create_llm(...)
     }}
-    
+
     # Apply evolution if enabled and team_id provided
     if enable_evolution and team_id:
         try:
             supabase = get_supabase_client()
             loader = EvolvedAgentLoader(supabase)
-            
+
             evolved_config = loader.load_evolved_agent_config(
                 team_id=team_id,
                 agent_role='{role}',
                 base_config=base_config
             )
-            
+
             # Use evolved prompt
             base_config['backstory'] = evolved_config.evolved_prompt
-            
+
         except Exception as e:
             logger.warning(f"Failed to load evolved config: {{e}}")
-    
+
     # Create agent
     agent = Agent(**base_config)
-    
+
     # Wrap with memory awareness
     return MemoryAwareCrewAIAgent(agent, ...)
 '''
@@ -210,7 +210,7 @@ Prioritize these proven approaches when applicable.
 
 ### 1. View Active Evolutions
 ```sql
-SELECT * FROM active_agent_evolutions 
+SELECT * FROM active_agent_evolutions
 WHERE team_name = 'product-team';
 ```
 

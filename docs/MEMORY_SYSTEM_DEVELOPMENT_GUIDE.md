@@ -63,11 +63,11 @@ class MockPoint:
 
 class MockQdrantClient:
     """Mock Qdrant client that stores vectors in memory."""
-    
+
     def __init__(self):
         self.collections = {}
         self.points = {}
-    
+
     def create_collection(self, collection_name: str, vectors_config: Any):
         """Create a mock collection."""
         self.collections[collection_name] = {
@@ -75,32 +75,32 @@ class MockQdrantClient:
             "points": {}
         }
         print(f"[MOCK] Created collection: {collection_name}")
-    
+
     def upsert(self, collection_name: str, points: List[Any]):
         """Insert mock points."""
         if collection_name not in self.collections:
             raise ValueError(f"Collection {collection_name} not found")
-        
+
         for point in points:
             self.collections[collection_name]["points"][point.id] = point
-        
+
         print(f"[MOCK] Inserted {len(points)} points into {collection_name}")
-    
+
     def search(self, collection_name: str, query_vector: List[float], limit: int = 5):
         """Mock similarity search - returns random results."""
         if collection_name not in self.collections:
             raise ValueError(f"Collection {collection_name} not found")
-        
+
         # Return mock results
         points = list(self.collections[collection_name]["points"].values())[:limit]
-        
+
         # Add mock scores
         for i, point in enumerate(points):
             point.score = 1.0 - (i * 0.1)  # Decreasing scores
-        
+
         print(f"[MOCK] Searched {collection_name}, returning {len(points)} results")
         return points
-    
+
     def get_collections(self):
         """List mock collections."""
         return {"collections": [{"name": name} for name in self.collections.keys()]}
@@ -116,8 +116,8 @@ Use the dashboard method above to create tables manually.
 // mcp-servers-ts/src/memory-learning/server.ts
 import { MockQdrantClient } from './mock-qdrant';
 
-const qdrantClient = process.env.USE_MOCK_QDRANT 
-  ? new MockQdrantClient() 
+const qdrantClient = process.env.USE_MOCK_QDRANT
+  ? new MockQdrantClient()
   : new QdrantClient({
       url: process.env.QDRANT_URL || 'http://localhost:6333'
     });
@@ -198,7 +198,7 @@ result = await client.call("server-name", "tool-name", {args})
 **Solution**: Use `elf_automations.shared.mcp.MCPClient`, not external packages
 
 ### Issue: Database connection fails
-**Solution**: 
+**Solution**:
 1. Check port (6543 for direct, 5432 for pooler)
 2. Verify password is URL-encoded
 3. Use Supabase dashboard for one-time setup
@@ -207,7 +207,7 @@ result = await client.call("server-name", "tool-name", {args})
 **Solution**: Use the mock client above
 
 ### Issue: AgentGateway not accessible
-**Solution**: 
+**Solution**:
 1. For MCP development, run servers directly
 2. For testing, mock the MCP responses
 
