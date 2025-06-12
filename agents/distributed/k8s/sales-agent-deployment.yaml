@@ -159,9 +159,9 @@ data:
       role: "Senior Sales Development Representative"
       goal: "Qualify leads, conduct outreach, and drive revenue growth through strategic sales activities"
       backstory: |
-        You are an experienced Sales Development Representative with expertise in 
-        lead qualification, cold outreach, and sales process optimization. You excel at 
-        identifying high-value prospects, crafting compelling outreach messages, and 
+        You are an experienced Sales Development Representative with expertise in
+        lead qualification, cold outreach, and sales process optimization. You excel at
+        identifying high-value prospects, crafting compelling outreach messages, and
         collaborating with marketing and customer success teams to drive revenue growth.
       department: "sales"
       capabilities:
@@ -171,18 +171,18 @@ data:
         - "sales_pipeline_management"
         - "crm_integration"
         - "follow_up_automation"
-    
+
     a2a:
       port: 8081
       discovery_endpoint: "http://discovery-service:8080"
       message_timeout: 30
       retry_attempts: 3
-    
+
     health:
       port: 8080
       check_interval: 30
       startup_timeout: 60
-    
+
     scaling:
       min_replicas: 1
       max_replicas: 5

@@ -24,7 +24,7 @@ This document explains how to combine **CrewAI's structured team approach** with
 
 ### CrewAI Crews: Structured Teams
 - **Static composition**: Predefined agents with specific roles
-- **Task delegation**: Tasks assigned based on agent roles/prompts  
+- **Task delegation**: Tasks assigned based on agent roles/prompts
 - **Team coordination**: Agents work together on shared objectives
 - **Known capabilities**: Each agent's skills are defined at crew creation
 
@@ -69,48 +69,48 @@ from agents.distributed.a2a.client import A2AClient
 
 class A2AEnhancedAgent(Agent):
     """CrewAI Agent enhanced with A2A discovery capabilities"""
-    
+
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.discovery_service = DiscoveryService()
         self.a2a_client = A2AClient()
-        
+
     async def execute_task(self, task):
         """Execute task with fallback to A2A discovery"""
-        
+
         # 1. Try to handle with crew capabilities first
         if self.can_handle_locally(task):
             return await self.handle_locally(task)
-        
+
         # 2. Check if any crew members can handle it
         crew_result = await self.delegate_within_crew(task)
         if crew_result:
             return crew_result
-            
+
         # 3. Use A2A discovery to find external agents
         return await self.discover_and_delegate(task)
-    
+
     async def discover_and_delegate(self, task):
         """Use A2A discovery to find capable agents"""
-        
+
         # Find agents with required capability
         capable_agents = await self.discovery_service.discover_agents(
             capability=task.required_capability
         )
-        
+
         if not capable_agents:
             return await self.handle_with_fallback(task)
-        
+
         # Select best agent (load balancing, performance, etc.)
         selected_agent = self.select_best_agent(capable_agents)
-        
+
         # Send task via A2A protocol
         result = await self.a2a_client.send_task(
             to_agent=selected_agent.agent_id,
             task_data=task.to_dict(),
             priority="normal"
         )
-        
+
         return result
 ```
 
@@ -119,31 +119,31 @@ class A2AEnhancedAgent(Agent):
 ```python
 class A2AEnhancedCrew(Crew):
     """CrewAI Crew with A2A ecosystem integration"""
-    
+
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.discovery_service = DiscoveryService()
         self.crew_capabilities = self._register_crew_capabilities()
-    
+
     async def _register_crew_capabilities(self):
         """Register crew's collective capabilities with A2A discovery"""
-        
+
         crew_capabilities = []
         for agent in self.agents:
             crew_capabilities.extend(agent.capabilities)
-        
+
         # Register crew as a service unit
         await self.discovery_service.register_service(
             service_id=f"crew_{self.name}",
             capabilities=crew_capabilities,
             agents=self.agents
         )
-        
+
         return crew_capabilities
-    
+
     async def execute_with_discovery(self, tasks):
         """Execute tasks with A2A discovery fallback"""
-        
+
         results = []
         for task in tasks:
             # Try crew execution first
@@ -152,9 +152,9 @@ class A2AEnhancedCrew(Crew):
             else:
                 # Use A2A discovery for external delegation
                 result = await self.discover_and_execute(task)
-            
+
             results.append(result)
-        
+
         return results
 ```
 
@@ -211,7 +211,7 @@ sales_crew = A2AEnhancedCrew(
             capabilities=["lead_qualification", "team_coordination"]
         ),
         A2AEnhancedAgent(
-            role="Lead Generator", 
+            role="Lead Generator",
             goal="Generate qualified leads",
             capabilities=["lead_generation", "prospect_research"]
         ),
@@ -243,17 +243,17 @@ task = Task(
 ```python
 async def complex_campaign_workflow():
     """Example of multi-crew coordination via A2A"""
-    
+
     # Sales crew generates leads
     leads = await sales_crew.execute_task(
         Task(description="Generate 100 qualified leads")
     )
-    
+
     # Marketing crew (discovered via A2A) creates content
     marketing_agents = await discovery_service.discover_agents(
         capability="content_creation"
     )
-    
+
     content = await a2a_client.send_task(
         to_agent=marketing_agents[0].agent_id,
         task_data={
@@ -261,12 +261,12 @@ async def complex_campaign_workflow():
             "leads": leads
         }
     )
-    
+
     # Operations crew (also discovered) handles deployment
     ops_agents = await discovery_service.discover_agents(
         capability="email_deployment"
     )
-    
+
     deployment = await a2a_client.send_task(
         to_agent=ops_agents[0].agent_id,
         task_data={
@@ -275,7 +275,7 @@ async def complex_campaign_workflow():
             "leads": leads
         }
     )
-    
+
     return deployment
 ```
 
@@ -286,7 +286,7 @@ async def complex_campaign_workflow():
 2. Add discovery service integration
 3. Implement capability-based task routing
 
-### Phase 2: Crew Integration  
+### Phase 2: Crew Integration
 1. Create `A2AEnhancedCrew` class
 2. Add crew-level capability registration
 3. Implement multi-crew coordination patterns
@@ -347,15 +347,15 @@ class A2AAgentWrapper:
     def __init__(self, agent: Agent, capabilities: List[str] = None):
         self.agent = agent  # Composition, not inheritance
         self.capabilities = capabilities or []
-    
+
     def __getattr__(self, name):
         return getattr(self.agent, name)  # Delegate to wrapped agent
-    
+
     async def execute_task_with_discovery(self, task_description: str, required_capability: str = None):
         if not required_capability or required_capability in self.capabilities:
             # Handle locally
             return f"Task completed by {self.agent.role}: {task_description}"
-        
+
         # Use A2A discovery for external capabilities
         agents = await self.discovery_service.discover_agents(required_capability)
         if agents:
@@ -467,8 +467,8 @@ The pattern is now ready for:
 
 ### 🎯 Real A2A Integration Completed
 
-**Status**: ✅ PRODUCTION READY with Real Services  
-**Completion Date**: 2025-06-05  
+**Status**: ✅ PRODUCTION READY with Real Services
+**Completion Date**: 2025-06-05
 **Test Results**: 5/5 integration tests passed (100.0%)
 
 The integration now uses **real A2A services** instead of mock implementations:
@@ -483,7 +483,7 @@ The integration now uses **real A2A services** instead of mock implementations:
 ```bash
 🎯 Real A2A Integration Test Results: 5/5 tests passed (100.0%)
 ✅ Basic Crew Functionality with Real Services: PASSED
-✅ Real A2A Discovery Service: PASSED  
+✅ Real A2A Discovery Service: PASSED
 ✅ Real Redis Message Routing: PASSED
 ✅ Multi-Crew Real Coordination: PASSED
 ✅ Real Service Lifecycle Management: PASSED
@@ -495,7 +495,7 @@ The integration now uses **real A2A services** instead of mock implementations:
    ```bash
    # Deploy Redis cluster
    docker run -d -p 6379:6379 redis:alpine
-   
+
    # Deploy discovery service (optional)
    kubectl apply -f k8s/discovery-service.yaml
    ```

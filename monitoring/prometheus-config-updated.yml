@@ -10,7 +10,7 @@ scrape_configs:
   - job_name: 'prometheus'
     static_configs:
       - targets: ['localhost:9090']
-  
+
   # Local Flask app running on host machine
   - job_name: 'virtual-ai-platform-local'
     static_configs:
@@ -18,7 +18,7 @@ scrape_configs:
     metrics_path: '/metrics'
     scrape_interval: 30s
     scrape_timeout: 10s
-  
+
   # Kubernetes pods in virtual-ai platform namespaces
   - job_name: 'virtual-ai-platform'
     kubernetes_sd_configs:

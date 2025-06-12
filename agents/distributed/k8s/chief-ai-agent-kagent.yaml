@@ -15,11 +15,11 @@ spec:
   goal: "Provide strategic leadership, coordinate departments, optimize company performance, and ensure business objectives are met across all divisions"
   backstory: "You are the Chief AI Agent, the executive leader of a Virtual AI Company Platform. You have extensive experience in strategic planning, organizational leadership, and business optimization."
   department: executive
-  
+
   # Container Configuration
   image: elf-automations/distributed-agent:latest
   imagePullPolicy: Always
-  
+
   # Resource Requirements
   resources:
     requests:
@@ -28,20 +28,20 @@ spec:
     limits:
       memory: "1Gi"
       cpu: "500m"
-  
+
   # Scaling Configuration
   replicas: 1
   minReplicas: 1
   maxReplicas: 3
   targetCPUUtilizationPercentage: 70
-  
+
   # A2A Communication Configuration
   a2a:
     enabled: true
     port: 8090
     host: "0.0.0.0"
     discoveryEndpoint: "http://a2a-discovery-service:8080"
-  
+
   # Service Configuration
   service:
     name: chief-ai-agent-service
@@ -55,7 +55,7 @@ spec:
         port: 8091
         targetPort: 8091
         protocol: TCP
-  
+
   # Environment Variables
   env:
     - name: AGENT_ID
@@ -72,7 +72,7 @@ spec:
       value: "INFO"
     - name: PYTHONPATH
       value: "/app"
-  
+
   # Health Checks
   healthCheck:
     enabled: true
@@ -83,7 +83,7 @@ spec:
     periodSeconds: 10
     timeoutSeconds: 5
     failureThreshold: 3
-  
+
   # Readiness Probe
   readinessProbe:
     httpGet:
@@ -93,7 +93,7 @@ spec:
     periodSeconds: 5
     timeoutSeconds: 3
     failureThreshold: 3
-  
+
   # Agent Capabilities
   capabilities:
     - strategic_planning
@@ -104,7 +104,7 @@ spec:
     - business_intelligence
     - decision_making
     - leadership_communication
-  
+
   # Executive-specific Configuration
   executiveConfig:
     performanceReviewInterval: "1h"
@@ -112,7 +112,7 @@ spec:
     escalationAuthority: "full"
     resourceAllocationLimit: "unlimited"
     strategicPlanningScope: "company-wide"
-  
+
   # Monitoring and Observability
   monitoring:
     enabled: true
@@ -130,7 +130,7 @@ spec:
       - name: strategic-objectives-stalled
         condition: "active_strategic_objectives == 0"
         severity: critical
-  
+
   # Security Configuration
   security:
     runAsNonRoot: true
@@ -140,16 +140,16 @@ spec:
       drop:
         - ALL
     readOnlyRootFilesystem: false
-  
+
   # Volume Mounts (for persistent data if needed)
   volumes:
     - name: agent-data
       emptyDir: {}
-  
+
   volumeMounts:
     - name: agent-data
       mountPath: /app/data
-  
+
   # Networking
   networking:
     # Allow communication with all departments
@@ -165,10 +165,10 @@ spec:
               port: 8090
       egress:
         - to: []  # Allow all outbound traffic for executive coordination
-  
+
   # Startup Command
   command: ["python", "-m", "agents.distributed.examples.chief_ai_agent"]
-  
+
   # Annotations for additional metadata
   annotations:
     description: "Chief AI Agent - Executive leadership for distributed agent architecture"

@@ -140,7 +140,7 @@ This architecture solves CrewAI's limitations while maintaining its simplicity:
 
 MCP servers provide standardized interfaces to:
 - **External APIs**: REST APIs, GraphQL endpoints, webhooks
-- **Databases**: SQL, NoSQL, vector databases, data warehouses  
+- **Databases**: SQL, NoSQL, vector databases, data warehouses
 - **File Systems**: Local files, cloud storage, document management
 - **Development Tools**: Git repositories, CI/CD systems, IDEs
 - **Business Systems**: CRM, ERP, project management, communication tools
@@ -217,13 +217,13 @@ AgentGateway seamlessly integrates with the Agent Mesh pattern:
 async def use_crm_tool(customer_id: str):
     # Agent discovers available tools
     tools = await agent_gateway.discover_tools(category="crm")
-    
+
     # Agent uses tool through gateway
     customer_data = await agent_gateway.call_tool(
         tool_name="get_customer",
         parameters={"customer_id": customer_id}
     )
-    
+
     return customer_data
 ```
 
@@ -236,13 +236,13 @@ async def cross_agent_collaboration():
         agent_url="http://marketing-agent:8093",
         task={"description": "Get campaign performance data"}
     )
-    
+
     # 2. Marketing agent uses MCP tools via AgentGateway
     campaign_data = await agent_gateway.call_tool(
         tool_name="analytics_dashboard",
         parameters={"date_range": "last_30_days"}
     )
-    
+
     # 3. Marketing agent returns results via A2A
     return campaign_data
 ```
@@ -465,7 +465,7 @@ class SalesAgent:
             goal="Generate sales proposals and manage customer relationships",
             backstory="Expert in sales with deep understanding of customer needs"
         )
-        
+
         # A2A agent card
         self.agent_card = AgentCard(
             name="Sales Agent",
@@ -490,23 +490,23 @@ class SalesAgent:
 class AgentWithMCPTools:
     def __init__(self, agent_gateway_url: str):
         self.agent_gateway = MCPClient(agent_gateway_url)
-    
+
     async def execute_task_with_tools(self, task_description: str):
         # Discover available tools
         tools = await self.agent_gateway.discover_tools()
-        
+
         # Use CRM tool for customer data
         customer_data = await self.agent_gateway.call_tool(
             tool_name="crm_lookup",
             parameters={"query": "enterprise customers"}
         )
-        
+
         # Execute CrewAI task with enriched context
         task = Task(
             description=f"{task_description}\nCustomer Context: {customer_data}",
             agent=self.crew_agent
         )
-        
+
         return task.execute()
 ```
 
@@ -573,7 +573,7 @@ spec:
       type: Utilization
       averageUtilization: 70
 
-# Memory-based scaling  
+# Memory-based scaling
 - type: Resource
   resource:
     name: memory

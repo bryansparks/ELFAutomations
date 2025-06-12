@@ -125,16 +125,16 @@ import asyncio
 async def execute_hierarchical_crews():
     # Execute master crew first
     master_result = await master_crew.kickoff_async()
-    
+
     # Extract context and execute sub-crews concurrently
     context = extract_strategic_context(master_result)
-    
+
     marketing_task = marketing_crew.kickoff_async(inputs=context)
     sales_task = sales_crew.kickoff_async(inputs=context)
-    
+
     # Wait for all sub-crews to complete
     sub_results = await asyncio.gather(marketing_task, sales_task)
-    
+
     return master_result, sub_results
 ```
 

@@ -72,21 +72,21 @@ affinity: {}
 virtualAI:
   # Environment configuration
   environment: development
-  
+
   # Supabase configuration
   supabase:
     url: ""
     anonKey: ""
     personalAccessToken: ""
     projectId: ""
-  
+
   # LLM API configuration
   llm:
     anthropic:
       apiKey: ""
     openai:
       apiKey: ""
-  
+
   # Agent configuration
   agents:
     chief:
@@ -99,7 +99,7 @@ virtualAI:
         limits:
           memory: "512Mi"
           cpu: "200m"
-    
+
     departments:
       sales:
         enabled: true
@@ -129,7 +129,7 @@ monitoring:
       limits:
         memory: "1Gi"
         cpu: "500m"
-  
+
   grafana:
     enabled: true
     adminPassword: "admin"

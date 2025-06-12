@@ -1590,11 +1590,14 @@ import json"""
 """
 
 from crewai import Agent
-from typing import Optional, Any, Union
+from typing import Optional, Any, Union, List, Dict
 from langchain_openai import ChatOpenAI
 from langchain_anthropic import ChatAnthropic
 from elf_automations.shared.a2a import A2AClient
 from elf_automations.shared.utils import LLMFactory
+from elf_automations.shared.memory import TeamMemory, LearningSystem, MemoryAgentMixin, with_memory
+from tools.conversation_logging_system import ConversationLogger, MessageType
+from datetime import datetime
 import logging
 
 logger = logging.getLogger(__name__)
@@ -1615,38 +1618,68 @@ def {function_name}(
     Manages Teams: {', '.join(member.manages_teams)}""" if member.manages_teams else "") + f"""
     """
 
-    def __init__(self, tools: Optional[List] = None):
-        self.logger = logging.getLogger(f"{team_spec.name}.{member.role}")
-        self.tools = tools or []
-        self.manages_teams = {member.manages_teams}
-        self.role = "{member.role}"
-        self.agent = self._create_agent()
+
+    # Create the agent using factory function
+    if not llm:
+        llm = LLMFactory.create_llm(
+            provider="{team_spec.llm_provider.lower()}",
+            model="{team_spec.llm_model}",
+            enable_fallback=True
+        )
+
+    # Get the enhanced system prompt with personality traits
+    backstory = """{enhanced_prompt_escaped}"""
+
+    agent = Agent(
+        role="{member.role}",
+        goal="{goal}",
+        backstory=backstory,
+        allow_delegation={is_manager},
+        verbose=True,
+        tools=tools or [],
+        llm=llm
+    )
+
+    # Wrap agent with memory capabilities
+    return MemoryAwareCrewAIAgent(
+        agent=agent,
+        team_name="{team_spec.name}",
+        role="{member.role}",
+        manages_teams={member.manages_teams},
+        a2a_client=a2a_client
+    )
+
+
+class MemoryAwareCrewAIAgent(MemoryAgentMixin):
+    """Wrapper to add memory capabilities to CrewAI agents"""
+
+    def __init__(self, agent: Agent, team_name: str, role: str,
+                 manages_teams: List[str] = None, a2a_client: Optional[A2AClient] = None):
+        self.agent = agent
+        self.logger = logging.getLogger(f"{{team_name}}.{{role}}")
+        self.tools = agent.tools
+        self.manages_teams = manages_teams or []
+        self.role = role
+        self.team_name = team_name
+        self.a2a_client = a2a_client
+
+        # Initialize memory system
+        self.init_memory(team_name)
+        self.logger.info("Memory system initialized for {{role}}")
 
         # Initialize conversation logger
-        self.conversation_logger = ConversationLogger("{team_spec.name}")
-        self.team_name = "{team_spec.name}"{a2a_init}
+        self.conversation_logger = ConversationLogger(team_name)
 
-    def _create_agent(self) -> Agent:
-        """Create the CrewAI agent"""
-        # Initialize LLM
-        llm = {llm_init}
-
-        # Get the enhanced system prompt with personality traits
-        backstory = """{enhanced_prompt_escaped}"""
-
-        return Agent(
-            role="{member.role}",
-            goal="{' '.join(member.responsibilities[:2])}",
-            backstory=backstory,
-            allow_delegation={"Manager" in member.role or "Lead" in member.role},
-            verbose=True,
-            tools=self.tools,
-            llm=llm
-        )
 
     def get_agent(self) -> Agent:
         """Get the CrewAI agent instance"""
         return self.agent
+
+    @with_memory
+    def execute(self, task: Any) -> Any:
+        """Execute task with memory tracking"""
+        # The @with_memory decorator handles episode tracking
+        return self.agent.execute(task)
 
     def log_communication(self, message: str, to_agent: Optional[str] = None):
         """Log internal team communications naturally"""
@@ -1701,14 +1734,29 @@ def {function_name}(
         self.log_communication(message, to_agent)
 
     def execute_with_logging(self, task):
-        """Execute task with conversation logging"""
+        """Execute task with conversation and memory logging"""
         task_id = getattr(task, 'id', f"task_{{datetime.now().timestamp()}}")
         task_description = str(task)
 
+        # Start conversation logging
         self.conversation_logger.start_conversation(task_id, task_description)
         self.log_update(f"Starting task: {{task_description[:100]}}...")
 
+        # Start memory episode
+        self.start_episode(task_description)
+
         try:
+            # Check for relevant past experiences
+            if hasattr(self, 'team_memory') and self.team_memory:
+                learnings = self.team_memory.get_relevant_learnings({{
+                    'task_type': self.learning_system._categorize_task(task_description),
+                    'agent': self.role
+                }})
+                if learnings:
+                    self.logger.info(f"Found {{len(learnings)}} relevant past experiences")
+                    for learning in learnings[:2]:
+                        self.logger.info(f"Past insight: {{learning.get('title', '')}}")
+
             # Execute the actual task
             result = self.agent.execute(task)
 
@@ -1716,11 +1764,24 @@ def {function_name}(
             self.log_update(f"Task completed successfully")
             self.conversation_logger.end_conversation("completed")
 
+            # Complete memory episode
+            self.complete_episode(success=True, result={{
+                'output': str(result)[:500],
+                'task_id': task_id
+            }})
+
             return result
 
         except Exception as e:
             self.log_update(f"Task failed: {{str(e)}}")
             self.conversation_logger.end_conversation(f"failed: {{str(e)}}")
+
+            # Complete memory episode with error
+            self.complete_episode(success=False, error={{
+                'type': type(e).__name__,
+                'message': str(e)
+            }})
+
             raise'''
 
             if is_manager:
@@ -1865,16 +1926,21 @@ sys.path.insert(0, str(Path(__file__).parent.parent.parent))
 from crewai import Crew, Process, Task
 from typing import List, Dict, Any, Optional
 import logging
+import asyncio
 
 # Import ElfAutomations shared modules
 try:
     from elf_automations.shared.utils import setup_team_logging, LLMFactory
     from elf_automations.shared.a2a import A2AClient
+    from elf_automations.shared.memory import TeamMemory, LearningSystem, ContinuousImprovementLoop
 except ImportError:
     # Fallback for development
     setup_team_logging = None
     LLMFactory = None
     A2AClient = None
+    TeamMemory = None
+    LearningSystem = None
+    ContinuousImprovementLoop = None
 
 # Import all team agents
 try:
@@ -1915,6 +1981,26 @@ class {team_spec.name.replace("-", " ").title().replace(" ", "")}Crew:
         self.agents = self._initialize_agents()
         self.crew = self._create_crew()
 
+        # Initialize memory and learning systems if available
+        if TeamMemory and LearningSystem and ContinuousImprovementLoop:
+            self.team_memory = TeamMemory("{team_spec.name}")
+            self.learning_system = LearningSystem(self.team_memory)
+            self.improvement_loop = ContinuousImprovementLoop(
+                "{team_spec.name}",
+                self.team_memory,
+                self.learning_system,
+                cycle_hours=24  # Daily improvement cycles
+            )
+
+            # Start improvement loop in background
+            asyncio.create_task(self._start_improvement_loop())
+            self.logger.info("Memory and learning systems initialized")
+        else:
+            self.team_memory = None
+            self.learning_system = None
+            self.improvement_loop = None
+            self.logger.warning("Memory system not available")
+
         # Log team initialization
         self.logger.info(f"Initialized {team_spec.name} with {{len(self.agents)}} agents")
 
@@ -1937,6 +2023,14 @@ class {team_spec.name.replace("-", " ").title().replace(" ", "")}Crew:
 
         crew_content += (
             '''        return agents
+
+    async def _start_improvement_loop(self):
+        """Start the continuous improvement loop in background"""
+        try:
+            if self.improvement_loop:
+                await self.improvement_loop.start()
+        except Exception as e:
+            self.logger.error(f"Failed to start improvement loop: {e}")
 
     def _create_crew(self) -> Crew:
         """Create the crew with all agents"""
@@ -2300,6 +2394,11 @@ anthropic>=0.39.0
 httpx>=0.25.0
 websockets>=12.0
 
+# Memory and Learning System
+qdrant-client>=1.7.0
+numpy>=1.24.0
+supabase>=2.3.0
+
 # Monitoring and logging
 structlog>=23.0.0
 prometheus-client>=0.19.0
@@ -2644,6 +2743,7 @@ from langgraph.graph import StateGraph, END
 from langgraph.graph.message import add_messages
 from langgraph.checkpoint.memory import MemorySaver
 from tools.conversation_logging_system import ConversationLogger, MessageType
+from elf_automations.shared.memory import TeamMemory, LearningSystem, MemoryAgentMixin, with_memory
 {llm_import}{a2a_imports}
 
 from agents.langgraph_base import LangGraphBaseAgent, LangGraphAgentState
@@ -2665,7 +2765,7 @@ class {class_name}State(TypedDict):
     pending_a2a_requests: Dict[str, Any]
 
 
-class {class_name}(LangGraphBaseAgent):
+class {class_name}(LangGraphBaseAgent, MemoryAgentMixin):
     """
     {member.role} implementation using LangGraph
 
@@ -2706,6 +2806,10 @@ class {class_name}(LangGraphBaseAgent):
 
         # Initialize custom LLM
         self.llm = {llm_init}
+
+        # Initialize memory system
+        self.init_memory("{team_spec.name}")
+        self.logger.info("Memory system initialized for {member.role}")
 
         # Initialize A2A client if this is a manager
         if self.manages_teams:
@@ -2774,12 +2878,32 @@ class {class_name}(LangGraphBaseAgent):
         if not messages or not isinstance(messages[0], SystemMessage):
             messages.insert(0, SystemMessage(content=self.system_prompt))
 
-        # Create analysis prompt
+        # Check for relevant past experiences
+        task_description = state.get('current_task', 'No specific task')
+
+        # Get relevant learnings from memory
+        relevant_learnings = []
+        if hasattr(self, 'team_memory') and self.team_memory:
+            learnings = self.team_memory.get_relevant_learnings({
+                'task_type': self.learning_system._categorize_task(task_description),
+                'agent': self.role
+            })
+            if learnings:
+                relevant_learnings = learnings[:3]  # Top 3 most relevant
+
+        # Create analysis prompt with memory context
+        memory_context = ""
+        if relevant_learnings:
+            memory_context = "\\n\\nBased on past experiences:\\n"
+            for learning in relevant_learnings:
+                memory_context += f"- {learning.get('title', learning.get('insight', ''))}\\n"
+
         analysis_prompt = HumanMessage(content=f"""
         Analyze this task and determine the best approach:
 
         Task: {{state.get('current_task', 'No specific task')}}
         Context: {{state.get('task_context', {{}})}}
+        {memory_context}
 
         Consider:
         1. What are the key objectives?
@@ -2870,6 +2994,16 @@ class {class_name}(LangGraphBaseAgent):
         """Execute the task directly"""
         messages = state["messages"]
 
+        # Start memory episode
+        task_description = state.get('current_task', 'Unknown task')
+        self.start_episode(task_description, state.get('task_context', {}))
+
+        # Record planning action
+        self.record_action("Started task execution", {
+            'task': task_description,
+            'context': state.get('task_context', {})
+        })
+
         execution_prompt = HumanMessage(content="""
         Execute the planned approach. Use available tools as needed.
         Provide detailed results and any issues encountered.
@@ -2878,6 +3012,11 @@ class {class_name}(LangGraphBaseAgent):
         messages.append(execution_prompt)
         response = await self.llm.ainvoke(messages)
         messages.append(response)
+
+        # Record execution action
+        self.record_action("Executed task", {
+            'response': response.content[:500]  # First 500 chars
+        })
 
         state["messages"] = messages
         return state
@@ -2907,6 +3046,42 @@ class {class_name}(LangGraphBaseAgent):
 
         # Log task completion
         self.logger.info(f"Task completed by {member.role}")
+
+        # Complete memory episode
+        if self.current_episode:
+            # Determine success based on review results
+            messages = state.get("messages", [])
+            success = True  # Default to success
+            result_summary = None
+
+            # Look for success indicators in the last few messages
+            for msg in messages[-3:]:
+                if isinstance(msg, AIMessage):
+                    content = msg.content.lower()
+                    if 'failed' in content or 'error' in content or 'issue' in content:
+                        success = False
+                    if 'completed' in content or 'success' in content:
+                        result_summary = msg.content[:500]
+
+            # Complete the episode
+            self.complete_episode(
+                success=success,
+                result={
+                    'final_state': state.get('workflow_status', 'completed'),
+                    'summary': result_summary
+                }
+            )
+
+            # Get performance insights periodically
+            if hasattr(self, '_task_count'):
+                self._task_count += 1
+            else:
+                self._task_count = 1
+
+            if self._task_count % 10 == 0:  # Every 10 tasks
+                insights = self.get_performance_insights()
+                if insights.get('recommendations'):
+                    self.logger.info(f"Performance insights: {insights['recommendations'][0]}")
 
         return state
 
@@ -3100,6 +3275,7 @@ from workflows.state_definitions import TeamState, TaskState
 from agents import (
 {chr(10).join(f"    {member.role.replace(' ', '')}Agent," for member in team_spec.members)}
 )
+from elf_automations.shared.memory import TeamMemory, LearningSystem, ContinuousImprovementLoop
 
 # Set up logging
 log_dir = Path("/logs")
@@ -3136,7 +3312,20 @@ class {team_spec.name.replace("-", " ").title().replace(" ", "")}Workflow:
         # Compile the workflow
         self.app = self.workflow.compile(checkpointer=self.checkpointer)
 
-        self.logger.info(f"Initialized {team_spec.name} workflow with {{len(self.agents)}} agents")
+        # Initialize memory and learning systems
+        self.team_memory = TeamMemory(self.team_name)
+        self.learning_system = LearningSystem(self.team_memory)
+        self.improvement_loop = ContinuousImprovementLoop(
+            self.team_name,
+            self.team_memory,
+            self.learning_system,
+            cycle_hours=24  # Daily improvement cycles
+        )
+
+        # Start improvement loop in background
+        asyncio.create_task(self._start_improvement_loop())
+
+        self.logger.info(f"Initialized {team_spec.name} workflow with {{len(self.agents)}} agents and memory system")
 
     def _initialize_agents(self) -> Dict[str, Any]:
         """Initialize all team agents"""
@@ -3155,6 +3344,13 @@ class {team_spec.name.replace("-", " ").title().replace(" ", "")}Workflow:
 """
 
         workflow_content += '''        return agents
+
+    async def _start_improvement_loop(self):
+        """Start the continuous improvement loop in background"""
+        try:
+            await self.improvement_loop.start()
+        except Exception as e:
+            self.logger.error(f"Failed to start improvement loop: {e}")
 
     def _create_workflow(self) -> StateGraph:
         """Create the team workflow graph"""
@@ -3645,6 +3841,11 @@ psycopg2-binary>=2.9.0
 # A2A communication
 httpx>=0.25.0
 websockets>=12.0
+
+# Memory and Learning System
+qdrant-client>=1.7.0
+numpy>=1.24.0
+supabase>=2.3.0
 
 # Monitoring and logging
 structlog>=23.0.0

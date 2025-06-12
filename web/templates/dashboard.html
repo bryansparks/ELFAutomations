@@ -12,7 +12,7 @@
             min-height: 100vh;
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
         }
-        
+
         .dashboard-container {
             background: rgba(255, 255, 255, 0.95);
             border-radius: 20px;
@@ -21,7 +21,7 @@
             margin: 20px;
             padding: 30px;
         }
-        
+
         .metric-card {
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
             color: white;
@@ -31,22 +31,22 @@
             box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
             transition: transform 0.3s ease;
         }
-        
+
         .metric-card:hover {
             transform: translateY(-5px);
         }
-        
+
         .metric-value {
             font-size: 2.5rem;
             font-weight: bold;
             margin-bottom: 10px;
         }
-        
+
         .metric-label {
             font-size: 1rem;
             opacity: 0.9;
         }
-        
+
         .status-indicator {
             display: inline-block;
             width: 12px;
@@ -54,19 +54,19 @@
             border-radius: 50%;
             margin-right: 8px;
         }
-        
+
         .status-operational {
             background-color: #28a745;
         }
-        
+
         .status-warning {
             background-color: #ffc107;
         }
-        
+
         .status-error {
             background-color: #dc3545;
         }
-        
+
         .agent-card {
             background: white;
             border-radius: 10px;
@@ -75,7 +75,7 @@
             box-shadow: 0 5px 15px rgba(0, 0, 0, 0.08);
             border-left: 4px solid #667eea;
         }
-        
+
         .table-card {
             background: white;
             border-radius: 10px;
@@ -83,7 +83,7 @@
             margin-bottom: 20px;
             box-shadow: 0 5px 15px rgba(0, 0, 0, 0.08);
         }
-        
+
         .analysis-section {
             background: white;
             border-radius: 10px;
@@ -91,7 +91,7 @@
             margin-top: 20px;
             box-shadow: 0 5px 15px rgba(0, 0, 0, 0.08);
         }
-        
+
         .loading {
             display: inline-block;
             width: 20px;
@@ -101,19 +101,19 @@
             border-radius: 50%;
             animation: spin 1s linear infinite;
         }
-        
+
         @keyframes spin {
             0% { transform: rotate(0deg); }
             100% { transform: rotate(360deg); }
         }
-        
+
         .btn-primary {
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
             border: none;
             border-radius: 25px;
             padding: 10px 25px;
         }
-        
+
         .btn-primary:hover {
             background: linear-gradient(135deg, #764ba2 0%, #667eea 100%);
             transform: translateY(-2px);
@@ -133,7 +133,7 @@
                     <p class="text-center text-muted">Real-time Dashboard & Control Center</p>
                 </div>
             </div>
-            
+
             <!-- System Status -->
             <div class="row mb-4">
                 <div class="col-12">
@@ -143,7 +143,7 @@
                     </div>
                 </div>
             </div>
-            
+
             <!-- Key Metrics -->
             <div class="row mb-4">
                 <div class="col-12">
@@ -182,7 +182,7 @@
                     </div>
                 </div>
             </div>
-            
+
             <!-- Secondary Metrics -->
             <div class="row mb-4">
                 <div class="col-md-4">
@@ -210,7 +210,7 @@
                     </div>
                 </div>
             </div>
-            
+
             <!-- AI Agents Section -->
             <div class="row mb-4">
                 <div class="col-md-6">
@@ -219,7 +219,7 @@
                         <div class="loading"></div> Loading agents...
                     </div>
                 </div>
-                
+
                 <!-- Database Tables -->
                 <div class="col-md-6">
                     <h3><i class="fas fa-database"></i> Database Tables</h3>
@@ -228,27 +228,27 @@
                     </div>
                 </div>
             </div>
-            
+
             <!-- AI Analysis Section -->
             <div class="row">
                 <div class="col-12">
                     <div class="analysis-section">
                         <h3><i class="fas fa-lightbulb"></i> AI Business Analysis</h3>
                         <p class="text-muted">Get real-time insights from the Chief AI Agent</p>
-                        
+
                         <div class="mb-3">
-                            <textarea 
-                                id="analysis-prompt" 
-                                class="form-control" 
-                                rows="3" 
+                            <textarea
+                                id="analysis-prompt"
+                                class="form-control"
+                                rows="3"
                                 placeholder="Enter your business question or request for analysis..."
                             >Analyze our current business performance and provide strategic recommendations for growth.</textarea>
                         </div>
-                        
+
                         <button id="run-analysis" class="btn btn-primary">
                             <i class="fas fa-magic"></i> Run AI Analysis
                         </button>
-                        
+
                         <div id="analysis-result" class="mt-4" style="display: none;">
                             <h5>Analysis Result:</h5>
                             <div class="alert alert-info">
@@ -258,22 +258,22 @@
                     </div>
                 </div>
             </div>
-            
+
             <!-- Executive Task Submission Section -->
             <div class="row mt-4">
                 <div class="col-12">
                     <div class="analysis-section">
                         <h3><i class="fas fa-tasks"></i> Executive Task Submission</h3>
                         <p class="text-muted">Submit high-level tasks to the Chief AI Agent for execution and coordination</p>
-                        
+
                         <div class="row">
                             <div class="col-md-8">
                                 <div class="mb-3">
                                     <label for="task-description" class="form-label">Task Description</label>
-                                    <textarea 
-                                        id="task-description" 
-                                        class="form-control" 
-                                        rows="4" 
+                                    <textarea
+                                        id="task-description"
+                                        class="form-control"
+                                        rows="4"
                                         placeholder="Describe the high-level task you want the Chief AI Agent to handle. Examples:&#10;• Develop a Q2 marketing strategy&#10;• Review and optimize our sales pipeline&#10;• Coordinate a cross-department project&#10;• Analyze customer satisfaction and recommend improvements"
                                     ></textarea>
                                 </div>
@@ -300,11 +300,11 @@
                                 </div>
                             </div>
                         </div>
-                        
+
                         <button id="submit-task" class="btn btn-success">
                             <i class="fas fa-paper-plane"></i> Submit Task to Chief AI Agent
                         </button>
-                        
+
                         <div id="task-result" class="mt-4" style="display: none;">
                             <h5>Task Execution Result:</h5>
                             <div class="alert alert-success">
@@ -317,18 +317,18 @@
             </div>
         </div>
     </div>
-    
+
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script>
         // Auto-refresh interval (30 seconds)
         const REFRESH_INTERVAL = 30000;
-        
+
         // Load system status
         async function loadSystemStatus() {
             try {
                 const response = await fetch('/api/status');
                 const data = await response.json();
-                
+
                 const statusHtml = `
                     <div class="d-flex align-items-center">
                         <span class="status-indicator ${data.status === 'operational' ? 'status-operational' : 'status-error'}"></span>
@@ -347,7 +347,7 @@
                         <span>Last Updated: ${new Date(data.timestamp).toLocaleTimeString()}</span>
                     </div>
                 `;
-                
+
                 document.getElementById('system-status').innerHTML = statusHtml;
             } catch (error) {
                 console.error('Failed to load system status:', error);
@@ -359,18 +359,18 @@
                 `;
             }
         }
-        
+
         // Load business metrics
         async function loadMetrics() {
             try {
                 const response = await fetch('/api/metrics');
                 const data = await response.json();
-                
+
                 if (data.error) {
                     console.error('Metrics error:', data.error);
                     return;
                 }
-                
+
                 document.getElementById('customers-count').textContent = data.customers_count || 0;
                 document.getElementById('leads-count').textContent = data.leads_count || 0;
                 document.getElementById('tasks-count').textContent = data.tasks_count || 0;
@@ -378,18 +378,18 @@
                 document.getElementById('lead-score').textContent = (data.average_lead_score || 0).toFixed(1);
                 document.getElementById('high-quality-leads').textContent = data.high_quality_leads || 0;
                 document.getElementById('pending-tasks').textContent = data.pending_tasks || 0;
-                
+
             } catch (error) {
                 console.error('Failed to load metrics:', error);
             }
         }
-        
+
         // Load agents
         async function loadAgents() {
             try {
                 const response = await fetch('/api/agents');
                 const data = await response.json();
-                
+
                 const agentsHtml = data.agents.map(agent => `
                     <div class="agent-card">
                         <div class="d-flex justify-content-between align-items-center">
@@ -404,25 +404,25 @@
                         </div>
                     </div>
                 `).join('');
-                
+
                 document.getElementById('agents-list').innerHTML = agentsHtml;
             } catch (error) {
                 console.error('Failed to load agents:', error);
                 document.getElementById('agents-list').innerHTML = '<div class="text-danger">Failed to load agents</div>';
             }
         }
-        
+
         // Load database tables
         async function loadDatabaseTables() {
             try {
                 const response = await fetch('/api/database/tables');
                 const data = await response.json();
-                
+
                 if (data.error) {
                     document.getElementById('database-tables').innerHTML = `<div class="text-danger">Error: ${data.error}</div>`;
                     return;
                 }
-                
+
                 const tablesHtml = data.tables.map(table => `
                     <div class="table-card">
                         <div class="d-flex justify-content-between align-items-center">
@@ -436,24 +436,24 @@
                         </div>
                     </div>
                 `).join('');
-                
+
                 document.getElementById('database-tables').innerHTML = tablesHtml;
             } catch (error) {
                 console.error('Failed to load database tables:', error);
                 document.getElementById('database-tables').innerHTML = '<div class="text-danger">Failed to load database info</div>';
             }
         }
-        
+
         // Run AI analysis
         async function runAnalysis() {
             const button = document.getElementById('run-analysis');
             const prompt = document.getElementById('analysis-prompt').value;
             const resultDiv = document.getElementById('analysis-result');
             const resultText = document.getElementById('analysis-text');
-            
+
             button.disabled = true;
             button.innerHTML = '<span class="loading"></span> Analyzing...';
-            
+
             try {
                 const response = await fetch('/api/agents/analyze', {
                     method: 'POST',
@@ -462,17 +462,17 @@
                     },
                     body: JSON.stringify({ prompt: prompt })
                 });
-                
+
                 const data = await response.json();
-                
+
                 if (data.error) {
                     resultText.textContent = `Error: ${data.error}`;
                 } else {
                     resultText.textContent = data.analysis;
                 }
-                
+
                 resultDiv.style.display = 'block';
-                
+
             } catch (error) {
                 console.error('Analysis failed:', error);
                 resultText.textContent = `Error: ${error.message}`;
@@ -482,7 +482,7 @@
                 button.innerHTML = '<i class="fas fa-magic"></i> Run AI Analysis';
             }
         }
-        
+
         // Submit task to Chief AI Agent
         async function submitTask() {
             const button = document.getElementById('submit-task');
@@ -492,10 +492,10 @@
             const resultDiv = document.getElementById('task-result');
             const resultText = document.getElementById('task-response');
             const taskInfo = document.getElementById('task-info');
-            
+
             button.disabled = true;
             button.innerHTML = '<span class="loading"></span> Submitting...';
-            
+
             try {
                 const response = await fetch('/api/agent/task', {
                     method: 'POST',
@@ -504,9 +504,9 @@
                     },
                     body: JSON.stringify({ description, type, priority })
                 });
-                
+
                 const data = await response.json();
-                
+
                 if (data.success) {
                     const result = data.result;
                     resultText.textContent = JSON.stringify(result, null, 2);
@@ -515,9 +515,9 @@
                     resultText.textContent = `Error: ${data.error}`;
                     taskInfo.textContent = '';
                 }
-                
+
                 resultDiv.style.display = 'block';
-                
+
             } catch (error) {
                 console.error('Task submission failed:', error);
                 resultText.textContent = `Error: ${error.message}`;
@@ -527,17 +527,17 @@
                 button.innerHTML = '<i class="fas fa-paper-plane"></i> Submit Task to Chief AI Agent';
             }
         }
-        
+
         // Event listeners
         document.getElementById('run-analysis').addEventListener('click', runAnalysis);
         document.getElementById('submit-task').addEventListener('click', submitTask);
-        
+
         // Initial load
         loadSystemStatus();
         loadMetrics();
         loadAgents();
         loadDatabaseTables();
-        
+
         // Auto-refresh
         setInterval(() => {
             loadSystemStatus();
@@ -545,7 +545,7 @@
             loadAgents();
             loadDatabaseTables();
         }, REFRESH_INTERVAL);
-        
+
         console.log('Virtual AI Company Platform Dashboard loaded successfully!');
     </script>
 </body>

@@ -40,5 +40,5 @@ supabase==2.9.0
 tenacity>=8.2.0
 uvicorn[standard]>=0.24.0
 
-# CrewAI Agent Framework  
+# CrewAI Agent Framework
 crewai>=0.70.0

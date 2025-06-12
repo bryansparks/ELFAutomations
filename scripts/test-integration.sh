@@ -127,14 +127,14 @@ while [ $attempt -le $max_attempts ]; do
         print_status "AgentGateway is healthy"
         break
     fi
-    
+
     if [ $attempt -eq $max_attempts ]; then
         print_error "AgentGateway failed to start after $max_attempts attempts"
         echo "Checking logs:"
         docker logs elf-agentgateway-test
         exit 1
     fi
-    
+
     echo "Attempt $attempt/$max_attempts - waiting for AgentGateway..."
     sleep 2
     ((attempt++))
@@ -158,7 +158,7 @@ if command -v kubectl > /dev/null 2>&1; then
     # Check if we can connect to a Kubernetes cluster
     if kubectl cluster-info > /dev/null 2>&1; then
         echo "Kubernetes cluster detected - testing kagent integration"
-        
+
         # Build agent container
         echo "Building Chief AI Agent container..."
         if docker build -f docker/chief-ai-agent.Dockerfile -t elf-automations/chief-ai-agent:latest .; then
@@ -167,41 +167,41 @@ if command -v kubectl > /dev/null 2>&1; then
             print_error "Failed to build agent container"
             exit 1
         fi
-        
+
         # Create namespace
         kubectl create namespace elf-automations --dry-run=client -o yaml | kubectl apply -f -
-        
+
         # Create secrets
         echo "Creating Kubernetes secrets..."
         kubectl create secret generic anthropic-credentials \
             --from-literal=api-key="${ANTHROPIC_API_KEY}" \
             -n elf-automations \
             --dry-run=client -o yaml | kubectl apply -f -
-        
+
         if [ -n "${FIRECRAWL_API_KEY}" ] && [ "${FIRECRAWL_API_KEY}" != "your_firecrawl_api_key" ]; then
             kubectl create secret generic firecrawl-credentials \
                 --from-literal=api-key="${FIRECRAWL_API_KEY}" \
                 -n elf-automations \
                 --dry-run=client -o yaml | kubectl apply -f -
         fi
-        
+
         # Deploy kagent controller
         echo "Deploying kagent controller..."
         kubectl apply -f k8s/kagent/deployment.yaml
-        
+
         # Deploy agent
         echo "Deploying Chief AI Agent..."
         kubectl apply -f k8s/kagent/chief-ai-agent.yaml
-        
+
         # Wait for deployment
         echo "Waiting for agent deployment..."
         kubectl wait --for=condition=available --timeout=300s deployment/chief-ai-agent -n elf-automations
-        
+
         print_status "kagent + LangGraph agent deployed successfully"
-        
+
         echo "Checking agent status:"
         kubectl get pods -n elf-automations
-        
+
         echo ""
         echo "To monitor the agent:"
         echo "kubectl logs -f deployment/chief-ai-agent -n elf-automations"
@@ -209,7 +209,7 @@ if command -v kubectl > /dev/null 2>&1; then
         echo "To test agent health:"
         echo "kubectl port-forward service/chief-ai-agent 8080:8080 -n elf-automations"
         echo "curl http://localhost:8080/health"
-        
+
     else
         print_warning "Kubernetes cluster not available - skipping kagent tests"
         echo "To test kagent integration:"

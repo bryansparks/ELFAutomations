@@ -3,18 +3,18 @@ Agent Mesh UI Backend
 FastAPI server providing CLI integration and real-time updates
 """
 
-from fastapi import FastAPI, WebSocket, WebSocketDisconnect, HTTPException
-from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse
 import asyncio
 import json
 import logging
 from datetime import datetime
 from pathlib import Path
-from typing import Dict, Any, List
+from typing import Any, Dict, List
 
-from k8s_client import get_k8s_client
 from config_service import ConfigService, ConfigValidationError
+from fastapi import FastAPI, HTTPException, WebSocket, WebSocketDisconnect
+from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
+from k8s_client import get_k8s_client
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -23,7 +23,7 @@ logger = logging.getLogger(__name__)
 app = FastAPI(
     title="Agent Mesh UI API",
     description="Backend API for Agent Mesh UI providing CLI integration and real-time updates",
-    version="1.0.0"
+    version="1.0.0",
 )
 
 # CORS middleware for frontend communication
@@ -35,12 +35,15 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+
 class DateTimeEncoder(json.JSONEncoder):
     """Custom JSON encoder to handle datetime objects"""
+
     def default(self, obj):
         if isinstance(obj, datetime):
             return obj.isoformat()
         return super().default(obj)
+
 
 # WebSocket connection manager
 class ConnectionManager:
@@ -50,11 +53,15 @@ class ConnectionManager:
     async def connect(self, websocket: WebSocket):
         await websocket.accept()
         self.active_connections.append(websocket)
-        logger.info(f"WebSocket connected. Total connections: {len(self.active_connections)}")
+        logger.info(
+            f"WebSocket connected. Total connections: {len(self.active_connections)}"
+        )
 
     def disconnect(self, websocket: WebSocket):
         self.active_connections.remove(websocket)
-        logger.info(f"WebSocket disconnected. Total connections: {len(self.active_connections)}")
+        logger.info(
+            f"WebSocket disconnected. Total connections: {len(self.active_connections)}"
+        )
 
     async def broadcast(self, message: dict):
         """Broadcast message to all connected clients"""
@@ -78,7 +85,9 @@ class ConnectionManager:
                     logger.error(f"Error sending message to WebSocket: {e}")
                     self.active_connections.remove(connection)
 
+
 manager = ConnectionManager()
+
 
 # K8s API client service
 class K8sAPIService:
@@ -92,14 +101,11 @@ class K8sAPIService:
             return {
                 "status": "success",
                 "agents": agents,
-                "timestamp": datetime.now().isoformat()
+                "timestamp": datetime.now().isoformat(),
             }
         except Exception as e:
             logger.error(f"Error getting agent status: {e}")
-            return {
-                "status": "error",
-                "message": str(e)
-            }
+            return {"status": "error", "message": str(e)}
 
     async def get_pods_status(self) -> Dict[str, Any]:
         """Get current pod status from Kubernetes"""
@@ -108,14 +114,11 @@ class K8sAPIService:
             return {
                 "status": "success",
                 "pods": pods,
-                "timestamp": datetime.now().isoformat()
+                "timestamp": datetime.now().isoformat(),
             }
         except Exception as e:
             logger.error(f"Error getting pod status: {e}")
-            return {
-                "status": "error",
-                "message": str(e)
-            }
+            return {"status": "error", "message": str(e)}
 
     async def get_services_status(self) -> Dict[str, Any]:
         """Get current services status from Kubernetes"""
@@ -124,14 +127,11 @@ class K8sAPIService:
             return {
                 "status": "success",
                 "services": services,
-                "timestamp": datetime.now().isoformat()
+                "timestamp": datetime.now().isoformat(),
             }
         except Exception as e:
             logger.error(f"Error getting services status: {e}")
-            return {
-                "status": "error",
-                "message": str(e)
-            }
+            return {"status": "error", "message": str(e)}
 
     async def get_deployments_status(self) -> Dict[str, Any]:
         """Get current deployments status from Kubernetes"""
@@ -140,37 +140,36 @@ class K8sAPIService:
             return {
                 "status": "success",
                 "deployments": deployments,
-                "timestamp": datetime.now().isoformat()
+                "timestamp": datetime.now().isoformat(),
             }
         except Exception as e:
             logger.error(f"Error getting deployments status: {e}")
-            return {
-                "status": "error",
-                "message": str(e)
-            }
+            return {"status": "error", "message": str(e)}
 
     async def get_system_health(self) -> Dict[str, Any]:
         """Get overall system health status"""
         try:
             # Check K8s API connectivity
             k8s_healthy = await self.k8s_client.health_check()
-            
+
             # Get resource counts
             agents = await self.k8s_client.get_kagent_resources()
             pods = await self.k8s_client.get_pods_status()
             services = await self.k8s_client.get_services_status()
             deployments = await self.k8s_client.get_deployments_status()
-            
+
             # Calculate health metrics
             total_agents = len(agents)
             healthy_agents = len([a for a in agents if a.get("phase") == "Running"])
-            
+
             total_pods = len(pods)
             running_pods = len([p for p in pods if p.get("status") == "Running"])
-            
+
             total_deployments = len(deployments)
-            ready_deployments = len([d for d in deployments if d.get("ready_replicas", 0) > 0])
-            
+            ready_deployments = len(
+                [d for d in deployments if d.get("ready_replicas", 0) > 0]
+            )
+
             return {
                 "status": "success",
                 "system_health": {
@@ -178,33 +177,38 @@ class K8sAPIService:
                     "agents": {
                         "total": total_agents,
                         "healthy": healthy_agents,
-                        "health_percentage": (healthy_agents / total_agents * 100) if total_agents > 0 else 0
+                        "health_percentage": (healthy_agents / total_agents * 100)
+                        if total_agents > 0
+                        else 0,
                     },
                     "pods": {
                         "total": total_pods,
                         "running": running_pods,
-                        "health_percentage": (running_pods / total_pods * 100) if total_pods > 0 else 0
+                        "health_percentage": (running_pods / total_pods * 100)
+                        if total_pods > 0
+                        else 0,
                     },
                     "deployments": {
                         "total": total_deployments,
                         "ready": ready_deployments,
-                        "health_percentage": (ready_deployments / total_deployments * 100) if total_deployments > 0 else 0
+                        "health_percentage": (
+                            ready_deployments / total_deployments * 100
+                        )
+                        if total_deployments > 0
+                        else 0,
                     },
-                    "services": {
-                        "total": len(services)
-                    }
+                    "services": {"total": len(services)},
                 },
-                "timestamp": datetime.now().isoformat()
+                "timestamp": datetime.now().isoformat(),
             }
         except Exception as e:
             logger.error(f"Error getting system health: {e}")
-            return {
-                "status": "error",
-                "message": str(e)
-            }
+            return {"status": "error", "message": str(e)}
+
 
 k8s_api_service = K8sAPIService()
 config_service = ConfigService()
+
 
 @app.get("/")
 async def root():
@@ -212,8 +216,9 @@ async def root():
     return {
         "status": "operational",
         "service": "Agent Mesh UI API",
-        "timestamp": datetime.now().isoformat()
+        "timestamp": datetime.now().isoformat(),
     }
+
 
 @app.get("/api/health")
 async def health_check():
@@ -221,35 +226,42 @@ async def health_check():
     return {
         "status": "healthy",
         "active_connections": len(manager.active_connections),
-        "timestamp": datetime.now().isoformat()
+        "timestamp": datetime.now().isoformat(),
     }
+
 
 @app.get("/api/agents/status")
 async def get_agents_status():
     """Get current agent status from Kubernetes"""
     return await k8s_api_service.get_agents_status()
 
+
 @app.get("/api/pods/status")
 async def get_pods_status():
     """Get current pod status from Kubernetes"""
     return await k8s_api_service.get_pods_status()
+
 
 @app.get("/api/services/status")
 async def get_services_status():
     """Get current services status from Kubernetes"""
     return await k8s_api_service.get_services_status()
 
+
 @app.get("/api/deployments/status")
 async def get_deployments_status():
     """Get current deployments status from Kubernetes"""
     return await k8s_api_service.get_deployments_status()
+
 
 @app.get("/api/system/health")
 async def get_system_health():
     """Get overall system health status"""
     return await k8s_api_service.get_system_health()
 
+
 # YAML Configuration Management API Endpoints
+
 
 @app.get("/api/configs/summary")
 async def get_config_summary():
@@ -260,6 +272,7 @@ async def get_config_summary():
         logger.error(f"Error getting config summary: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
+
 @app.get("/api/configs/departments")
 async def get_departments():
     """Get list of all departments"""
@@ -269,7 +282,9 @@ async def get_departments():
         logger.error(f"Error getting departments: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
+
 # Agent Configuration Endpoints
+
 
 @app.get("/api/configs/agents")
 async def list_agents():
@@ -281,19 +296,23 @@ async def list_agents():
         logger.error(f"Error listing agents: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
+
 @app.get("/api/configs/agents/{name}")
 async def get_agent(name: str):
     """Get specific agent configuration"""
     try:
         agent = config_service.get_agent(name)
         if agent is None:
-            raise HTTPException(status_code=404, detail=f"Agent configuration '{name}' not found")
+            raise HTTPException(
+                status_code=404, detail=f"Agent configuration '{name}' not found"
+            )
         return agent
     except HTTPException:
         raise
     except Exception as e:
         logger.error(f"Error getting agent {name}: {e}")
         raise HTTPException(status_code=500, detail=str(e))
+
 
 @app.post("/api/configs/agents")
 async def create_agent(config: Dict[str, Any]):
@@ -308,6 +327,7 @@ async def create_agent(config: Dict[str, Any]):
         logger.error(f"Error creating agent: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
+
 @app.put("/api/configs/agents/{name}")
 async def update_agent(name: str, config: Dict[str, Any]):
     """Update existing agent configuration"""
@@ -321,13 +341,16 @@ async def update_agent(name: str, config: Dict[str, Any]):
         logger.error(f"Error updating agent {name}: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
+
 @app.delete("/api/configs/agents/{name}")
 async def delete_agent(name: str):
     """Delete agent configuration"""
     try:
         success = config_service.delete_agent(name)
         if not success:
-            raise HTTPException(status_code=404, detail=f"Agent configuration '{name}' not found")
+            raise HTTPException(
+                status_code=404, detail=f"Agent configuration '{name}' not found"
+            )
         return {"message": f"Agent configuration '{name}' deleted successfully"}
     except HTTPException:
         raise
@@ -335,7 +358,9 @@ async def delete_agent(name: str):
         logger.error(f"Error deleting agent {name}: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
+
 # Crew Configuration Endpoints
+
 
 @app.get("/api/configs/crews")
 async def list_crews():
@@ -347,19 +372,23 @@ async def list_crews():
         logger.error(f"Error listing crews: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
+
 @app.get("/api/configs/crews/{name}")
 async def get_crew(name: str):
     """Get specific crew configuration"""
     try:
         crew = config_service.get_crew(name)
         if crew is None:
-            raise HTTPException(status_code=404, detail=f"Crew configuration '{name}' not found")
+            raise HTTPException(
+                status_code=404, detail=f"Crew configuration '{name}' not found"
+            )
         return crew
     except HTTPException:
         raise
     except Exception as e:
         logger.error(f"Error getting crew {name}: {e}")
         raise HTTPException(status_code=500, detail=str(e))
+
 
 @app.post("/api/configs/crews")
 async def create_crew(config: Dict[str, Any]):
@@ -374,6 +403,7 @@ async def create_crew(config: Dict[str, Any]):
         logger.error(f"Error creating crew: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
+
 @app.put("/api/configs/crews/{name}")
 async def update_crew(name: str, config: Dict[str, Any]):
     """Update existing crew configuration"""
@@ -387,13 +417,16 @@ async def update_crew(name: str, config: Dict[str, Any]):
         logger.error(f"Error updating crew {name}: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
+
 @app.delete("/api/configs/crews/{name}")
 async def delete_crew(name: str):
     """Delete crew configuration"""
     try:
         success = config_service.delete_crew(name)
         if not success:
-            raise HTTPException(status_code=404, detail=f"Crew configuration '{name}' not found")
+            raise HTTPException(
+                status_code=404, detail=f"Crew configuration '{name}' not found"
+            )
         return {"message": f"Crew configuration '{name}' deleted successfully"}
     except HTTPException:
         raise
@@ -401,7 +434,9 @@ async def delete_crew(name: str):
         logger.error(f"Error deleting crew {name}: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
+
 # Template Endpoints
+
 
 @app.get("/api/configs/templates/agent")
 async def get_agent_template():
@@ -412,6 +447,7 @@ async def get_agent_template():
         logger.error(f"Error getting agent template: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
+
 @app.get("/api/configs/templates/crew")
 async def get_crew_template():
     """Get crew configuration template"""
@@ -420,6 +456,7 @@ async def get_crew_template():
     except Exception as e:
         logger.error(f"Error getting crew template: {e}")
         raise HTTPException(status_code=500, detail=str(e))
+
 
 @app.websocket("/ws")
 async def websocket_endpoint(websocket: WebSocket):
@@ -430,26 +467,32 @@ async def websocket_endpoint(websocket: WebSocket):
             # Keep connection alive and handle incoming messages
             data = await websocket.receive_text()
             message = json.loads(data)
-            
+
             # Handle different message types
             if message.get("type") == "ping":
-                await websocket.send_text(json.dumps({
-                    "type": "pong",
-                    "timestamp": datetime.now().isoformat()
-                }))
+                await websocket.send_text(
+                    json.dumps(
+                        {"type": "pong", "timestamp": datetime.now().isoformat()}
+                    )
+                )
             elif message.get("type") == "subscribe":
                 # Handle subscription requests
-                await websocket.send_text(json.dumps({
-                    "type": "subscribed",
-                    "subscription": message.get("subscription"),
-                    "timestamp": datetime.now().isoformat()
-                }))
-                
+                await websocket.send_text(
+                    json.dumps(
+                        {
+                            "type": "subscribed",
+                            "subscription": message.get("subscription"),
+                            "timestamp": datetime.now().isoformat(),
+                        }
+                    )
+                )
+
     except WebSocketDisconnect:
         manager.disconnect(websocket)
     except Exception as e:
         logger.error(f"WebSocket error: {e}")
         manager.disconnect(websocket)
+
 
 # Background task for real-time monitoring
 async def background_monitor():
@@ -459,48 +502,50 @@ async def background_monitor():
             # Get agent status
             agents_status = await k8s_api_service.get_agents_status()
             if agents_status["status"] == "success":
-                await manager.broadcast_to_all({
-                    "type": "agents_update",
-                    "data": agents_status["agents"]
-                })
-            
-            # Get pod status  
+                await manager.broadcast_to_all(
+                    {"type": "agents_update", "data": agents_status["agents"]}
+                )
+
+            # Get pod status
             pods_status = await k8s_api_service.get_pods_status()
             if pods_status["status"] == "success":
-                await manager.broadcast_to_all({
-                    "type": "pods_update", 
-                    "data": pods_status["pods"]
-                })
-                
+                await manager.broadcast_to_all(
+                    {"type": "pods_update", "data": pods_status["pods"]}
+                )
+
             # Get services status
             services_status = await k8s_api_service.get_services_status()
             if services_status["status"] == "success":
-                await manager.broadcast_to_all({
-                    "type": "services_update",
-                    "data": services_status["services"]
-                })
-                
+                await manager.broadcast_to_all(
+                    {"type": "services_update", "data": services_status["services"]}
+                )
+
             # Get deployments status
             deployments_status = await k8s_api_service.get_deployments_status()
             if deployments_status["status"] == "success":
-                await manager.broadcast_to_all({
-                    "type": "deployments_update",
-                    "data": deployments_status["deployments"]
-                })
-                
+                await manager.broadcast_to_all(
+                    {
+                        "type": "deployments_update",
+                        "data": deployments_status["deployments"],
+                    }
+                )
+
             # Get system health
             system_health = await k8s_api_service.get_system_health()
             if system_health["status"] == "success":
-                await manager.broadcast_to_all({
-                    "type": "system_health_update",
-                    "data": system_health["system_health"]
-                })
-                
+                await manager.broadcast_to_all(
+                    {
+                        "type": "system_health_update",
+                        "data": system_health["system_health"],
+                    }
+                )
+
         except Exception as e:
             logger.error(f"Error in background monitor: {e}")
-        
+
         # Wait 30 seconds before next update (reduced from 10s for better performance)
         await asyncio.sleep(30)
+
 
 @app.on_event("startup")
 async def startup_event():
@@ -508,6 +553,8 @@ async def startup_event():
     logger.info("Starting Agent Mesh UI Backend")
     asyncio.create_task(background_monitor())
 
+
 if __name__ == "__main__":
     import uvicorn
+
     uvicorn.run(app, host="0.0.0.0", port=8847, log_level="info")

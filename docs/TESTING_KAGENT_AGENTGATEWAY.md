@@ -89,11 +89,11 @@ curl -X POST http://localhost:3000/mcp/servers/business-tools/call \
 
 ### Expected Results - Phase 1
 
-✅ **AgentGateway Running**: Health endpoint responds  
-✅ **TypeScript MCP Servers**: Supabase and Business Tools accessible  
-✅ **Public MCP Server**: Firecrawl website scraping works  
-✅ **Tool Calls**: All MCP tools respond correctly  
-✅ **Error Handling**: Graceful error responses for invalid calls  
+✅ **AgentGateway Running**: Health endpoint responds
+✅ **TypeScript MCP Servers**: Supabase and Business Tools accessible
+✅ **Public MCP Server**: Firecrawl website scraping works
+✅ **Tool Calls**: All MCP tools respond correctly
+✅ **Error Handling**: Graceful error responses for invalid calls
 
 ## Phase 2: Testing kagent + LangGraph Agent
 
@@ -186,12 +186,12 @@ kubectl get configmap agent-chief-ai-agent-status -n elf-automations -o yaml
 
 ### Expected Results - Phase 2
 
-✅ **Agent Container**: Builds and runs successfully  
-✅ **kagent Integration**: Agent registers with kagent controller  
-✅ **K8s Deployment**: Pod starts and stays healthy  
-✅ **AgentGateway Communication**: Agent can reach MCP tools  
-✅ **LangGraph Workflow**: Agent processes messages through workflow  
-✅ **Health Monitoring**: Health checks and metrics working  
+✅ **Agent Container**: Builds and runs successfully
+✅ **kagent Integration**: Agent registers with kagent controller
+✅ **K8s Deployment**: Pod starts and stays healthy
+✅ **AgentGateway Communication**: Agent can reach MCP tools
+✅ **LangGraph Workflow**: Agent processes messages through workflow
+✅ **Health Monitoring**: Health checks and metrics working
 
 ## Phase 3: End-to-End Integration Testing
 
@@ -207,13 +207,13 @@ from agents.executive.chief_ai_kagent import KAgentChiefAI
 async def test():
     agent = KAgentChiefAI()
     await agent.start()
-    
+
     # Test message that should trigger MCP tool usage
     response = await agent.process_message(
         'Get the current weather in San Francisco and search for recent news about AI'
     )
     print('Agent Response:', response)
-    
+
     await agent.stop()
 
 asyncio.run(test())
@@ -235,11 +235,11 @@ kubectl logs -f deployment/kagent-controller -n elf-automations
 
 ### Expected Results - Phase 3
 
-✅ **Message Processing**: Agent receives and processes messages  
-✅ **Tool Discovery**: Agent discovers MCP tools via AgentGateway  
-✅ **Tool Execution**: Agent successfully calls MCP tools  
-✅ **Response Generation**: Agent generates responses using tool results  
-✅ **Observability**: Full request tracing through the stack  
+✅ **Message Processing**: Agent receives and processes messages
+✅ **Tool Discovery**: Agent discovers MCP tools via AgentGateway
+✅ **Tool Execution**: Agent successfully calls MCP tools
+✅ **Response Generation**: Agent generates responses using tool results
+✅ **Observability**: Full request tracing through the stack
 
 ## Troubleshooting
 
@@ -293,7 +293,7 @@ kubectl auth can-i create agents --as=system:serviceaccount:elf-automations:kage
 Your integration is working correctly when:
 
 1. ✅ **AgentGateway serves as MCP proxy** with visibility into all tool calls
-2. ✅ **TypeScript MCP servers** work alongside public MCP servers  
+2. ✅ **TypeScript MCP servers** work alongside public MCP servers
 3. ✅ **kagent deploys agents** as Kubernetes-native resources
 4. ✅ **LangGraph agents** can discover and use MCP tools via AgentGateway
 5. ✅ **Full observability** through logs, metrics, and health checks

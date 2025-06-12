@@ -19,10 +19,10 @@ export class SupabaseMCPServer extends BaseMCPServer {
 
   constructor() {
     super('supabase-mcp-server', '1.0.0');
-    
+
     const supabaseUrl = process.env.SUPABASE_URL;
     const supabaseKey = process.env.SUPABASE_ANON_KEY;
-    
+
     if (!supabaseUrl || !supabaseKey) {
       throw new Error('SUPABASE_URL and SUPABASE_ANON_KEY environment variables are required');
     }
@@ -86,7 +86,7 @@ export class SupabaseMCPServer extends BaseMCPServer {
 
   private async queryDatabase(args: any) {
     const { query, params } = this.validateInput(QuerySchema, args);
-    
+
     const { data, error } = await this.supabase.rpc('execute_sql', {
       query_text: query,
       query_params: params || [],
@@ -105,7 +105,7 @@ export class SupabaseMCPServer extends BaseMCPServer {
 
   private async insertRecord(args: any) {
     const { table, data } = this.validateInput(TableSchema, args);
-    
+
     const { data: result, error } = await this.supabase
       .from(table)
       .insert(data)
@@ -124,13 +124,13 @@ export class SupabaseMCPServer extends BaseMCPServer {
 
   private async updateRecord(args: any) {
     const { table, data, conditions } = this.validateInput(TableSchema, args);
-    
+
     if (!conditions) {
       throw new Error('Conditions are required for update operations');
     }
 
     let query = this.supabase.from(table).update(data);
-    
+
     // Apply conditions
     for (const [key, value] of Object.entries(conditions)) {
       query = query.eq(key, value);
@@ -159,7 +159,7 @@ export class SupabaseMCPServer extends BaseMCPServer {
     );
 
     let query = this.supabase.from(table).delete();
-    
+
     // Apply conditions
     for (const [key, value] of Object.entries(conditions)) {
       query = query.eq(key, value);

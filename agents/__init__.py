@@ -5,12 +5,12 @@ Agents Package
 This package contains all AI agent implementations for the Virtual AI Company Platform.
 """
 
-from .base import BaseAgent, AgentConfig, AgentState, AgentType
+from .base import AgentConfig, AgentState, AgentType, BaseAgent
 from .registry import AgentRegistry
 
 __all__ = [
     "BaseAgent",
-    "AgentConfig", 
+    "AgentConfig",
     "AgentState",
     "AgentType",
     "AgentRegistry",

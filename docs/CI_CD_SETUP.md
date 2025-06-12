@@ -99,7 +99,7 @@ OPENAI_API_KEY     # OpenAI API key
    ```bash
    # Encode your kubeconfig
    cat ~/.kube/config | base64 | pbcopy
-   
+
    # Add as KUBE_CONFIG_STAGING or KUBE_CONFIG_PRODUCTION
    ```
 

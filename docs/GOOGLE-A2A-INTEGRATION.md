@@ -1,18 +1,18 @@
 # Google A2A Protocol Integration Guide
 ## Virtual AI Company Platform - Real A2A Implementation
 
-**Version:** 1.0  
-**Purpose:** Integration guide for Google's official A2A (Agent-to-Agent) protocol  
-**Target:** Windsurf AI Assistant for implementation  
+**Version:** 1.0
+**Purpose:** Integration guide for Google's official A2A (Agent-to-Agent) protocol
+**Target:** Windsurf AI Assistant for implementation
 
 ---
 
 ## Google A2A Protocol Sources
 
 ### Official Repository
-**Primary Source:** https://github.com/google-research/a2a  
-**Documentation:** https://a2a.dev (if available) or README in repository  
-**License:** Apache 2.0 (verify in repository)  
+**Primary Source:** https://github.com/google-research/a2a
+**Documentation:** https://a2a.dev (if available) or README in repository
+**License:** Apache 2.0 (verify in repository)
 
 ### Repository Structure
 ```
@@ -21,7 +21,7 @@ google-research/a2a/
 │   ├── a2a/               # Core A2A Python package
 │   ├── examples/          # Python implementation examples
 │   └── setup.py           # Python package setup
-├── typescript/            # TypeScript A2A implementation  
+├── typescript/            # TypeScript A2A implementation
 │   ├── src/a2a/          # Core A2A TypeScript package
 │   ├── examples/         # TypeScript examples
 │   └── package.json      # NPM package configuration
@@ -132,14 +132,14 @@ from typing import Dict, Any, Optional
 
 class CrewAIA2AAgent:
     def __init__(
-        self, 
-        agent_id: str, 
-        role: str, 
+        self,
+        agent_id: str,
+        role: str,
         backstory: str,
         a2a_config: A2AConfig
     ):
         self.agent_id = agent_id
-        
+
         # Initialize CrewAI agent
         self.crew_agent = Agent(
             role=role,
@@ -147,17 +147,17 @@ class CrewAIA2AAgent:
             verbose=True,
             allow_delegation=False  # A2A handles delegation
         )
-        
+
         # Initialize Google A2A client
         self.a2a_client = A2AClient(
             agent_id=agent_id,
             config=a2a_config,
             transport=GRPCTransport()  # Use Google's gRPC transport
         )
-        
+
         # Service discovery for finding other agents
         self.service_discovery = ServiceDiscovery(a2a_config)
-        
+
     async def start(self):
         """Start A2A client and register with discovery service"""
         await self.a2a_client.start()
@@ -166,21 +166,21 @@ class CrewAIA2AAgent:
             capabilities=self.get_capabilities(),
             metadata=self.get_metadata()
         )
-        
+
     async def stop(self):
         """Gracefully shutdown A2A client"""
         await self.service_discovery.unregister_agent(self.agent_id)
         await self.a2a_client.stop()
-        
+
     async def send_message(
-        self, 
-        target_agent: str, 
+        self,
+        target_agent: str,
         message_type: str,
         payload: Dict[str, Any],
         context: Optional[Dict[str, Any]] = None
     ) -> A2AMessage:
         """Send message using Google A2A protocol"""
-        
+
         # Create A2A message using Google's message format
         a2a_message = A2AMessage(
             sender_id=self.agent_id,
@@ -190,19 +190,19 @@ class CrewAIA2AAgent:
             context=context or {},
             correlation_id=self.a2a_client.generate_correlation_id()
         )
-        
+
         # Send via Google A2A client
         response = await self.a2a_client.send_message(a2a_message)
         return response
-        
+
     async def handle_incoming_message(self, message: A2AMessage) -> A2AMessage:
         """Handle incoming A2A messages"""
-        
+
         # Extract message details
         message_type = message.message_type
         payload = message.payload
         sender = message.sender_id
-        
+
         # Process based on message type
         if message_type == "task_delegation":
             result = await self.handle_task_delegation(payload)
@@ -212,7 +212,7 @@ class CrewAIA2AAgent:
             result = await self.handle_status_update(payload)
         else:
             result = {"error": f"Unknown message type: {message_type}"}
-            
+
         # Create response using Google A2A format
         response = A2AMessage(
             sender_id=self.agent_id,
@@ -221,13 +221,13 @@ class CrewAIA2AAgent:
             payload=result,
             correlation_id=message.correlation_id
         )
-        
+
         return response
-        
+
     def get_capabilities(self) -> list[str]:
         """Override in subclasses to define agent capabilities"""
         return ["base_agent"]
-        
+
     def get_metadata(self) -> Dict[str, Any]:
         """Agent metadata for service discovery"""
         return {
@@ -254,49 +254,49 @@ class SDRAgent(CrewAIA2AAgent):
             message_router_endpoint=os.getenv("A2A_MESSAGE_ROUTER"),
             agent_port=int(os.getenv("A2A_AGENT_PORT", "8080"))
         )
-        
+
         super().__init__(
             agent_id="sdr-agent",
             role="Sales Development Representative",
-            backstory="""You are an experienced SDR focused on qualifying 
-            inbound leads and conducting initial outreach. You coordinate 
+            backstory="""You are an experienced SDR focused on qualifying
+            inbound leads and conducting initial outreach. You coordinate
             with marketing for lead sources and sales reps for handoffs.""",
             a2a_config=a2a_config
         )
-        
+
     async def handle_task_delegation(self, payload: dict) -> dict:
         """Handle task delegation from other agents"""
         task_type = payload.get("task_type")
-        
+
         if task_type == "qualify_lead":
             return await self.qualify_lead(payload["lead_data"])
         elif task_type == "initial_outreach":
             return await self.conduct_outreach(payload["prospect_data"])
         else:
             return {"error": f"Unknown task type: {task_type}"}
-            
+
     async def qualify_lead(self, lead_data: dict) -> dict:
         """Qualify lead using CrewAI + notify sales rep via A2A"""
-        
+
         # Use CrewAI for lead qualification
         qualification_task = Task(
             description=f"""
             Qualify this lead based on BANT criteria:
             Lead Data: {lead_data}
-            
+
             Assess:
             - Budget: Can they afford our solution?
             - Authority: Are they a decision maker?
             - Need: Do they have a clear need for our product?
             - Timeline: When are they looking to implement?
-            
+
             Provide a qualification score (0-1) and detailed assessment.
             """
         )
-        
+
         crew = Crew(agents=[self.crew_agent], tasks=[qualification_task])
         result = crew.kickoff()
-        
+
         # Parse CrewAI result
         qualification_result = {
             "qualified": result.score > 0.7,
@@ -305,7 +305,7 @@ class SDRAgent(CrewAIA2AAgent):
             "next_steps": result.recommended_actions,
             "lead_id": lead_data.get("lead_id")
         }
-        
+
         # If qualified, notify sales rep via Google A2A
         if qualification_result["qualified"]:
             await self.send_message(
@@ -321,20 +321,20 @@ class SDRAgent(CrewAIA2AAgent):
                     "priority": "high" if result.score > 0.9 else "normal"
                 }
             )
-            
+
         return qualification_result
-        
+
     def get_capabilities(self) -> list[str]:
         return [
             "lead_qualification",
-            "initial_outreach", 
+            "initial_outreach",
             "lead_scoring",
             "prospect_research"
         ]
-        
+
     def get_department(self) -> str:
         return "sales"
-        
+
     def get_agent_type(self) -> str:
         return "sdr"
 ```
@@ -352,7 +352,7 @@ class A2AMessageRouterService {
     private router: A2AMessageRouter;
     private discovery: ServiceDiscovery;
     private app: express.Application;
-    
+
     constructor(config: A2AConfig) {
         // Initialize Google A2A message router
         this.router = new A2AMessageRouter(config);
@@ -360,39 +360,39 @@ class A2AMessageRouterService {
         this.app = express();
         this.setupRoutes();
     }
-    
+
     async start(port: number = 8080): Promise<void> {
         // Start Google A2A components
         await this.router.start();
         await this.discovery.start();
-        
+
         // Start HTTP server for health checks
         this.app.listen(port, () => {
             console.log(`A2A Message Router running on port ${port}`);
         });
     }
-    
+
     private setupRoutes(): void {
         // Health check for Kubernetes
         this.app.get('/health', (req, res) => {
-            res.json({ 
+            res.json({
                 status: 'healthy',
                 router_status: this.router.getStatus(),
                 discovery_status: this.discovery.getStatus()
             });
         });
-        
+
         // Metrics endpoint
         this.app.get('/metrics', (req, res) => {
             res.json(this.router.getMetrics());
         });
     }
-    
+
     async routeMessage(message: A2AMessage): Promise<void> {
         // Use Google A2A routing logic
         await this.router.routeMessage(message);
     }
-    
+
     async stop(): Promise<void> {
         await this.router.stop();
         await this.discovery.stop();
@@ -470,18 +470,18 @@ data:
     discovery:
       endpoint: "a2a-discovery:8080"
       refresh_interval: 30s
-    
+
     transport:
       grpc:
         port: 50051
         tls_enabled: true
-      
+
     routing:
       strategy: "round_robin"
       retry_policy:
         max_attempts: 3
         backoff: "exponential"
-    
+
     context:
       storage: "redis"
       redis_url: "redis://redis-cluster:6379"
@@ -497,12 +497,12 @@ metadata:
   namespace: sales-department
 spec:
   systemPrompt: |
-    You are a Sales Development Representative using Google A2A protocol 
+    You are a Sales Development Representative using Google A2A protocol
     for coordination with marketing and sales teams.
-    
+
   image: "elfautomations/sdr-agent:v1.0.0"
   replicas: 5
-  
+
   # A2A configuration via environment variables
   env:
     - name: A2A_AGENT_ID
@@ -515,17 +515,17 @@ spec:
       value: "8080"
     - name: A2A_CONFIG_PATH
       value: "/etc/a2a/agent-config.yaml"
-      
+
   # Mount A2A configuration
   volumeMounts:
     - name: a2a-agent-config
       mountPath: /etc/a2a
-      
+
   volumes:
     - name: a2a-agent-config
       configMap:
         name: a2a-agent-config
-        
+
   tools:
     - name: crm-qualification-tools
     - name: lead-scoring-tools

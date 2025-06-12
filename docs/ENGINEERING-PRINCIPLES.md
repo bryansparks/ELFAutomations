@@ -1,9 +1,9 @@
 # Engineering Principles & Guidelines
 ## Virtual AI Company Platform
 
-**Version:** 1.0  
-**Date:** June 2025  
-**Owner:** Engineering Team  
+**Version:** 1.0
+**Date:** June 2025
+**Owner:** Engineering Team
 
 ---
 
@@ -119,12 +119,12 @@ class AgentConfig(BaseModel):
     name: str = Field(..., description="Agent name")
     department: str = Field(..., description="Department assignment")
     tools: List[str] = Field(default_factory=list, description="Available tools")
-    
+
 class AgentResponse(BaseModel):
     agent_id: str
     status: str
     message: Optional[str] = None
-    
+
 # Async-first for all agent operations
 async def create_agent(config: AgentConfig) -> AgentResponse:
     """Create a new agent instance with the given configuration."""
@@ -160,22 +160,22 @@ def process_customer_inquiry(
     priority: int = 1
 ) -> InquiryResponse:
     """Process a customer inquiry through the appropriate agent workflow.
-    
+
     This function routes customer inquiries to the correct department agent
     based on inquiry type and current workload distribution.
-    
+
     Args:
         inquiry: Customer inquiry containing message, contact info, and metadata
         assigned_agent: Agent ID to handle the inquiry
         priority: Inquiry priority (1=low, 5=critical)
-        
+
     Returns:
         InquiryResponse containing status, agent assignment, and estimated resolution time
-        
+
     Raises:
         AgentNotFoundError: When assigned agent is not available
         WorkflowTimeoutError: When inquiry processing exceeds timeout
-        
+
     Examples:
         >>> inquiry = CustomerInquiry(message="Need help with billing", type="support")
         >>> response = process_customer_inquiry(inquiry, "support-agent-1")
@@ -205,7 +205,7 @@ class TestSalesAgent:
             crm_server=mock_crm
         )
         return agent
-    
+
     @pytest.mark.asyncio
     async def test_qualify_lead_success(self, sales_agent):
         """Test successful lead qualification workflow."""
@@ -215,21 +215,21 @@ class TestSalesAgent:
             "company": "Test Corp",
             "email": "john@testcorp.com"
         }
-        
+
         # When
         result = await sales_agent.qualify_lead(lead_data)
-        
+
         # Then
         assert result.status == "qualified"
         assert result.score > 0.7
         sales_agent.crm_server.create_lead.assert_called_once()
-    
+
     @pytest.mark.asyncio
     async def test_qualify_lead_insufficient_data(self, sales_agent):
         """Test lead qualification with insufficient data."""
         # Given
         incomplete_lead = {"name": "John Doe"}
-        
+
         # When/Then
         with pytest.raises(ValueError, match="Missing required lead information"):
             await sales_agent.qualify_lead(incomplete_lead)
@@ -289,7 +289,7 @@ departments:
     tools: ["crm", "email", "calendar"]
     budget_limits:
       api_calls_per_hour: 1000
-      
+
   marketing:
     agent_count: 3
     tools: ["social_media", "analytics", "content"]
@@ -301,7 +301,7 @@ observability:
   logging_level: "INFO"
   metrics_enabled: true
   tracing_enabled: true
-  
+
 security:
   require_tls: true
   api_rate_limiting: true
@@ -410,12 +410,12 @@ Agent_Response_Times:
   simple_tasks: "< 2 seconds"
   complex_reasoning: "< 10 seconds"
   cross_department_coordination: "< 15 seconds"
-  
+
 API_Response_Times:
   health_checks: "< 100ms"
   agent_status: "< 500ms"
   workflow_initiation: "< 1 second"
-  
+
 Database_Operations:
   reads: "< 100ms"
   writes: "< 200ms"
@@ -431,10 +431,10 @@ class OptimizedMCPServer:
     def __init__(self):
         connector = TCPConnector(limit=100, limit_per_host=30)
         self.session = ClientSession(connector=connector)
-    
+
     async def __aenter__(self):
         return self
-    
+
     async def __aexit__(self, exc_type, exc_val, exc_tb):
         await self.session.close()
 
@@ -446,7 +446,7 @@ class AgentMemory:
     def __init__(self):
         self._cache = {}
         self._cache_ttl = {}
-    
+
     async def get_with_ttl(self, key: str, ttl: int = 300):
         """Get cached value with time-to-live."""
         if key in self._cache:
@@ -485,7 +485,7 @@ class AgentPermissions:
     def __init__(self, agent_id: str):
         self.agent_id = agent_id
         self.roles = self._get_agent_roles(agent_id)
-    
+
     def can_access_department(self, department: str) -> bool:
         """Check if agent can access department resources."""
         return department in self.roles or "admin" in self.roles
@@ -499,12 +499,12 @@ from cryptography.fernet import Fernet
 class SecureAgentData:
     def __init__(self, encryption_key: bytes):
         self.cipher = Fernet(encryption_key)
-    
+
     def encrypt_agent_memory(self, data: dict) -> bytes:
         """Encrypt agent memory data."""
         json_data = json.dumps(data).encode()
         return self.cipher.encrypt(json_data)
-    
+
     def decrypt_agent_memory(self, encrypted_data: bytes) -> dict:
         """Decrypt agent memory data."""
         decrypted_data = self.cipher.decrypt(encrypted_data)
@@ -526,8 +526,8 @@ class ErrorSeverity(Enum):
 
 class AgentException(Exception):
     def __init__(
-        self, 
-        message: str, 
+        self,
+        message: str,
         agent_id: str,
         severity: ErrorSeverity = ErrorSeverity.MEDIUM,
         context: dict = None
@@ -536,7 +536,7 @@ class AgentException(Exception):
         self.agent_id = agent_id
         self.severity = severity
         self.context = context or {}
-        
+
         # Log the error with structured data
         logger = structlog.get_logger()
         logger.error(
@@ -547,7 +547,7 @@ class AgentException(Exception):
             context=context,
             error_type=self.__class__.__name__
         )
-        
+
         super().__init__(message)
 
 # Circuit breaker pattern for external services
@@ -558,7 +558,7 @@ class CircuitBreaker:
         self.failure_count = 0
         self.last_failure_time = None
         self.state = "closed"  # closed, open, half-open
-    
+
     async def call(self, func, *args, **kwargs):
         """Execute function with circuit breaker protection."""
         if self.state == "open":
@@ -566,7 +566,7 @@ class CircuitBreaker:
                 raise CircuitBreakerOpenError("Circuit breaker is open")
             else:
                 self.state = "half-open"
-        
+
         try:
             result = await func(*args, **kwargs)
             if self.state == "half-open":
@@ -576,10 +576,10 @@ class CircuitBreaker:
         except Exception as e:
             self.failure_count += 1
             self.last_failure_time = time.time()
-            
+
             if self.failure_count >= self.failure_threshold:
                 self.state = "open"
-            
+
             raise e
 ```
 

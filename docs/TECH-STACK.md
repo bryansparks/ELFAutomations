@@ -1,9 +1,9 @@
 # Technology Stack & Architecture
 ## Virtual AI Company Platform
 
-**Version:** 1.0  
-**Date:** June 2025  
-**Architecture Owner:** Engineering Team  
+**Version:** 1.0
+**Date:** June 2025
+**Architecture Owner:** Engineering Team
 
 ---
 
@@ -18,7 +18,7 @@
 - **Key Features**: Graph-based execution, human-in-the-loop, checkpointing
 - **Documentation**: https://langchain-ai.github.io/langgraph/
 
-#### 2. Kubernetes Agent Management  
+#### 2. Kubernetes Agent Management
 **kagent** - Cloud-native AI agent framework
 - **Version**: Latest stable
 - **Purpose**: Kubernetes-native agent deployment, scaling, and management
@@ -43,7 +43,7 @@
 
 #### Primary Languages
 ```yaml
-Python: 
+Python:
   version: "3.11+"
   purpose: "Agent development, LangGraph workflows, MCP servers"
   key_libraries:
@@ -94,10 +94,10 @@ Pydantic:
 ```yaml
 Primary_LLM:
   provider: "Anthropic Claude"
-  models: 
+  models:
     - "claude-3-5-sonnet-20241022"  # Department heads, complex reasoning
     - "claude-3-haiku-20240307"     # Individual contributors, simple tasks
-  
+
 Fallback_LLMs:
   - provider: "OpenAI"
     models: ["gpt-4-turbo", "gpt-3.5-turbo"]
@@ -108,7 +108,7 @@ Model_Routing:
   strategy: "Task complexity + cost optimization"
   criteria:
     - Task complexity score
-    - Response time requirements  
+    - Response time requirements
     - Cost per token
     - Model availability
 ```
@@ -158,7 +158,7 @@ State_Management:
   - Agent_State: "Individual agent context & memory"
   - Workflow_State: "Cross-agent process tracking"
   - Business_State: "Company KPIs, metrics, reports"
-  
+
 Persistence_Strategy:
   - Checkpointing: "LangGraph automatic state snapshots"
   - Event_Sourcing: "Audit trail for all agent actions"

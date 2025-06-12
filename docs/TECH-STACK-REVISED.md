@@ -1,8 +1,8 @@
 # Technology Stack & Architecture - REVISED
 ## Virtual AI Company Platform - Distributed Agent Architecture
 
-**Version:** 2.0 - Major Architecture Revision  
-**Architecture Owner:** Engineering Team  
+**Version:** 2.0 - Major Architecture Revision
+**Architecture Owner:** Engineering Team
 **Previous Version:** Replaced LangGraph monolithic approach with distributed agent architecture
 
 ---
@@ -12,10 +12,10 @@
 ### Core Technologies
 
 #### 1. **CrewAI Agent Framework**
-**Purpose**: Individual agent implementation with role-based specialization  
-**Version**: 0.70.0+  
-**Key Features**: Role-based agents, task delegation, simple coordination patterns  
-**Documentation**: https://docs.crewai.com/  
+**Purpose**: Individual agent implementation with role-based specialization
+**Version**: 0.70.0+
+**Key Features**: Role-based agents, task delegation, simple coordination patterns
+**Documentation**: https://docs.crewai.com/
 
 **Why CrewAI for Distributed Architecture:**
 - Lightweight agent framework perfect for containerization
@@ -24,10 +24,10 @@
 - Easy to deploy individual agents as Kubernetes services
 
 #### 2. **A2A (Agent-to-Agent) Communication Protocol**
-**Purpose**: Rich inter-agent communication with context sharing  
-**Implementation**: Google's Agent-to-Agent protocol + custom message queues  
-**Key Features**: Service discovery, context preservation, async/sync messaging  
-**Documentation**: https://github.com/google/a2a-protocol  
+**Purpose**: Rich inter-agent communication with context sharing
+**Implementation**: Google's Agent-to-Agent protocol + custom message queues
+**Key Features**: Service discovery, context preservation, async/sync messaging
+**Documentation**: https://github.com/google/a2a-protocol
 
 **A2A Integration Benefits:**
 - Solves CrewAI's traditional inter-agent communication limitations
@@ -36,10 +36,10 @@
 - Supports both synchronous and asynchronous communication patterns
 
 #### 3. **kagent - Kubernetes Agent Management**
-**Purpose**: One CRD per agent type for independent lifecycle management  
-**Version**: Latest stable  
-**Key Features**: Individual agent scaling, per-agent monitoring, independent deployment  
-**Documentation**: https://kagent.dev/docs  
+**Purpose**: One CRD per agent type for independent lifecycle management
+**Version**: Latest stable
+**Key Features**: Individual agent scaling, per-agent monitoring, independent deployment
+**Documentation**: https://kagent.dev/docs
 
 **Distributed Agent Benefits:**
 - Each agent type gets its own kagent CRD and scaling policy
@@ -48,21 +48,21 @@
 - Independent updates and rollbacks per agent type
 
 #### 4. **Model Context Protocol (MCP)**
-**Purpose**: Standardized tool interfaces (unchanged from previous architecture)  
-**Version**: 1.0+  
-**Implementation**: TypeScript MCP servers as independent microservices  
-**Documentation**: https://modelcontextprotocol.io/  
+**Purpose**: Standardized tool interfaces (unchanged from previous architecture)
+**Version**: 1.0+
+**Implementation**: TypeScript MCP servers as independent microservices
+**Documentation**: https://modelcontextprotocol.io/
 
 #### 5. **AgentGateway**
-**Purpose**: Secure, governed access to MCP servers (unchanged from previous architecture)  
-**Implementation**: High-availability proxy layer with policy enforcement  
-**Key Features**: Authentication, authorization, audit logging, rate limiting  
+**Purpose**: Secure, governed access to MCP servers (unchanged from previous architecture)
+**Implementation**: High-availability proxy layer with policy enforcement
+**Key Features**: Authentication, authorization, audit logging, rate limiting
 
 #### 6. **Kubernetes**
-**Purpose**: Container orchestration with true microservice benefits for agents  
-**Version**: 1.28+  
-**Key Features**: Per-agent scaling, individual monitoring, independent deployment  
-**Documentation**: https://kubernetes.io/docs/  
+**Purpose**: Container orchestration with true microservice benefits for agents
+**Version**: 1.28+
+**Key Features**: Per-agent scaling, individual monitoring, independent deployment
+**Documentation**: https://kubernetes.io/docs/
 
 ---
 
@@ -144,25 +144,25 @@ class DistributedCrewAIAgent:
         self.a2a_client = A2AClient(agent_id)
         self.app = FastAPI()
         self.setup_routes()
-        
+
     def setup_routes(self):
         @self.app.post("/task")
         async def handle_task(self, task_request: TaskRequest):
             """Handle direct task assignment"""
             result = await self.process_task(task_request)
             return {"result": result, "agent_id": self.agent_id}
-            
+
         @self.app.post("/a2a/message")
         async def handle_a2a_message(self, message: A2AMessage):
             """Handle A2A communication from other agents"""
             response = await self.process_a2a_message(message)
             return response
-            
+
         @self.app.get("/health")
         async def health_check(self):
             """Kubernetes health check"""
             return {"status": "healthy", "agent_id": self.agent_id}
-            
+
     async def send_to_agent(self, target_agent: str, message: dict, context: dict = None):
         """Send message to another agent via A2A"""
         return await self.a2a_client.send_message(
@@ -171,7 +171,7 @@ class DistributedCrewAIAgent:
             context=context,
             sender_id=self.agent_id
         )
-        
+
     async def process_task(self, task_request: TaskRequest):
         """Process task using CrewAI + A2A coordination"""
         crew = Crew(
@@ -180,11 +180,11 @@ class DistributedCrewAIAgent:
             verbose=True
         )
         result = crew.kickoff()
-        
+
         # Use A2A for any needed coordination
         if task_request.requires_coordination:
             await self.coordinate_with_other_agents(result)
-            
+
         return result
 ```
 
@@ -197,17 +197,17 @@ class SDRAgent(DistributedCrewAIAgent):
         super().__init__(
             agent_id="sdr-agent",
             role="Sales Development Representative",
-            backstory="""You are an experienced SDR focused on qualifying inbound leads 
-            and conducting initial outreach. You work closely with marketing to understand 
+            backstory="""You are an experienced SDR focused on qualifying inbound leads
+            and conducting initial outreach. You work closely with marketing to understand
             lead sources and with sales reps to ensure smooth handoffs."""
         )
-        
+
     async def process_task(self, task_request: TaskRequest):
         if task_request.task_type == "qualify_lead":
             return await self.qualify_lead(task_request.lead_data)
         elif task_request.task_type == "outreach":
             return await self.conduct_outreach(task_request.prospect_data)
-            
+
     async def qualify_lead(self, lead_data):
         # Use CrewAI for lead qualification
         qualification_task = Task(
@@ -215,7 +215,7 @@ class SDRAgent(DistributedCrewAIAgent):
         )
         crew = Crew(agents=[self.crew_agent], tasks=[qualification_task])
         result = crew.kickoff()
-        
+
         # If qualified, notify sales rep via A2A
         if result.qualified:
             await self.send_to_agent(
@@ -227,7 +227,7 @@ class SDRAgent(DistributedCrewAIAgent):
                     "next_steps": result.recommended_actions
                 }
             )
-            
+
         return result
 
 class MarketingContentCreatorAgent(DistributedCrewAIAgent):
@@ -235,17 +235,17 @@ class MarketingContentCreatorAgent(DistributedCrewAIAgent):
         super().__init__(
             agent_id="content-creator-agent",
             role="Marketing Content Creator",
-            backstory="""You are a skilled content creator specializing in B2B marketing 
-            content. You work with marketing managers on content strategy and with social 
+            backstory="""You are a skilled content creator specializing in B2B marketing
+            content. You work with marketing managers on content strategy and with social
             media agents for content distribution."""
         )
-        
+
     async def process_task(self, task_request: TaskRequest):
         if task_request.task_type == "create_blog_post":
             return await self.create_blog_post(task_request.brief)
         elif task_request.task_type == "create_social_content":
             return await self.create_social_content(task_request.campaign_data)
-            
+
     async def create_blog_post(self, content_brief):
         # Use CrewAI for content creation
         content_task = Task(
@@ -253,7 +253,7 @@ class MarketingContentCreatorAgent(DistributedCrewAIAgent):
         )
         crew = Crew(agents=[self.crew_agent], tasks=[content_task])
         result = crew.kickoff()
-        
+
         # Notify social media agent for distribution via A2A
         await self.send_to_agent(
             target_agent="social-media-agent",
@@ -264,7 +264,7 @@ class MarketingContentCreatorAgent(DistributedCrewAIAgent):
                 "target_audience": content_brief.target_audience
             }
         )
-        
+
         return result
 ```
 
@@ -279,17 +279,17 @@ A2A_Core_Components:
     technology: "Apache Kafka / Redis Streams"
     purpose: "Route messages between agents"
     features: ["Message persistence", "Delivery guarantees", "Scalability"]
-    
+
   Service_Discovery:
     technology: "Kubernetes DNS + Custom registry"
     purpose: "Agent discovery and capability advertisement"
     features: ["Dynamic registration", "Health checking", "Load balancing"]
-    
+
   Context_Store:
     technology: "Redis with persistence"
     purpose: "Shared conversation context and agent memory"
     features: ["Fast access", "TTL support", "Clustering"]
-    
+
   Message_Schema:
     technology: "Pydantic models + JSON Schema"
     purpose: "Type-safe message validation"
@@ -304,21 +304,21 @@ class A2AClient:
         self.message_router = MessageRouter()
         self.service_discovery = ServiceDiscovery()
         self.context_store = ContextStore()
-        
+
     async def send_message(
-        self, 
-        target_agent: str, 
-        message: dict, 
+        self,
+        target_agent: str,
+        message: dict,
         context: dict = None,
         message_type: str = "request"
     ) -> A2AResponse:
         """Send message to target agent with context"""
-        
+
         # Discover target agent
         target_info = await self.service_discovery.find_agent(target_agent)
         if not target_info:
             raise AgentNotFoundError(f"Agent {target_agent} not found")
-            
+
         # Prepare message with context
         full_message = A2AMessage(
             from_agent=self.agent_id,
@@ -329,18 +329,18 @@ class A2AClient:
             timestamp=datetime.utcnow(),
             correlation_id=str(uuid.uuid4())
         )
-        
+
         # Store context for conversation continuity
         if context:
             await self.context_store.update_conversation_context(
                 conversation_id=f"{self.agent_id}-{target_agent}",
                 context=context
             )
-            
+
         # Route message
         response = await self.message_router.send_message(full_message)
         return response
-        
+
     async def register_agent(self, capabilities: List[str], health_endpoint: str):
         """Register agent with service discovery"""
         await self.service_discovery.register_agent(
@@ -411,14 +411,14 @@ metadata:
     role: lead-qualification
 spec:
   systemPrompt: |
-    You are a Sales Development Representative (SDR) focused on qualifying 
-    inbound leads and conducting initial outreach. You work with marketing 
-    teams to understand lead sources and coordinate with sales representatives 
+    You are a Sales Development Representative (SDR) focused on qualifying
+    inbound leads and conducting initial outreach. You work with marketing
+    teams to understand lead sources and coordinate with sales representatives
     for smooth handoffs of qualified prospects.
-    
+
   # CrewAI + A2A agent container
   image: "elfautomations/sdr-agent:v1.0.0"
-  
+
   # High-volume agent scaling
   replicas: 5
   autoscaling:
@@ -431,7 +431,7 @@ spec:
         targetValue: "10"
       - name: "qualification_rate"
         targetValue: "0.8"
-  
+
   # Resource allocation optimized for qualification workload
   resources:
     requests:
@@ -440,7 +440,7 @@ spec:
     limits:
       memory: "512Mi"
       cpu: "400m"
-      
+
   # A2A communication configuration
   env:
     - name: A2A_AGENT_ID
@@ -451,13 +451,13 @@ spec:
       value: "kafka://kafka-cluster:9092"
     - name: DEPARTMENT
       value: "sales"
-      
+
   # MCP tools for lead qualification
   tools:
     - name: crm-qualification-tools
     - name: lead-scoring-tools
     - name: email-outreach-tools
-    
+
   # Health checks specific to agent functionality
   livenessProbe:
     httpGet:
@@ -465,7 +465,7 @@ spec:
       port: 8080
     initialDelaySeconds: 30
     periodSeconds: 10
-    
+
   readinessProbe:
     httpGet:
       path: /ready
@@ -486,12 +486,12 @@ metadata:
 spec:
   systemPrompt: |
     You are a Marketing Content Creator specializing in B2B content creation.
-    You create blog posts, whitepapers, social media content, and marketing 
-    materials. You collaborate with marketing managers on strategy and social 
+    You create blog posts, whitepapers, social media content, and marketing
+    materials. You collaborate with marketing managers on strategy and social
     media agents for content distribution.
-    
+
   image: "elfautomations/content-creator-agent:v1.0.0"
-  
+
   # Content creation scaling - less frequent but resource intensive
   replicas: 2
   autoscaling:
@@ -502,7 +502,7 @@ spec:
     customMetrics:
       - name: "content_requests_queue"
         targetValue: "5"
-        
+
   # Higher resource allocation for content generation
   resources:
     requests:
@@ -511,7 +511,7 @@ spec:
     limits:
       memory: "1Gi"
       cpu: "800m"
-      
+
   env:
     - name: A2A_AGENT_ID
       value: "content-creator-agent"
@@ -519,7 +519,7 @@ spec:
       value: "http://a2a-discovery:8080"
     - name: DEPARTMENT
       value: "marketing"
-      
+
   tools:
     - name: content-generation-tools
     - name: seo-optimization-tools
@@ -592,13 +592,13 @@ Agent_Specific_Metrics:
     - memory_usage_per_agent_type
     - request_response_time_per_agent
     - task_completion_rate_per_agent
-    
+
   Business_Metrics:
     - leads_qualified_per_sdr_agent
     - content_pieces_created_per_content_agent
     - support_tickets_resolved_per_support_agent
     - sales_conversions_per_sales_agent
-    
+
   A2A_Communication_Metrics:
     - message_latency_between_agents
     - message_success_rate_per_agent_pair
@@ -624,26 +624,26 @@ Prometheus_Configuration:
       relabel_configs:
         - source_labels: [__meta_kubernetes_pod_label_agent_type]
           target_label: agent_type
-          
+
     - job_name: 'content-creator-agents'
       kubernetes_sd_configs:
         - role: pod
           namespaces:
             names: ['marketing-department']
-            
+
 Grafana_Dashboards:
   - sales_department_dashboard:
       panels:
         - sdr_agent_performance
         - sales_rep_agent_metrics
         - lead_conversion_funnel
-        
+
   - marketing_department_dashboard:
       panels:
         - content_creation_velocity
         - social_media_engagement
         - campaign_performance
-        
+
   - a2a_communication_dashboard:
       panels:
         - inter_agent_message_flow

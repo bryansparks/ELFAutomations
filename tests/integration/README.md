@@ -179,7 +179,7 @@ Example output:
   ✅ Docker Availability                     (0.8s)
   ✅ Namespace Creation                      (1.2s)
   ❌ RBAC Permissions                        (0.5s) - ServiceAccount not found
-  
+
 📊 Results: 3 passed, 1 failed, 4 total (4.6s)
 ```
 
@@ -252,7 +252,7 @@ The test suite is designed for CI/CD integration:
   run: |
     minikube start
     ./run_integration_tests.py
-    
+
 # Exit codes:
 # 0 - All tests passed
 # 1 - Some tests failed

@@ -63,7 +63,7 @@ LangGraph Agents → kagent (K8s) → agentgateway.dev → MCP Servers → Tools
 #### Key Methods:
 ```python
 async def start() -> None                    # kagent lifecycle
-async def stop() -> None                     # kagent lifecycle  
+async def stop() -> None                     # kagent lifecycle
 async def destroy() -> None                  # kagent lifecycle
 async def process_message(message: str)      # LangGraph workflow
 def get_health_check() -> KAgentHealthCheck  # kagent monitoring
@@ -221,11 +221,11 @@ class MyDepartmentAgent(LangGraphBaseAgent):
             gateway_url="https://agentgateway.dev",
             gateway_api_key=os.getenv("AGENTGATEWAY_API_KEY")
         )
-    
+
     async def _startup_tasks(self):
         # Custom startup logic
         pass
-    
+
     async def _shutdown_tasks(self):
         # Custom shutdown logic
         pass
@@ -255,7 +255,7 @@ spec:
 ```python
 async def main():
     agent = MyDepartmentAgent("my-agent-001")
-    
+
     try:
         await agent.start()
         result = await agent.process_message("Hello, please help with task X")

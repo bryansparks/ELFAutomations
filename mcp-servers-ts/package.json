@@ -14,7 +14,8 @@
     "test": "jest",
     "start:supabase": "tsx src/supabase/server.ts",
     "start:business-tools": "tsx src/business-tools/server.ts",
-    "start:team-registry": "tsx src/team-registry/server.ts"
+    "start:team-registry": "tsx src/team-registry/server.ts",
+    "start:project-management": "tsx src/project-management/server.ts"
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.0.0",

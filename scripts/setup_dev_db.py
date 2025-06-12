@@ -24,7 +24,7 @@ structlog.configure(
         structlog.processors.StackInfoRenderer(),
         structlog.processors.format_exc_info,
         structlog.processors.UnicodeDecoder(),
-        structlog.dev.ConsoleRenderer()
+        structlog.dev.ConsoleRenderer(),
     ],
     context_class=dict,
     logger_factory=structlog.stdlib.LoggerFactory(),
@@ -38,8 +38,9 @@ logger = structlog.get_logger(__name__)
 def check_docker():
     """Check if Docker is available."""
     try:
-        result = subprocess.run(['docker', '--version'], 
-                              capture_output=True, text=True, timeout=5)
+        result = subprocess.run(
+            ["docker", "--version"], capture_output=True, text=True, timeout=5
+        )
         return result.returncode == 0
     except (subprocess.TimeoutExpired, FileNotFoundError):
         return False
@@ -48,13 +49,15 @@ def check_docker():
 def check_docker_compose():
     """Check if Docker Compose is available."""
     try:
-        result = subprocess.run(['docker-compose', '--version'], 
-                              capture_output=True, text=True, timeout=5)
+        result = subprocess.run(
+            ["docker-compose", "--version"], capture_output=True, text=True, timeout=5
+        )
         if result.returncode == 0:
             return True
         # Try docker compose (newer syntax)
-        result = subprocess.run(['docker', 'compose', 'version'], 
-                              capture_output=True, text=True, timeout=5)
+        result = subprocess.run(
+            ["docker", "compose", "version"], capture_output=True, text=True, timeout=5
+        )
         return result.returncode == 0
     except (subprocess.TimeoutExpired, FileNotFoundError):
         return False
@@ -64,7 +67,7 @@ def create_docker_compose():
     """Create a docker-compose.yml for development databases."""
     project_root = Path(__file__).parent.parent
     compose_file = project_root / "docker-compose.dev.yml"
-    
+
     compose_content = """version: '3.8'
 
 services:
@@ -105,10 +108,10 @@ volumes:
   postgres_data:
   redis_data:
 """
-    
-    with open(compose_file, 'w') as f:
+
+    with open(compose_file, "w") as f:
         f.write(compose_content)
-    
+
     logger.info("Created docker-compose.dev.yml", path=str(compose_file))
     return compose_file
 
@@ -118,9 +121,9 @@ def create_init_sql():
     project_root = Path(__file__).parent.parent
     sql_dir = project_root / "scripts" / "sql"
     sql_dir.mkdir(parents=True, exist_ok=True)
-    
+
     init_sql = sql_dir / "init.sql"
-    
+
     sql_content = """-- ELF Automations Development Database Initialization
 
 -- Create database if it doesn't exist
@@ -217,10 +220,10 @@ GRANT ALL PRIVILEGES ON ALL SEQUENCES IN SCHEMA public TO elf_user;
 
 SELECT 'Database initialization complete' as status;
 """
-    
-    with open(init_sql, 'w') as f:
+
+    with open(init_sql, "w") as f:
         f.write(sql_content)
-    
+
     logger.info("Created database initialization SQL", path=str(init_sql))
     return init_sql
 
@@ -229,40 +232,44 @@ def update_env_file():
     """Update .env file with development database URLs."""
     project_root = Path(__file__).parent.parent
     env_file = project_root / ".env"
-    
+
     if not env_file.exists():
         logger.error(".env file not found - run setup_env.py first")
         return False
-    
+
     # Read existing .env
-    with open(env_file, 'r') as f:
+    with open(env_file, "r") as f:
         lines = f.readlines()
-    
+
     # Update database URLs
     updated_lines = []
     db_url_set = False
     redis_url_set = False
-    
+
     for line in lines:
-        if line.startswith('DATABASE_URL='):
-            updated_lines.append('DATABASE_URL=postgresql://elf_user:elf_password@localhost:5432/elf_automations\n')
+        if line.startswith("DATABASE_URL="):
+            updated_lines.append(
+                "DATABASE_URL=postgresql://elf_user:elf_password@localhost:5432/elf_automations\n"
+            )
             db_url_set = True
-        elif line.startswith('REDIS_URL='):
-            updated_lines.append('REDIS_URL=redis://localhost:6379/0\n')
+        elif line.startswith("REDIS_URL="):
+            updated_lines.append("REDIS_URL=redis://localhost:6379/0\n")
             redis_url_set = True
         else:
             updated_lines.append(line)
-    
+
     # Add URLs if they weren't found
     if not db_url_set:
-        updated_lines.append('DATABASE_URL=postgresql://elf_user:elf_password@localhost:5432/elf_automations\n')
+        updated_lines.append(
+            "DATABASE_URL=postgresql://elf_user:elf_password@localhost:5432/elf_automations\n"
+        )
     if not redis_url_set:
-        updated_lines.append('REDIS_URL=redis://localhost:6379/0\n')
-    
+        updated_lines.append("REDIS_URL=redis://localhost:6379/0\n")
+
     # Write updated .env
-    with open(env_file, 'w') as f:
+    with open(env_file, "w") as f:
         f.writelines(updated_lines)
-    
+
     logger.info("Updated .env file with development database URLs")
     return True
 
@@ -271,35 +278,53 @@ async def start_databases():
     """Start development databases using Docker Compose."""
     try:
         # Check if containers are already running
-        result = subprocess.run(['docker', 'ps', '--filter', 'name=elf_postgres_dev', '--format', '{{.Names}}'],
-                              capture_output=True, text=True)
-        
-        if 'elf_postgres_dev' in result.stdout:
+        result = subprocess.run(
+            [
+                "docker",
+                "ps",
+                "--filter",
+                "name=elf_postgres_dev",
+                "--format",
+                "{{.Names}}",
+            ],
+            capture_output=True,
+            text=True,
+        )
+
+        if "elf_postgres_dev" in result.stdout:
             logger.info("Development databases are already running")
             return True
-        
+
         # Start databases
         logger.info("Starting development databases...")
-        result = subprocess.run(['docker-compose', '-f', 'docker-compose.dev.yml', 'up', '-d'],
-                              capture_output=True, text=True, timeout=60)
-        
+        result = subprocess.run(
+            ["docker-compose", "-f", "docker-compose.dev.yml", "up", "-d"],
+            capture_output=True,
+            text=True,
+            timeout=60,
+        )
+
         if result.returncode != 0:
             # Try with docker compose (newer syntax)
-            result = subprocess.run(['docker', 'compose', '-f', 'docker-compose.dev.yml', 'up', '-d'],
-                                  capture_output=True, text=True, timeout=60)
-        
+            result = subprocess.run(
+                ["docker", "compose", "-f", "docker-compose.dev.yml", "up", "-d"],
+                capture_output=True,
+                text=True,
+                timeout=60,
+            )
+
         if result.returncode == 0:
             logger.info("Development databases started successfully")
-            
+
             # Wait for health checks
             logger.info("Waiting for databases to be ready...")
             await asyncio.sleep(10)
-            
+
             return True
         else:
             logger.error("Failed to start databases", error=result.stderr)
             return False
-            
+
     except Exception as e:
         logger.error("Error starting databases", error=str(e))
         return False
@@ -309,44 +334,50 @@ def main():
     """Main setup function."""
     logger.info("🗄️ ELF Automations Development Database Setup")
     logger.info("=" * 50)
-    
+
     # Check Docker availability
     if not check_docker():
         logger.error("Docker is not available. Please install Docker first.")
         logger.info("Visit: https://docs.docker.com/get-docker/")
         return 1
-    
+
     if not check_docker_compose():
         logger.error("Docker Compose is not available. Please install Docker Compose.")
         return 1
-    
+
     logger.info("✅ Docker and Docker Compose are available")
-    
+
     try:
         # Create Docker Compose file
         create_docker_compose()
-        
+
         # Create initialization SQL
         create_init_sql()
-        
+
         # Update .env file
         if not update_env_file():
             return 1
-        
+
         # Start databases
         success = asyncio.run(start_databases())
-        
+
         if success:
             logger.info("🚀 Development databases are ready!")
-            logger.info("PostgreSQL: postgresql://elf_user:elf_password@localhost:5432/elf_automations")
+            logger.info(
+                "PostgreSQL: postgresql://elf_user:elf_password@localhost:5432/elf_automations"
+            )
             logger.info("Redis: redis://localhost:6379/0")
-            logger.info("\nTo stop databases: docker-compose -f docker-compose.dev.yml down")
-            logger.info("To view logs: docker-compose -f docker-compose.dev.yml logs -f")
+            logger.info(
+                "\nTo stop databases: docker-compose -f docker-compose.dev.yml down"
+            )
+            logger.info(
+                "To view logs: docker-compose -f docker-compose.dev.yml logs -f"
+            )
             return 0
         else:
             logger.error("Failed to start development databases")
             return 1
-            
+
     except Exception as e:
         logger.error("Setup failed", error=str(e))
         return 1

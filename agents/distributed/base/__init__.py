@@ -10,8 +10,4 @@ from .distributed_agent import DistributedCrewAIAgent
 from .health_checks import HealthCheckMixin
 from .lifecycle import AgentLifecycleMixin
 
-__all__ = [
-    "DistributedCrewAIAgent",
-    "HealthCheckMixin", 
-    "AgentLifecycleMixin"
-]
+__all__ = ["DistributedCrewAIAgent", "HealthCheckMixin", "AgentLifecycleMixin"]

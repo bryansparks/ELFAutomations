@@ -12,7 +12,7 @@ LangGraph Agents → kagent (K8s) → AgentGateway → MCP Servers (TypeScript) 
 
 ### **Phase 1: AgentGateway as MCP Proxy** ✅
 - **AgentGateway** running in Docker provides centralized access to MCP servers
-- **TypeScript MCP Servers** (Supabase + Business Tools) for your custom logic  
+- **TypeScript MCP Servers** (Supabase + Business Tools) for your custom logic
 - **Public MCP Server** (Firecrawl) for website scraping capabilities
 - **Full observability** with metrics, logging, and health checks
 
@@ -83,7 +83,7 @@ kubectl apply -f k8s/kagent/chief-ai-agent.yaml
 - No code duplication - leveraging upstream projects properly
 - Easy to pull updates from your forks
 
-### ✅ **TypeScript MCP Servers** 
+### ✅ **TypeScript MCP Servers**
 - Modern, type-safe MCP implementations
 - Easy to extend and maintain
 - Proper error handling and validation with Zod
@@ -119,12 +119,12 @@ kubectl apply -f k8s/kagent/chief-ai-agent.yaml
 
 ## 🎉 Success Criteria Met
 
-✅ **AgentGateway serves as MCP proxy** with full observability  
-✅ **kagent deploys agents** as Kubernetes-native resources  
-✅ **TypeScript MCP servers** work alongside public MCP servers  
-✅ **LangGraph agents** discover and use MCP tools via AgentGateway  
-✅ **Complete architecture** validated end-to-end  
-✅ **Templates established** for future development  
+✅ **AgentGateway serves as MCP proxy** with full observability
+✅ **kagent deploys agents** as Kubernetes-native resources
+✅ **TypeScript MCP servers** work alongside public MCP servers
+✅ **LangGraph agents** discover and use MCP tools via AgentGateway
+✅ **Complete architecture** validated end-to-end
+✅ **Templates established** for future development
 
 ## 🚀 Next Steps
 

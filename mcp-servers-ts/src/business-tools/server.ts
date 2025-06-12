@@ -106,10 +106,10 @@ export class BusinessToolsMCPServer extends BaseMCPServer {
 
   private async sendEmail(args: any) {
     const emailData = this.validateInput(EmailSchema, args);
-    
+
     // Mock implementation - replace with actual email service integration
     console.log('Sending email:', emailData);
-    
+
     return this.createSuccessResponse({
       operation: 'send_email',
       status: 'sent',
@@ -122,10 +122,10 @@ export class BusinessToolsMCPServer extends BaseMCPServer {
 
   private async createCalendarEvent(args: any) {
     const eventData = this.validateInput(CalendarEventSchema, args);
-    
+
     // Mock implementation - replace with actual calendar service integration
     console.log('Creating calendar event:', eventData);
-    
+
     return this.createSuccessResponse({
       operation: 'create_calendar_event',
       status: 'created',
@@ -139,10 +139,10 @@ export class BusinessToolsMCPServer extends BaseMCPServer {
 
   private async createTask(args: any) {
     const taskData = this.validateInput(TaskSchema, args);
-    
+
     // Mock implementation - replace with actual task management integration
     console.log('Creating task:', taskData);
-    
+
     return this.createSuccessResponse({
       operation: 'create_task',
       status: 'created',
@@ -158,10 +158,10 @@ export class BusinessToolsMCPServer extends BaseMCPServer {
       z.object({ location: z.string() }),
       args
     );
-    
+
     // Mock implementation - replace with actual weather API integration
     console.log('Getting weather for:', location);
-    
+
     return this.createSuccessResponse({
       operation: 'get_weather',
       location,
@@ -183,10 +183,10 @@ export class BusinessToolsMCPServer extends BaseMCPServer {
       }),
       args
     );
-    
+
     // Mock implementation - replace with actual search API integration
     console.log('Performing web search:', query);
-    
+
     return this.createSuccessResponse({
       operation: 'web_search',
       query,
@@ -213,10 +213,10 @@ export class BusinessToolsMCPServer extends BaseMCPServer {
       }),
       args
     );
-    
+
     // Mock implementation - replace with actual report generation
     console.log('Generating report:', reportData);
-    
+
     return this.createSuccessResponse({
       operation: 'generate_report',
       reportId: `rpt_${Date.now()}`,

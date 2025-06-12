@@ -11,10 +11,10 @@ from typing import Dict, List, Optional
 
 import structlog
 import uvicorn
-from fastapi import FastAPI, HTTPException, Depends
+from fastapi import Depends, FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
+from prometheus_client import CONTENT_TYPE_LATEST, Counter, Histogram, generate_latest
 from pydantic import BaseModel
-from prometheus_client import Counter, Histogram, generate_latest, CONTENT_TYPE_LATEST
 from starlette.responses import Response
 
 from agents.base import AgentConfig, AgentType
@@ -33,7 +33,7 @@ structlog.configure(
         structlog.processors.StackInfoRenderer(),
         structlog.processors.format_exc_info,
         structlog.processors.UnicodeDecoder(),
-        structlog.processors.JSONRenderer()
+        structlog.processors.JSONRenderer(),
     ],
     context_class=dict,
     logger_factory=structlog.stdlib.LoggerFactory(),
@@ -44,9 +44,13 @@ structlog.configure(
 logger = structlog.get_logger(__name__)
 
 # Prometheus metrics
-REQUEST_COUNT = Counter('api_requests_total', 'Total API requests', ['method', 'endpoint'])
-REQUEST_DURATION = Histogram('api_request_duration_seconds', 'API request duration')
-AGENT_OPERATIONS = Counter('agent_operations_total', 'Total agent operations', ['operation', 'agent_type'])
+REQUEST_COUNT = Counter(
+    "api_requests_total", "Total API requests", ["method", "endpoint"]
+)
+REQUEST_DURATION = Histogram("api_request_duration_seconds", "API request duration")
+AGENT_OPERATIONS = Counter(
+    "agent_operations_total", "Total agent operations", ["operation", "agent_type"]
+)
 
 # Global state
 chief_agent: Optional[ChiefAIAgent] = None
@@ -57,39 +61,39 @@ business_tools_server: Optional[BusinessToolsServer] = None
 async def lifespan(app: FastAPI):
     """Application lifespan manager."""
     global chief_agent, business_tools_server
-    
+
     logger.info("Starting ELF Automations API server")
-    
+
     try:
         # Initialize Chief AI Agent
         chief_agent = ChiefAIAgent()
         await chief_agent.start()
         logger.info("Chief AI Agent started")
-        
+
         # Initialize Business Tools MCP Server
         database_url = os.getenv("DATABASE_URL")
         business_tools_server = BusinessToolsServer(database_url)
         await business_tools_server.start()
         logger.info("Business Tools MCP Server started")
-        
+
         # Start background tasks
         asyncio.create_task(chief_agent.start_performance_monitoring())
-        
+
         yield
-        
+
     except Exception as e:
         logger.error("Error during startup", error=str(e))
         raise
     finally:
         # Cleanup
         logger.info("Shutting down ELF Automations API server")
-        
+
         if chief_agent:
             await chief_agent.stop()
-        
+
         if business_tools_server:
             await business_tools_server.stop()
-        
+
         await AgentRegistry.shutdown_all_agents()
 
 
@@ -98,7 +102,7 @@ app = FastAPI(
     title="ELF Automations API",
     description="Virtual AI Company Platform API",
     version="0.1.0",
-    lifespan=lifespan
+    lifespan=lifespan,
 )
 
 # Add CORS middleware
@@ -139,12 +143,8 @@ class MessageRequest(BaseModel):
 async def health_check():
     """Health check endpoint."""
     REQUEST_COUNT.labels(method="GET", endpoint="/health").inc()
-    
-    return {
-        "status": "healthy",
-        "service": "elf-automations-api",
-        "version": "0.1.0"
-    }
+
+    return {"status": "healthy", "service": "elf-automations-api", "version": "0.1.0"}
 
 
 # Metrics endpoint
@@ -159,23 +159,20 @@ async def metrics():
 async def list_agents():
     """List all registered agents."""
     REQUEST_COUNT.labels(method="GET", endpoint="/agents").inc()
-    
+
     agents = AgentRegistry.list_agents()
-    return {
-        "agents": agents,
-        "count": len(agents)
-    }
+    return {"agents": agents, "count": len(agents)}
 
 
 @app.get("/agents/{agent_id}")
 async def get_agent(agent_id: str):
     """Get agent by ID."""
     REQUEST_COUNT.labels(method="GET", endpoint="/agents/{agent_id}").inc()
-    
+
     agent = AgentRegistry.get_agent(agent_id)
     if not agent:
         raise HTTPException(status_code=404, detail="Agent not found")
-    
+
     return agent.get_status()
 
 
@@ -183,12 +180,12 @@ async def get_agent(agent_id: str):
 async def get_agents_by_department(department: str):
     """Get agents by department."""
     REQUEST_COUNT.labels(method="GET", endpoint="/agents/department/{department}").inc()
-    
+
     agents = AgentRegistry.get_agents_by_department(department)
     return {
         "department": department,
         "agents": [agent.get_status() for agent in agents],
-        "count": len(agents)
+        "count": len(agents),
     }
 
 
@@ -196,12 +193,12 @@ async def get_agents_by_department(department: str):
 async def get_agents_by_type(agent_type: AgentType):
     """Get agents by type."""
     REQUEST_COUNT.labels(method="GET", endpoint="/agents/type/{agent_type}").inc()
-    
+
     agents = AgentRegistry.get_agents_by_type(agent_type)
     return {
         "agent_type": agent_type.value,
         "agents": [agent.get_status() for agent in agents],
-        "count": len(agents)
+        "count": len(agents),
     }
 
 
@@ -210,24 +207,20 @@ async def create_task(agent_id: str, task_request: TaskCreateRequest):
     """Create a task for an agent."""
     REQUEST_COUNT.labels(method="POST", endpoint="/agents/{agent_id}/tasks").inc()
     AGENT_OPERATIONS.labels(operation="create_task", agent_type="unknown").inc()
-    
+
     agent = AgentRegistry.get_agent(agent_id)
     if not agent:
         raise HTTPException(status_code=404, detail="Agent not found")
-    
+
     task = {
         "type": task_request.task_type,
         "description": task_request.description,
-        "context": task_request.context or {}
+        "context": task_request.context or {},
     }
-    
+
     try:
         result = await agent.execute_task(task)
-        return {
-            "task_id": task.get("id"),
-            "agent_id": agent_id,
-            "result": result
-        }
+        return {"task_id": task.get("id"), "agent_id": agent_id, "result": result}
     except Exception as e:
         logger.error("Task execution failed", agent_id=agent_id, error=str(e))
         raise HTTPException(status_code=500, detail=f"Task execution failed: {str(e)}")
@@ -238,28 +231,28 @@ async def send_message(agent_id: str, message_request: MessageRequest):
     """Send a message to an agent."""
     REQUEST_COUNT.labels(method="POST", endpoint="/agents/{agent_id}/messages").inc()
     AGENT_OPERATIONS.labels(operation="send_message", agent_type="unknown").inc()
-    
+
     from_agent = AgentRegistry.get_agent(message_request.from_agent)
     if not from_agent:
         raise HTTPException(status_code=404, detail="From agent not found")
-    
+
     to_agent = AgentRegistry.get_agent(message_request.to_agent)
     if not to_agent:
         raise HTTPException(status_code=404, detail="To agent not found")
-    
+
     try:
         message_id = await from_agent.send_message(
             to_agent=message_request.to_agent,
             message_type=message_request.message_type,
             content=message_request.content,
-            priority=message_request.priority
+            priority=message_request.priority,
         )
-        
+
         return {
             "message_id": message_id,
             "from_agent": message_request.from_agent,
             "to_agent": message_request.to_agent,
-            "status": "sent"
+            "status": "sent",
         }
     except Exception as e:
         logger.error("Message sending failed", error=str(e))
@@ -271,7 +264,7 @@ async def send_message(agent_id: str, message_request: MessageRequest):
 async def get_registry_stats():
     """Get agent registry statistics."""
     REQUEST_COUNT.labels(method="GET", endpoint="/registry/stats").inc()
-    
+
     return AgentRegistry.get_registry_stats()
 
 
@@ -281,26 +274,26 @@ async def broadcast_message(
     content: Dict,
     sender_id: str,
     department: Optional[str] = None,
-    agent_type: Optional[AgentType] = None
+    agent_type: Optional[AgentType] = None,
 ):
     """Broadcast a message to multiple agents."""
     REQUEST_COUNT.labels(method="POST", endpoint="/registry/broadcast").inc()
     AGENT_OPERATIONS.labels(operation="broadcast_message", agent_type="all").inc()
-    
+
     try:
         message_ids = await AgentRegistry.broadcast_message(
             message_type=message_type,
             content=content,
             sender_id=sender_id,
             department=department,
-            agent_type=agent_type
+            agent_type=agent_type,
         )
-        
+
         return {
             "message_type": message_type,
             "sender_id": sender_id,
             "message_ids": message_ids,
-            "count": len(message_ids)
+            "count": len(message_ids),
         }
     except Exception as e:
         logger.error("Broadcast failed", error=str(e))
@@ -312,56 +305,63 @@ async def broadcast_message(
 async def get_chief_status():
     """Get Chief AI Agent status."""
     REQUEST_COUNT.labels(method="GET", endpoint="/chief").inc()
-    
+
     if not chief_agent:
         raise HTTPException(status_code=503, detail="Chief AI Agent not available")
-    
+
     return chief_agent.get_status()
 
 
 @app.post("/chief/strategic-planning")
-async def trigger_strategic_planning(context: Optional[Dict] = None, time_horizon: str = "quarterly"):
+async def trigger_strategic_planning(
+    context: Optional[Dict] = None, time_horizon: str = "quarterly"
+):
     """Trigger strategic planning by the Chief AI Agent."""
     REQUEST_COUNT.labels(method="POST", endpoint="/chief/strategic-planning").inc()
-    AGENT_OPERATIONS.labels(operation="strategic_planning", agent_type="executive").inc()
-    
+    AGENT_OPERATIONS.labels(
+        operation="strategic_planning", agent_type="executive"
+    ).inc()
+
     if not chief_agent:
         raise HTTPException(status_code=503, detail="Chief AI Agent not available")
-    
+
     task = {
         "type": "strategic_planning",
         "context": context or {},
-        "time_horizon": time_horizon
+        "time_horizon": time_horizon,
     }
-    
+
     try:
         result = await chief_agent.execute_task(task)
         return result
     except Exception as e:
         logger.error("Strategic planning failed", error=str(e))
-        raise HTTPException(status_code=500, detail=f"Strategic planning failed: {str(e)}")
+        raise HTTPException(
+            status_code=500, detail=f"Strategic planning failed: {str(e)}"
+        )
 
 
 @app.post("/chief/performance-review")
 async def trigger_performance_review():
     """Trigger performance review by the Chief AI Agent."""
     REQUEST_COUNT.labels(method="POST", endpoint="/chief/performance-review").inc()
-    AGENT_OPERATIONS.labels(operation="performance_review", agent_type="executive").inc()
-    
+    AGENT_OPERATIONS.labels(
+        operation="performance_review", agent_type="executive"
+    ).inc()
+
     if not chief_agent:
         raise HTTPException(status_code=503, detail="Chief AI Agent not available")
-    
-    task = {
-        "type": "performance_review",
-        "context": {"manual_trigger": True}
-    }
-    
+
+    task = {"type": "performance_review", "context": {"manual_trigger": True}}
+
     try:
         result = await chief_agent.execute_task(task)
         return result
     except Exception as e:
         logger.error("Performance review failed", error=str(e))
-        raise HTTPException(status_code=500, detail=f"Performance review failed: {str(e)}")
+        raise HTTPException(
+            status_code=500, detail=f"Performance review failed: {str(e)}"
+        )
 
 
 # MCP Server endpoints
@@ -369,21 +369,23 @@ async def trigger_performance_review():
 async def list_mcp_tools():
     """List available MCP tools."""
     REQUEST_COUNT.labels(method="GET", endpoint="/mcp/tools").inc()
-    
+
     if not business_tools_server:
-        raise HTTPException(status_code=503, detail="Business Tools MCP Server not available")
-    
+        raise HTTPException(
+            status_code=503, detail="Business Tools MCP Server not available"
+        )
+
     tools = business_tools_server.get_tools()
     return {
         "tools": [
             {
                 "name": tool.name,
                 "description": tool.description,
-                "parameters": tool.parameters
+                "parameters": tool.parameters,
             }
             for tool in tools
         ],
-        "count": len(tools)
+        "count": len(tools),
     }
 
 
@@ -391,10 +393,12 @@ async def list_mcp_tools():
 async def call_mcp_tool(tool_name: str, arguments: Dict):
     """Call an MCP tool."""
     REQUEST_COUNT.labels(method="POST", endpoint="/mcp/tools/{tool_name}").inc()
-    
+
     if not business_tools_server:
-        raise HTTPException(status_code=503, detail="Business Tools MCP Server not available")
-    
+        raise HTTPException(
+            status_code=503, detail="Business Tools MCP Server not available"
+        )
+
     try:
         result = await business_tools_server.call_tool(tool_name, arguments)
         return result
@@ -407,10 +411,12 @@ async def call_mcp_tool(tool_name: str, arguments: Dict):
 async def list_mcp_resources():
     """List available MCP resources."""
     REQUEST_COUNT.labels(method="GET", endpoint="/mcp/resources").inc()
-    
+
     if not business_tools_server:
-        raise HTTPException(status_code=503, detail="Business Tools MCP Server not available")
-    
+        raise HTTPException(
+            status_code=503, detail="Business Tools MCP Server not available"
+        )
+
     resources = business_tools_server.get_resources()
     return {
         "resources": [
@@ -418,34 +424,35 @@ async def list_mcp_resources():
                 "uri": resource.uri,
                 "name": resource.name,
                 "description": resource.description,
-                "mime_type": resource.mime_type
+                "mime_type": resource.mime_type,
             }
             for resource in resources
         ],
-        "count": len(resources)
+        "count": len(resources),
     }
 
 
 def main():
     """Main function for running the API server."""
     import os
+
     from dotenv import load_dotenv
-    
+
     # Load environment variables
     load_dotenv()
-    
+
     # Get configuration from environment
     host = os.getenv("API_HOST", "0.0.0.0")
     port = int(os.getenv("API_PORT", "8000"))
     log_level = os.getenv("LOG_LEVEL", "info")
-    
+
     # Run the server
     uvicorn.run(
         "apis.main:app",
         host=host,
         port=port,
         log_level=log_level,
-        reload=False  # Set to True for development
+        reload=False,  # Set to True for development
     )
 
 

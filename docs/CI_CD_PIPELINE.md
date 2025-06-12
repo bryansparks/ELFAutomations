@@ -1,9 +1,9 @@
 # CI/CD Pipeline Architecture for Production AI Agents
 ## LangGraph + MCP + kagent + AgentGateway
 
-**Document Version:** 1.0  
-**Audience:** Technical Management  
-**Classification:** Internal Technical Architecture  
+**Document Version:** 1.0
+**Audience:** Technical Management
+**Classification:** Internal Technical Architecture
 
 ---
 
@@ -48,7 +48,7 @@ As pioneers in this space like many others, I acknowledge that **much remains to
 Rather than reinventing orchestration for AI agents, this architecture treats **agents as first-class Kubernetes citizens**. This approach allows us to inherit many years of container orchestration expertise while pioneering new patterns specific to agentic systems:
 
 - **Scaling & Resource Management**: Kubernetes HPA/VPA handle agent scaling based on workload
-- **Rolling Deployments**: Standard Kubernetes deployment strategies for zero-downtime agent updates  
+- **Rolling Deployments**: Standard Kubernetes deployment strategies for zero-downtime agent updates
 - **Health Management**: Built-in liveness and readiness probes adapted for agent wellness
 - **Service Discovery**: Native Kubernetes networking for agent-to-agent communication
 - **Secret Management**: Kubernetes secrets and operators for secure API key handling
@@ -79,18 +79,18 @@ graph TB
             KAgent[kagent Controller]
             AgentPods[Agent Pods]
         end
-        
+
         subgraph "Gateway Layer"
             AGW[AgentGateway]
             Auth[Authentication]
             Audit[Audit Logging]
         end
-        
+
         subgraph "MCP Layer"
             MCPServers[TypeScript MCP Servers]
             ToolRegistry[Tool Registry]
         end
-        
+
         subgraph "Infrastructure"
             Database[(PostgreSQL)]
             Cache[(Redis)]
@@ -117,7 +117,7 @@ graph TB
 - **Scaling Strategy**: HPA based on queue depth and response time metrics
 
 #### 2. **TypeScript MCP Servers**
-- **Purpose**: Standardized tool interfaces and business integrations  
+- **Purpose**: Standardized tool interfaces and business integrations
 - **Kubernetes Integration**: Microservice deployments with service mesh
 - **Scaling Strategy**: Independent scaling based on tool usage patterns
 
@@ -179,7 +179,7 @@ LangGraph_Agent_Pipeline:
     - mypy: "Static type checking"
     - flake8: "Linting and style"
     - bandit: "Security scanning"
-  
+
   testing:
     - pytest: "Unit tests with mocking"
     - integration_tests: "Agent workflow validation"
@@ -192,7 +192,7 @@ TypeScript_MCP_Pipeline:
     - eslint: "Linting and best practices"
     - tsc: "TypeScript compilation"
     - npm_audit: "Dependency vulnerability scanning"
-  
+
   testing:
     - jest: "Unit and integration tests"
     - mcp_compliance: "Protocol adherence testing"
@@ -222,7 +222,7 @@ Container_Building:
     - builder: "Compile and test"
     - runtime: "Minimal production image"
     - security: "Non-root user, read-only filesystem"
-  
+
   optimization:
     - layer_caching: "Docker BuildKit for faster builds"
     - multi_arch: "AMD64 and ARM64 support"
@@ -233,7 +233,7 @@ Helm_Packaging:
     - helm_lint: "Chart syntax validation"
     - kubeval: "Kubernetes manifest validation"
     - policy_check: "Security policy compliance"
-  
+
   versioning:
     - semantic_versioning: "Automated version management"
     - chart_testing: "Deployment validation"
@@ -249,7 +249,7 @@ Automated_Deployment:
     - namespace_creation: "Isolated staging environment"
     - secret_management: "External secrets operator"
     - network_policies: "Micro-segmentation"
-  
+
   component_deployment:
     - mcp_servers: "Deploy updated TypeScript MCP servers"
     - agentgateway: "Configure access policies"
@@ -271,7 +271,7 @@ Blue_Green_Deployment:
     - blue_environment: "Current production version"
     - green_environment: "New version deployment"
     - gradual_migration: "Canary deployment with traffic splitting"
-  
+
   validation_gates:
     - health_checks: "Comprehensive health validation"
     - business_metrics: "KPI validation and monitoring"
@@ -283,7 +283,7 @@ Rollback_Strategy:
     - health_check_failure: "Immediate rollback on health issues"
     - error_rate_threshold: "Rollback on increased error rates"
     - performance_degradation: "Rollback on SLA violations"
-  
+
   manual_rollback:
     - one_click_rollback: "Instant reversion to previous version"
     - partial_rollback: "Component-specific rollback capability"
@@ -304,7 +304,7 @@ Kubernetes_Orchestration_Benefits:
   - zero_downtime_deployments: "Rolling updates with automatic rollback"
   - service_mesh_integration: "Istio for advanced traffic management"
   - resource_optimization: "Kubernetes scheduler for efficient placement"
-  
+
 Agent_Specific_Adaptations:
   - stateful_deployments: "StatefulSets for agents requiring persistent identity"
   - custom_health_checks: "Agent reasoning health beyond HTTP endpoints"
@@ -551,7 +551,7 @@ This approach to AI agentic system CI/CD represents a **strategic balance betwee
 **Key Strategic Advantages:**
 
 1. **Foundation Stability**: Build on Kubernetes' battle-tested orchestration while pioneering agentic patterns
-2. **Learning Investment**: Develop expertise in emerging agentic deployment patterns on proven infrastructure  
+2. **Learning Investment**: Develop expertise in emerging agentic deployment patterns on proven infrastructure
 3. **Ecosystem Leverage**: Inherit decades of container orchestration knowledge and tooling
 4. **Risk Mitigation**: Reduce deployment risk by building on stable platform primitives
 5. **Future Readiness**: Establish platform foundation for next-generation AI applications
@@ -569,7 +569,7 @@ By treating AI agents as **first-class Kubernetes citizens**, we unlock immediat
 
 **Immediate Priorities:**
 1. **Establish Kubernetes Foundation** - Deploy kagent controller and basic infrastructure
-2. **Begin Agent Experimentation** - Start with simple LangGraph agents to learn deployment patterns  
+2. **Begin Agent Experimentation** - Start with simple LangGraph agents to learn deployment patterns
 3. **Implement MCP Integration** - Deploy TypeScript MCP servers as Kubernetes microservices
 4. **Deploy AgentGateway** - Establish secure, governed access to tools and external systems
 
@@ -581,10 +581,9 @@ By treating AI agents as **first-class Kubernetes citizens**, we unlock immediat
 
 **Success Indicators:**
 - Successful deployment of first production AI agents on Kubernetes
-- Established patterns for agent scaling and resource management  
+- Established patterns for agent scaling and resource management
 - Functional multi-agent workflows with proper coordination
 - Secure, auditable access to external tools via AgentGateway
 - Operational confidence in managing agentic systems at scale
 
-This architecture positions us to sit on a solid foundation of Kubernetes orchestration. 
-
+This architecture positions us to sit on a solid foundation of Kubernetes orchestration.

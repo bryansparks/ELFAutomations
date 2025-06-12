@@ -40,8 +40,11 @@ supabase==2.9.0
 tenacity>=8.2.0
 uvicorn[standard]>=0.24.0
 
-# CrewAI Agent Framework  
+# CrewAI Agent Framework
 crewai>=0.70.0
 
 # Google A2A Protocol SDK
 a2a-sdk>=0.1.0
+
+# Vector Database
+qdrant-client>=1.7.0

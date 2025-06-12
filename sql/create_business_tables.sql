@@ -102,18 +102,18 @@ $$ language 'plpgsql';
 
 -- Create triggers for updated_at
 DROP TRIGGER IF EXISTS update_customers_updated_at ON customers;
-CREATE TRIGGER update_customers_updated_at 
-    BEFORE UPDATE ON customers 
+CREATE TRIGGER update_customers_updated_at
+    BEFORE UPDATE ON customers
     FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 
 DROP TRIGGER IF EXISTS update_leads_updated_at ON leads;
-CREATE TRIGGER update_leads_updated_at 
-    BEFORE UPDATE ON leads 
+CREATE TRIGGER update_leads_updated_at
+    BEFORE UPDATE ON leads
     FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 
 DROP TRIGGER IF EXISTS update_tasks_updated_at ON tasks;
-CREATE TRIGGER update_tasks_updated_at 
-    BEFORE UPDATE ON tasks 
+CREATE TRIGGER update_tasks_updated_at
+    BEFORE UPDATE ON tasks
     FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 
 -- Insert sample data

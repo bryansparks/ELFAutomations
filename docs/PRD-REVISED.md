@@ -1,9 +1,9 @@
 # Product Requirements Document (PRD) - REVISED
 ## Virtual AI Company Platform - Distributed Agent Architecture
 
-**Version:** 2.0 - Major Architecture Revision  
-**Audience:** Technical Management  
-**Classification:** Internal Technical Architecture  
+**Version:** 2.0 - Major Architecture Revision
+**Audience:** Technical Management
+**Classification:** Internal Technical Architecture
 **Previous Version:** Replaced LangGraph monolithic approach with distributed agent architecture
 
 ---
@@ -108,7 +108,7 @@ This architecture enables **true Kubernetes-native agent deployment** where each
 - **Deployment**: Each agent type as independent container/kagent CRD
 - **Benefits**: Simple, lightweight, role-focused agent design
 
-#### 2. **A2A Communication Protocol** 
+#### 2. **A2A Communication Protocol**
 - **Purpose**: Rich inter-agent communication with context sharing
 - **Implementation**: Message queues, service discovery, context persistence
 - **Benefits**: Enables complex multi-agent workflows without tight coupling

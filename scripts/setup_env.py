@@ -9,90 +9,91 @@ import os
 import sys
 from pathlib import Path
 
+
 def setup_environment():
     """Interactive setup of environment variables."""
     project_root = Path(__file__).parent.parent
     env_file = project_root / ".env"
-    
+
     print("🤖 ELF Automations Environment Setup")
     print("=" * 50)
-    
+
     # Read existing .env if it exists
     existing_vars = {}
     if env_file.exists():
-        with open(env_file, 'r') as f:
+        with open(env_file, "r") as f:
             for line in f:
                 line = line.strip()
-                if line and not line.startswith('#') and '=' in line:
-                    key, value = line.split('=', 1)
+                if line and not line.startswith("#") and "=" in line:
+                    key, value = line.split("=", 1)
                     existing_vars[key] = value
-    
+
     # Required API keys
     api_keys = {
-        'ANTHROPIC_API_KEY': {
-            'description': 'Anthropic API key for Claude models',
-            'required': True,
-            'example': 'sk-ant-api03-...'
+        "ANTHROPIC_API_KEY": {
+            "description": "Anthropic API key for Claude models",
+            "required": True,
+            "example": "sk-ant-api03-...",
         },
-        'OPENAI_API_KEY': {
-            'description': 'OpenAI API key (optional backup)',
-            'required': False,
-            'example': 'sk-...'
-        }
+        "OPENAI_API_KEY": {
+            "description": "OpenAI API key (optional backup)",
+            "required": False,
+            "example": "sk-...",
+        },
     }
-    
+
     # Database configuration
     db_config = {
-        'DATABASE_URL': {
-            'description': 'PostgreSQL connection string',
-            'required': False,
-            'default': 'postgresql://localhost:5432/elf_automations',
-            'example': 'postgresql://user:pass@localhost:5432/dbname'
+        "DATABASE_URL": {
+            "description": "PostgreSQL connection string",
+            "required": False,
+            "default": "postgresql://localhost:5432/elf_automations",
+            "example": "postgresql://user:pass@localhost:5432/dbname",
         },
-        'REDIS_URL': {
-            'description': 'Redis connection string',
-            'required': False,
-            'default': 'redis://localhost:6379/0',
-            'example': 'redis://localhost:6379/0'
-        }
+        "REDIS_URL": {
+            "description": "Redis connection string",
+            "required": False,
+            "default": "redis://localhost:6379/0",
+            "example": "redis://localhost:6379/0",
+        },
     }
-    
+
     # API server configuration
     api_config = {
-        'API_HOST': {
-            'description': 'API server host',
-            'required': False,
-            'default': '0.0.0.0'
+        "API_HOST": {
+            "description": "API server host",
+            "required": False,
+            "default": "0.0.0.0",
         },
-        'API_PORT': {
-            'description': 'API server port',
-            'required': False,
-            'default': '8000'
+        "API_PORT": {
+            "description": "API server port",
+            "required": False,
+            "default": "8000",
         },
-        'LOG_LEVEL': {
-            'description': 'Logging level',
-            'required': False,
-            'default': 'INFO'
-        }
+        "LOG_LEVEL": {
+            "description": "Logging level",
+            "required": False,
+            "default": "INFO",
+        },
     }
-    
+
     updated_vars = existing_vars.copy()
-    
+
     # Configure API keys
     print("\n📋 API Keys Configuration")
     print("-" * 30)
-    
+
     for key, config in api_keys.items():
-        current_value = existing_vars.get(key, '')
+        current_value = existing_vars.get(key, "")
         masked_value = f"{current_value[:8]}..." if current_value else "Not set"
-        
+
         print(f"\n{key}:")
         print(f"  Description: {config['description']}")
         print(f"  Current: {masked_value}")
         print(f"  Required: {'Yes' if config['required'] else 'No'}")
         print(f"  Example: {config['example']}")
-        
-        if config['required'] and not current_value:
+
+        if config["required"] and not current_value:
             new_value = input(f"  Enter {key}: ").strip()
             if new_value:
                 updated_vars[key] = new_value
@@ -100,73 +101,73 @@ def setup_environment():
                 print(f"  ⚠️  Warning: {key} is required but not provided")
         else:
             update = input(f"  Update {key}? (y/N): ").strip().lower()
-            if update == 'y':
+            if update == "y":
                 new_value = input(f"  Enter new {key}: ").strip()
                 if new_value:
                     updated_vars[key] = new_value
-    
+
     # Configure database settings
     print("\n🗄️  Database Configuration")
     print("-" * 30)
-    
+
     for key, config in db_config.items():
-        current_value = existing_vars.get(key, config.get('default', ''))
-        
+        current_value = existing_vars.get(key, config.get("default", ""))
+
         print(f"\n{key}:")
         print(f"  Description: {config['description']}")
         print(f"  Current: {current_value or 'Not set'}")
         print(f"  Default: {config.get('default', 'None')}")
-        
+
         update = input(f"  Update {key}? (y/N): ").strip().lower()
-        if update == 'y':
+        if update == "y":
             new_value = input(f"  Enter {key}: ").strip()
             if new_value:
                 updated_vars[key] = new_value
-        elif not current_value and config.get('default'):
-            updated_vars[key] = config['default']
-    
+        elif not current_value and config.get("default"):
+            updated_vars[key] = config["default"]
+
     # Configure API server settings
     print("\n🌐 API Server Configuration")
     print("-" * 30)
-    
+
     for key, config in api_config.items():
-        current_value = existing_vars.get(key, config.get('default', ''))
-        
-        if not current_value and config.get('default'):
-            updated_vars[key] = config['default']
+        current_value = existing_vars.get(key, config.get("default", ""))
+
+        if not current_value and config.get("default"):
+            updated_vars[key] = config["default"]
             print(f"{key}: {config['default']} (default)")
-    
+
     # Write updated .env file
     print(f"\n💾 Writing configuration to {env_file}")
-    
-    with open(env_file, 'w') as f:
+
+    with open(env_file, "w") as f:
         f.write("# ELF Automations Environment Configuration\n")
         f.write("# Generated by setup_env.py\n\n")
-        
+
         f.write("# API Keys\n")
         for key in api_keys.keys():
-            value = updated_vars.get(key, '')
+            value = updated_vars.get(key, "")
             f.write(f"{key}={value}\n")
-        
+
         f.write("\n# Database Configuration\n")
         for key in db_config.keys():
-            value = updated_vars.get(key, '')
+            value = updated_vars.get(key, "")
             f.write(f"{key}={value}\n")
-        
+
         f.write("\n# API Server Configuration\n")
         for key in api_config.keys():
-            value = updated_vars.get(key, '')
+            value = updated_vars.get(key, "")
             f.write(f"{key}={value}\n")
-        
+
         f.write("\n# Company Configuration\n")
         f.write("COMPANY_NAME=ELF Automations\n")
         f.write("COMPANY_DOMAIN=elfautomations.local\n")
-    
+
     print("✅ Environment configuration complete!")
-    
+
     # Check if we have minimum required keys
-    has_anthropic = bool(updated_vars.get('ANTHROPIC_API_KEY'))
-    
+    has_anthropic = bool(updated_vars.get("ANTHROPIC_API_KEY"))
+
     if has_anthropic:
         print("\n🚀 Ready to run with real LLM integration!")
         print("   Run: python scripts/demo.py")
@@ -175,7 +176,7 @@ def setup_environment():
         if not has_anthropic:
             print("   - ANTHROPIC_API_KEY (required for Claude models)")
         print("\n   You can add these later by editing .env or re-running this script")
-    
+
     return 0
 
 

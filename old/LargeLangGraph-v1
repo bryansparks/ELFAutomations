@@ -187,7 +187,7 @@ class DocumentProcessor(BaseAgent):
             if file_extension.lower() not in self.loaders:
                 raise ValueError(f"Unsupported file type: {file_extension}")
             loader = self.loaders[file_extension.lower()]
-        
+
         texts = loader.load(file_path)
         return self.text_splitter.split_text(texts)
 

@@ -1,9 +1,9 @@
 # TASK-006: AgentGateway Integration for MCP Infrastructure Foundation
 
-**Document Version:** 1.1  
-**Date:** June 3, 2025  
-**Status:** Implementation Complete  
-**Priority:** High  
+**Document Version:** 1.1
+**Date:** June 3, 2025
+**Status:** Implementation Complete
+**Priority:** High
 
 ## Executive Summary
 
@@ -303,29 +303,29 @@ class LangGraphBaseAgent:
     def __init__(self, agent_id: str, config: Dict[str, Any]):
         self.agent_id = agent_id
         self.config = config
-        
+
         # AgentGateway connection instead of direct MCP
         self.agentgateway_url = config.get(
-            "agentgateway_url", 
+            "agentgateway_url",
             "http://agentgateway-service:3000"
         )
         self.mcp_client = MCPClient(self.agentgateway_url)
-        
+
     async def connect_tools(self):
         """Connect to tools via AgentGateway"""
         try:
             # Connect to AgentGateway instead of individual MCP servers
             await self.mcp_client.connect()
-            
+
             # Discover available tools through AgentGateway
             self.available_tools = await self.mcp_client.list_tools()
-            
+
             self.logger.info(
                 "Connected to AgentGateway",
                 tools_count=len(self.available_tools),
                 agentgateway_url=self.agentgateway_url
             )
-            
+
         except Exception as e:
             self.logger.error("Failed to connect to AgentGateway", error=str(e))
             raise
@@ -516,7 +516,7 @@ Complete configuration templates and deployment manifests are available in:
 
 ---
 
-**Document Prepared By:** Virtual AI Company Platform Team  
-**Review Status:** Technical Review Complete  
-**Next Review Date:** June 17, 2025  
+**Document Prepared By:** Virtual AI Company Platform Team
+**Review Status:** Technical Review Complete
+**Next Review Date:** June 17, 2025
 **Distribution:** Engineering Team, Platform Architecture, DevOps Team

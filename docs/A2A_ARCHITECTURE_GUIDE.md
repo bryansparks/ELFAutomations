@@ -23,7 +23,7 @@ The Agent2Agent (A2A) protocol is an open standard that addresses a critical cha
 ### Core Principles
 
 - **Decentralized Communication**: No single point of failure or central broker
-- **Agent Autonomy**: Each agent controls its own capabilities and policies  
+- **Agent Autonomy**: Each agent controls its own capabilities and policies
 - **Security & Privacy**: Agents collaborate without exposing internal state, memory, or tools
 - **Interoperability**: Standard protocol works across different AI frameworks
 - **Discoverability**: Agents can find and understand each other's capabilities
@@ -219,21 +219,21 @@ Each agent runs a **QueueManager** that manages EventQueues per task:
 class InMemoryQueueManager(QueueManager):
     def __init__(self):
         self.queues: Dict[str, EventQueue] = {}  # task_id → EventQueue
-    
+
     async def create_or_tap(self, task_id: str) -> EventQueue:
         """Create EventQueue for new task or return existing."""
         if task_id not in self.queues:
             self.queues[task_id] = EventQueue()
         return self.queues[task_id]
-    
+
     async def add(self, task_id: str, queue: EventQueue) -> None:
         """Associate EventQueue with task ID."""
         self.queues[task_id] = queue
-    
+
     async def get(self, task_id: str) -> Optional[EventQueue]:
         """Retrieve EventQueue for task."""
         return self.queues.get(task_id)
-    
+
     async def close(self, task_id: str) -> None:
         """Close and cleanup EventQueue."""
         if task_id in self.queues:
@@ -256,16 +256,16 @@ async def request_sales_analysis():
             "description": "Analyze Q4 sales performance"
         }
     )
-    
+
     # 2. Agent B creates EventQueue for this task
     queue = await queue_manager.create_or_tap("sales-analysis-001")
-    
+
     # 3. Agent B starts processing and streams updates
     await queue.enqueue_event(Message(
         role="assistant",
         parts=[TextPart(text="Starting sales analysis...")]
     ))
-    
+
     # 4. Agent A receives streaming updates
     while not queue.is_closed():
         event = await queue.dequeue_event()
@@ -315,7 +315,7 @@ The A2A protocol supports multiple discovery strategies to accommodate different
 
 **Mechanism**: Agents host their Agent Card at a standardized path
 - **Standard Path**: `https://{agent-domain}/.well-known/agent.json`
-- **Process**: 
+- **Process**:
   1. Client discovers agent domain
   2. Performs HTTP GET to well-known URI
   3. Receives Agent Card with capabilities and endpoint info
@@ -458,7 +458,7 @@ Our Kubernetes deployment implements the A2A protocol with:
 
 **3 Independent A2A Servers**:
 - **Chief AI Agent**: Port 8090 (Executive/Coordination)
-- **Sales Agent**: Port 8092 (Sales & Customer Engagement)  
+- **Sales Agent**: Port 8092 (Sales & Customer Engagement)
 - **Marketing Agent**: Port 8093 (Marketing & Content Creation)
 
 **Technical Stack**:
@@ -474,7 +474,7 @@ Our Kubernetes deployment implements the A2A protocol with:
 ```python
 class A2AServerManager:
     """Manages A2A server lifecycle for distributed agents."""
-    
+
     def __init__(self, agent_card: AgentCard, crewai_agent: Agent):
         self.agent_card = agent_card
         self.crewai_agent = crewai_agent
@@ -485,7 +485,7 @@ class A2AServerManager:
 ```python
 class CrewAIAgentExecutor(AgentExecutor):
     """Bridges A2A protocol with CrewAI agent execution."""
-    
+
     async def execute(self, task: Task, context: Dict[str, Any]) -> Message:
         # Convert A2A task to CrewAI task
         # Execute using CrewAI agent
@@ -527,7 +527,7 @@ agent_card = AgentCard(
 - Each agent maintains autonomy
 - Horizontal scaling capabilities
 
-### 2. Framework Interoperability  
+### 2. Framework Interoperability
 - CrewAI agents can communicate with LangChain agents
 - Protocol-level compatibility across AI frameworks
 - Future-proof agent communication

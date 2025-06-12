@@ -4,7 +4,7 @@ There is ONE kagent controller per Kubernetes cluster, not one controller per ag
 yamlKubernetes_Cluster:
   kagent-controller: 1 instance (runs as deployment in kagent-system namespace)
     manages: ALL Agent CRDs across ALL namespaces
-    
+
   Agent_CRDs: Many instances (one per agent type you deploy)
     examples:
       - sdr-agent (in sales-department namespace)
@@ -17,32 +17,32 @@ mermaidgraph TB
         API[Kubernetes API Server]
         Scheduler[K8s Scheduler]
     end
-    
+
     subgraph "kagent-system namespace"
         KC[kagent-controller]
         KC --> API
     end
-    
+
     subgraph "sales-department namespace"
         SDR_CRD[SDR Agent CRD]
         SDR_Pods[SDR Agent Pods]
         Sales_CRD[Sales Manager CRD]
         Sales_Pods[Sales Manager Pods]
     end
-    
+
     subgraph "marketing-department namespace"
         Content_CRD[Content Creator CRD]
         Content_Pods[Content Creator Pods]
     end
-    
+
     KC -.-> SDR_CRD
     KC -.-> Sales_CRD
     KC -.-> Content_CRD
-    
+
     SDR_CRD --> SDR_Pods
     Sales_CRD --> Sales_Pods
     Content_CRD --> Content_Pods
-    
+
     Scheduler --> SDR_Pods
     Scheduler --> Sales_Pods
     Scheduler --> Content_Pods
@@ -80,7 +80,7 @@ spec:
   # ... other config
 
 ---
-# Content Creator Agent CRD (also managed by same kagent-controller)  
+# Content Creator Agent CRD (also managed by same kagent-controller)
 apiVersion: kagent.dev/v1
 kind: Agent
 metadata:
@@ -149,15 +149,15 @@ yamlManagement_Layers:
   Layer_1_User_Interface:
     - "You define Agent CRDs (high-level agent specifications)"
     - "kubectl apply -f sdr-agent.yaml"
-    
+
   Layer_2_kagent_Controller:
     - "Translates Agent CRDs into standard Kubernetes resources"
     - "Watches for Agent CRD changes and updates K8s resources accordingly"
-    
+
   Layer_3_Kubernetes_Native:
     - "Standard K8s controllers manage the actual pods, services, scaling"
     - "Deployment controller, HPA controller, Service controller, etc."
-    
+
   Layer_4_Container_Runtime:
     - "containerd/Docker runs your actual agent containers"
     - "Your CrewAI + A2A agent code runs here"
@@ -203,24 +203,24 @@ yamlAgent_CRD_Creates:
     purpose: "Runs your agent pods"
     replicas: "From Agent CRD spec.replicas"
     image: "From Agent CRD spec.image"
-    
+
   Service:
     purpose: "Network access to agent pods"
     ports: "Based on Agent CRD configuration"
-    
+
   HorizontalPodAutoscaler:
     purpose: "Auto-scaling based on metrics"
     minReplicas: "From Agent CRD autoscaling config"
     maxReplicas: "From Agent CRD autoscaling config"
-    
+
   ServiceMonitor:
     purpose: "Prometheus monitoring setup"
     metrics: "Automatic scraping of agent metrics"
-    
+
   ConfigMap:
     purpose: "Agent configuration and prompts"
     data: "From Agent CRD systemPrompt and other config"
-    
+
   Secret_References:
     purpose: "API keys and sensitive configuration"
     refs: "From Agent CRD tool and model configuration"
