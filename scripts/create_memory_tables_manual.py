@@ -9,8 +9,9 @@ Since direct SQL execution is having issues, this script provides:
 
 import os
 from pathlib import Path
-from supabase import create_client, Client
+
 from dotenv import load_dotenv
+from supabase import Client, create_client
 
 # Load environment variables
 load_dotenv()
@@ -18,9 +19,9 @@ load_dotenv()
 
 def print_manual_instructions():
     """Print instructions for manual table creation."""
-    
+
     sql_file = Path("sql/create_memory_system_tables.sql")
-    
+
     print("=" * 70)
     print("📋 MANUAL TABLE CREATION INSTRUCTIONS")
     print("=" * 70)
@@ -47,37 +48,37 @@ def print_manual_instructions():
     print("Plus views, functions, and indexes for performance.")
     print()
     print("=" * 70)
-    
+
 
 def verify_tables():
     """Verify tables exist using Supabase client."""
-    
+
     print("\n🔍 Verifying table creation...")
-    
+
     try:
         # Create Supabase client
         url = os.getenv("SUPABASE_URL")
         key = os.getenv("SUPABASE_ANON_KEY")
-        
+
         if not url or not key:
             print("❌ Missing SUPABASE_URL or SUPABASE_ANON_KEY in environment")
             return False
-        
+
         supabase = create_client(url, key)
-        
+
         # Test each table
         tables = [
             "memory_entries",
-            "memory_collections", 
+            "memory_collections",
             "learning_patterns",
             "memory_relationships",
             "team_knowledge_profiles",
-            "memory_access_logs"
+            "memory_access_logs",
         ]
-        
+
         tables_found = []
         tables_missing = []
-        
+
         for table in tables:
             try:
                 # Try to query the table (limit 0 just to check it exists)
@@ -87,32 +88,40 @@ def verify_tables():
             except Exception as e:
                 tables_missing.append(table)
                 print(f"❌ Table '{table}' not found")
-        
+
         print()
         if tables_missing:
-            print(f"⚠️  Missing {len(tables_missing)} tables: {', '.join(tables_missing)}")
+            print(
+                f"⚠️  Missing {len(tables_missing)} tables: {', '.join(tables_missing)}"
+            )
             print("Please create them using the instructions above.")
             return False
         else:
             print("🎉 All memory system tables exist!")
-            
+
             # Try to create default collection
             print("\n📦 Creating default memory collection...")
             try:
-                result = supabase.table("memory_collections").insert({
-                    "name": "default",
-                    "description": "Default memory collection for all teams",
-                    "collection_type": "general"
-                }).execute()
+                result = (
+                    supabase.table("memory_collections")
+                    .insert(
+                        {
+                            "name": "default",
+                            "description": "Default memory collection for all teams",
+                            "collection_type": "general",
+                        }
+                    )
+                    .execute()
+                )
                 print("✅ Default collection created")
             except Exception as e:
                 if "duplicate key" in str(e):
                     print("ℹ️  Default collection already exists")
                 else:
                     print(f"⚠️  Could not create default collection: {e}")
-            
+
             return True
-            
+
     except Exception as e:
         print(f"❌ Error verifying tables: {e}")
         return False
@@ -120,10 +129,10 @@ def verify_tables():
 
 def print_next_steps():
     """Print next steps after table creation."""
-    
-    print("\n" + "="*70)
+
+    print("\n" + "=" * 70)
     print("📝 NEXT STEPS")
-    print("="*70)
+    print("=" * 70)
     print()
     print("1. Deploy Qdrant to K3s:")
     print("   git add k8s/data-stores/qdrant/")
@@ -147,18 +156,18 @@ def print_next_steps():
 
 def main():
     """Main entry point."""
-    
+
     print("🚀 Memory System Table Setup")
     print()
-    
+
     # First, print manual instructions
     print_manual_instructions()
-    
+
     # Ask user if they've created tables
     print()
     response = input("Have you created the tables in Supabase? (y/n): ").lower()
-    
-    if response == 'y':
+
+    if response == "y":
         # Verify tables exist
         if verify_tables():
             print_next_steps()
