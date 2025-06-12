@@ -1,5 +1,5 @@
 CREATE OR REPLACE VIEW team_active_tasks AS
-SELECT 
+SELECT
     t.assigned_team as team_id,
     tm.name as team_name,
     COUNT(*) as active_task_count,
@@ -11,7 +11,7 @@ WHERE t.status IN ('in_progress', 'ready', 'blocked')
 GROUP BY t.assigned_team, tm.name;
 
 CREATE OR REPLACE VIEW project_dashboard AS
-SELECT 
+SELECT
     p.*,
     COUNT(DISTINCT t.id) as total_tasks,
     COUNT(DISTINCT CASE WHEN t.status = 'completed' THEN t.id END) as completed_tasks,
@@ -24,11 +24,11 @@ LEFT JOIN project_teams pt ON p.id = pt.project_id
 GROUP BY p.id;
 
 CREATE OR REPLACE VIEW available_tasks_for_assignment AS
-SELECT 
+SELECT
     t.*,
     p.name as project_name,
     p.priority as project_priority,
-    CASE 
+    CASE
         WHEN t.due_date < CURRENT_TIMESTAMP + INTERVAL '2 days' THEN 'urgent'
         WHEN t.due_date < CURRENT_TIMESTAMP + INTERVAL '7 days' THEN 'soon'
         ELSE 'normal'
@@ -48,7 +48,7 @@ CREATE OR REPLACE FUNCTION are_task_dependencies_met(p_task_id UUID)
 RETURNS BOOLEAN AS $$
 BEGIN
     RETURN NOT EXISTS (
-        SELECT 1 
+        SELECT 1
         FROM task_dependencies td
         JOIN tasks dep_task ON td.depends_on_task_id = dep_task.id
         WHERE td.task_id = p_task_id
@@ -69,7 +69,7 @@ BEGIN
     AND match_score > 0.7
     ORDER BY match_score DESC
     LIMIT 1;
-    
+
     RETURN v_best_team_id;
 END;
 $$ LANGUAGE plpgsql;
@@ -87,7 +87,7 @@ BEGIN
         WHERE td.depends_on_task_id = NEW.id
     )
     AND are_task_dependencies_met(id);
-    
+
     RETURN NEW;
 END;
 $$ LANGUAGE plpgsql;
@@ -101,29 +101,29 @@ DECLARE
     v_project_id UUID;
 BEGIN
     v_project_id := NEW.project_id;
-    
+
     IF v_project_id IS NULL THEN
         RETURN NEW;
     END IF;
-    
-    SELECT 
+
+    SELECT
         COUNT(*),
         COUNT(CASE WHEN status = 'completed' THEN 1 END)
     INTO v_total_tasks, v_completed_tasks
     FROM tasks
     WHERE project_id = v_project_id;
-    
+
     IF v_total_tasks > 0 THEN
         v_progress := (v_completed_tasks::FLOAT / v_total_tasks) * 100;
     ELSE
         v_progress := 0;
     END IF;
-    
+
     UPDATE projects
     SET progress_percentage = v_progress,
         updated_at = CURRENT_TIMESTAMP
     WHERE id = v_project_id;
-    
+
     RETURN NEW;
 END;
 $$ LANGUAGE plpgsql;

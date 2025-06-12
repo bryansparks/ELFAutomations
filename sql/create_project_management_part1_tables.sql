@@ -4,7 +4,7 @@ CREATE TABLE IF NOT EXISTS projects (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     name VARCHAR(255) NOT NULL,
     description TEXT,
-    status VARCHAR(50) NOT NULL DEFAULT 'planning' 
+    status VARCHAR(50) NOT NULL DEFAULT 'planning'
         CHECK (status IN ('planning', 'active', 'on_hold', 'completed', 'cancelled')),
     priority VARCHAR(20) NOT NULL DEFAULT 'medium'
         CHECK (priority IN ('critical', 'high', 'medium', 'low')),
@@ -71,7 +71,7 @@ CREATE TABLE IF NOT EXISTS task_updates (
     team_id UUID NOT NULL REFERENCES teams(id),
     agent_role VARCHAR(255),
     update_type VARCHAR(50) NOT NULL
-        CHECK (update_type IN ('status_change', 'progress_update', 'blocker_reported', 
+        CHECK (update_type IN ('status_change', 'progress_update', 'blocker_reported',
                               'blocker_resolved', 'assignment_change', 'comment')),
     old_value TEXT,
     new_value TEXT,

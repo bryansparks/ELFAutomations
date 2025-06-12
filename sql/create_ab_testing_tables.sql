@@ -7,29 +7,29 @@ CREATE TABLE IF NOT EXISTS ab_tests (
     team_id UUID NOT NULL REFERENCES teams(id) ON DELETE CASCADE,
     agent_role VARCHAR(255) NOT NULL,
     evolution_id UUID REFERENCES agent_evolutions(id) ON DELETE CASCADE,
-    
+
     -- Test configuration
     status VARCHAR(20) NOT NULL CHECK (status IN ('active', 'completed', 'cancelled')),
     traffic_split FLOAT NOT NULL CHECK (traffic_split >= 0 AND traffic_split <= 1),
-    
+
     -- Timing
     start_time TIMESTAMP NOT NULL,
     end_time TIMESTAMP NOT NULL,
     completed_at TIMESTAMP,
-    
+
     -- Configurations being tested
     control_config TEXT NOT NULL,  -- Base agent config
     treatment_config TEXT NOT NULL,  -- Evolved agent config
-    
+
     -- Aggregated metrics
     metrics JSONB NOT NULL DEFAULT '{
         "control": {"requests": 0, "successes": 0, "errors": 0, "duration_sum": 0},
         "treatment": {"requests": 0, "successes": 0, "errors": 0, "duration_sum": 0}
     }',
-    
+
     -- Results
     final_recommendation TEXT,
-    
+
     -- Metadata
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
@@ -39,19 +39,19 @@ CREATE TABLE IF NOT EXISTS ab_tests (
 CREATE TABLE IF NOT EXISTS ab_test_results (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     test_id UUID NOT NULL REFERENCES ab_tests(id) ON DELETE CASCADE,
-    
+
     -- Assignment
     group_name VARCHAR(20) NOT NULL CHECK (group_name IN ('control', 'treatment')),
-    
+
     -- Outcome
     success BOOLEAN NOT NULL,
     duration_seconds FLOAT NOT NULL,
     error TEXT,
-    
+
     -- Context (optional)
     task_type VARCHAR(100),
     task_complexity VARCHAR(20),
-    
+
     -- Timestamp
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
@@ -64,7 +64,7 @@ CREATE INDEX idx_ab_test_results_created ON ab_test_results(created_at DESC);
 
 -- View for active tests by team
 CREATE OR REPLACE VIEW active_ab_tests AS
-SELECT 
+SELECT
     t.id,
     t.team_id,
     t.agent_role,
@@ -82,7 +82,7 @@ AND t.end_time > CURRENT_TIMESTAMP;
 
 -- View for test performance comparison
 CREATE OR REPLACE VIEW ab_test_performance AS
-SELECT 
+SELECT
     test_id,
     group_name,
     COUNT(*) as total_requests,
@@ -110,7 +110,7 @@ RETURNS TABLE (
 BEGIN
     RETURN QUERY
     WITH active_test AS (
-        SELECT 
+        SELECT
             t.id as test_id,
             t.evolution_id,
             t.traffic_split,
@@ -124,14 +124,14 @@ BEGIN
         ORDER BY t.created_at DESC
         LIMIT 1
     )
-    SELECT 
-        CASE 
+    SELECT
+        CASE
             WHEN random() < at.traffic_split THEN true
             ELSE false
         END as use_evolved,
         at.test_id,
         at.evolution_id,
-        CASE 
+        CASE
             WHEN random() < at.traffic_split THEN at.treatment_config
             ELSE at.control_config
         END as config
@@ -148,7 +148,7 @@ BEGIN
         completed_at = CURRENT_TIMESTAMP
     WHERE status = 'active'
     AND end_time <= CURRENT_TIMESTAMP;
-    
+
     RETURN NEW;
 END;
 $$ LANGUAGE plpgsql;

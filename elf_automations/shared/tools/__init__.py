@@ -6,11 +6,11 @@ including registry tools for team discovery and collaboration.
 """
 
 from .registry_tools import (
+    FindCollaboratorsTool,
     FindTeamByCapabilityTool,
     FindTeamByTypeTool,
-    GetTeamHierarchyTool,
-    FindCollaboratorsTool,
     GetExecutiveTeamsTool,
+    GetTeamHierarchyTool,
     UpdateTeamStatusTool,
     get_registry_tools_for_agent,
     get_registry_tools_for_executive,

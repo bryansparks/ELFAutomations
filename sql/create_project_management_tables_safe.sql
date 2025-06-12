@@ -10,25 +10,25 @@ CREATE TABLE IF NOT EXISTS projects (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     name VARCHAR(255) NOT NULL,
     description TEXT,
-    status VARCHAR(50) NOT NULL DEFAULT 'planning' 
+    status VARCHAR(50) NOT NULL DEFAULT 'planning'
         CHECK (status IN ('planning', 'active', 'on_hold', 'completed', 'cancelled')),
     priority VARCHAR(20) NOT NULL DEFAULT 'medium'
         CHECK (priority IN ('critical', 'high', 'medium', 'low')),
-    
+
     -- Team assignments
     created_by_team UUID REFERENCES teams(id),
     owner_team UUID REFERENCES teams(id),
-    
+
     -- Dates
     start_date DATE,
     target_end_date DATE,
     actual_end_date DATE,
-    
+
     -- Progress tracking
     progress_percentage FLOAT DEFAULT 0.0 CHECK (progress_percentage >= 0 AND progress_percentage <= 100),
     health_status VARCHAR(20) DEFAULT 'on_track'
         CHECK (health_status IN ('on_track', 'at_risk', 'delayed', 'blocked')),
-    
+
     -- Metadata
     estimated_hours FLOAT,
     actual_hours FLOAT DEFAULT 0.0,
@@ -42,42 +42,42 @@ CREATE TABLE IF NOT EXISTS tasks (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     project_id UUID NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
     parent_task_id UUID REFERENCES tasks(id), -- For subtasks
-    
+
     -- Task details
     title VARCHAR(500) NOT NULL,
     description TEXT,
     task_type VARCHAR(50) DEFAULT 'development'
         CHECK (task_type IN ('development', 'design', 'analysis', 'testing', 'deployment', 'documentation', 'review')),
-    
+
     -- Status tracking
     status VARCHAR(50) NOT NULL DEFAULT 'pending'
         CHECK (status IN ('pending', 'ready', 'in_progress', 'blocked', 'review', 'completed', 'cancelled')),
     blocker_description TEXT,
-    
+
     -- Team assignments
     created_by_team UUID REFERENCES teams(id),
     assigned_team UUID REFERENCES teams(id),
     assigned_agent VARCHAR(255), -- Specific agent within team
-    
+
     -- Priority and effort
     priority INTEGER DEFAULT 3 CHECK (priority >= 1 AND priority <= 5), -- 1=highest, 5=lowest
     estimated_hours FLOAT,
     actual_hours FLOAT DEFAULT 0.0,
     complexity VARCHAR(20) DEFAULT 'medium'
         CHECK (complexity IN ('trivial', 'easy', 'medium', 'hard', 'expert')),
-    
+
     -- Dates
     ready_date TIMESTAMP, -- When dependencies were met
     start_date TIMESTAMP,
     due_date TIMESTAMP,
     completed_date TIMESTAMP,
-    
+
     -- Skills required
     required_skills TEXT[],
-    
+
     -- Progress
     progress_percentage FLOAT DEFAULT 0.0 CHECK (progress_percentage >= 0 AND progress_percentage <= 100),
-    
+
     -- Metadata
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
@@ -94,7 +94,7 @@ CREATE TABLE IF NOT EXISTS task_dependencies (
     is_blocking BOOLEAN DEFAULT TRUE,
     lag_hours FLOAT DEFAULT 0, -- Hours to wait after dependency completes
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    
+
     UNIQUE(task_id, depends_on_task_id)
 );
 
@@ -104,18 +104,18 @@ CREATE TABLE IF NOT EXISTS task_updates (
     task_id UUID NOT NULL REFERENCES tasks(id) ON DELETE CASCADE,
     team_id UUID NOT NULL REFERENCES teams(id),
     agent_role VARCHAR(255),
-    
+
     -- Update details
     update_type VARCHAR(50) NOT NULL
-        CHECK (update_type IN ('status_change', 'progress_update', 'blocker_reported', 
+        CHECK (update_type IN ('status_change', 'progress_update', 'blocker_reported',
                               'blocker_resolved', 'assignment_change', 'comment')),
     old_value TEXT,
     new_value TEXT,
     notes TEXT,
-    
+
     -- Time tracking
     hours_worked FLOAT DEFAULT 0,
-    
+
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
@@ -128,7 +128,7 @@ CREATE TABLE IF NOT EXISTS project_teams (
     allocation_percentage FLOAT DEFAULT 100.0 CHECK (allocation_percentage > 0 AND allocation_percentage <= 100),
     start_date DATE DEFAULT CURRENT_DATE,
     end_date DATE,
-    
+
     UNIQUE(project_id, team_id)
 );
 
@@ -141,7 +141,7 @@ CREATE TABLE IF NOT EXISTS task_skill_matches (
     matching_skills TEXT[],
     missing_skills TEXT[],
     computed_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    
+
     UNIQUE(task_id, team_id)
 );
 
@@ -159,7 +159,7 @@ CREATE INDEX IF NOT EXISTS idx_task_updates_task ON task_updates(task_id);
 
 -- Active tasks per team
 CREATE OR REPLACE VIEW team_active_tasks AS
-SELECT 
+SELECT
     t.assigned_team as team_id,
     tm.name as team_name,
     COUNT(*) as active_task_count,
@@ -172,7 +172,7 @@ GROUP BY t.assigned_team, tm.name;
 
 -- Project dashboard view
 CREATE OR REPLACE VIEW project_dashboard AS
-SELECT 
+SELECT
     p.id,
     p.name,
     p.description,
@@ -198,18 +198,18 @@ SELECT
 FROM projects p
 LEFT JOIN tasks t ON p.id = t.project_id
 LEFT JOIN project_teams pt ON p.id = pt.project_id
-GROUP BY p.id, p.name, p.description, p.status, p.priority, p.created_by_team, 
+GROUP BY p.id, p.name, p.description, p.status, p.priority, p.created_by_team,
          p.owner_team, p.start_date, p.target_end_date, p.actual_end_date,
          p.progress_percentage, p.health_status, p.estimated_hours, p.actual_hours,
          p.created_at, p.updated_at, p.metadata;
 
 -- Available tasks for autonomous assignment
 CREATE OR REPLACE VIEW available_tasks_for_assignment AS
-SELECT 
+SELECT
     t.*,
     p.name as project_name,
     p.priority as project_priority,
-    CASE 
+    CASE
         WHEN t.due_date < CURRENT_TIMESTAMP + INTERVAL '2 days' THEN 'urgent'
         WHEN t.due_date < CURRENT_TIMESTAMP + INTERVAL '7 days' THEN 'soon'
         ELSE 'normal'
@@ -231,7 +231,7 @@ CREATE OR REPLACE FUNCTION are_task_dependencies_met(p_task_id UUID)
 RETURNS BOOLEAN AS $$
 BEGIN
     RETURN NOT EXISTS (
-        SELECT 1 
+        SELECT 1
         FROM task_dependencies td
         JOIN tasks dep_task ON td.depends_on_task_id = dep_task.id
         WHERE td.task_id = p_task_id
@@ -253,7 +253,7 @@ BEGIN
     AND match_score > 0.7
     ORDER BY match_score DESC
     LIMIT 1;
-    
+
     RETURN v_best_team_id;
 END;
 $$ LANGUAGE plpgsql;
@@ -273,7 +273,7 @@ BEGIN
         WHERE td.depends_on_task_id = NEW.id
     )
     AND are_task_dependencies_met(id);
-    
+
     RETURN NEW;
 END;
 $$ LANGUAGE plpgsql;
@@ -289,33 +289,33 @@ DECLARE
 BEGIN
     -- Get the project_id from the NEW record in tasks table
     v_project_id := NEW.project_id;
-    
+
     -- If project_id is null (shouldn't happen with constraints), just return
     IF v_project_id IS NULL THEN
         RETURN NEW;
     END IF;
-    
+
     -- Count total and completed tasks for this project
-    SELECT 
+    SELECT
         COUNT(*),
         COUNT(CASE WHEN status = 'completed' THEN 1 END)
     INTO v_total_tasks, v_completed_tasks
     FROM tasks
     WHERE project_id = v_project_id;
-    
+
     -- Calculate progress
     IF v_total_tasks > 0 THEN
         v_progress := (v_completed_tasks::FLOAT / v_total_tasks) * 100;
     ELSE
         v_progress := 0;
     END IF;
-    
+
     -- Update project
     UPDATE projects
     SET progress_percentage = v_progress,
         updated_at = CURRENT_TIMESTAMP
     WHERE id = v_project_id;
-    
+
     RETURN NEW;
 END;
 $$ LANGUAGE plpgsql;

@@ -6,25 +6,25 @@ CREATE TABLE IF NOT EXISTS agent_evolutions (
     team_id UUID NOT NULL REFERENCES teams(id) ON DELETE CASCADE,
     agent_role VARCHAR(255) NOT NULL,
     evolution_type VARCHAR(50) NOT NULL CHECK (evolution_type IN ('prompt', 'workflow', 'tools', 'behavior')),
-    
+
     -- Version tracking
     original_version TEXT NOT NULL,
     evolved_version TEXT NOT NULL,
-    
+
     -- Performance metrics
     confidence_score FLOAT NOT NULL CHECK (confidence_score >= 0 AND confidence_score <= 1),
     performance_delta FLOAT DEFAULT 0.0,  -- Percentage change in performance
-    
+
     -- Metadata
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     applied_at TIMESTAMP,  -- When this evolution was actually applied
     rollback_at TIMESTAMP,  -- If this evolution was rolled back
     rollback_reason TEXT,
-    
+
     -- A/B testing data
     test_group VARCHAR(10) CHECK (test_group IN ('control', 'treatment')),
     test_metrics JSONB,  -- Stores detailed test results
-    
+
     -- Index for quick lookups
     UNIQUE(team_id, agent_role, evolution_type, created_at)
 );
@@ -46,7 +46,7 @@ ORDER BY team_id, agent_role, evolution_type, created_at DESC;
 
 -- View for evolution performance metrics
 CREATE OR REPLACE VIEW evolution_performance_summary AS
-SELECT 
+SELECT
     team_id,
     agent_role,
     evolution_type,
@@ -76,7 +76,7 @@ RETURNS TABLE (
 BEGIN
     RETURN QUERY
     WITH numbered_evolutions AS (
-        SELECT 
+        SELECT
             id,
             ROW_NUMBER() OVER (ORDER BY created_at) as version_number,
             evolved_version,
@@ -84,10 +84,10 @@ BEGIN
             ae.performance_delta,
             ae.created_at,
             (ae.rollback_at IS NULL AND ae.created_at = (
-                SELECT MAX(created_at) 
-                FROM agent_evolutions 
-                WHERE team_id = p_team_id 
-                AND agent_role = p_agent_role 
+                SELECT MAX(created_at)
+                FROM agent_evolutions
+                WHERE team_id = p_team_id
+                AND agent_role = p_agent_role
                 AND evolution_type = p_evolution_type
             )) as is_active
         FROM agent_evolutions ae
@@ -110,7 +110,7 @@ BEGIN
         SELECT id FROM (
             SELECT id,
                    ROW_NUMBER() OVER (
-                       PARTITION BY team_id, agent_role, evolution_type 
+                       PARTITION BY team_id, agent_role, evolution_type
                        ORDER BY created_at DESC
                    ) as rn
             FROM agent_evolutions
@@ -120,7 +120,7 @@ BEGIN
         ) t
         WHERE rn > 10
     );
-    
+
     RETURN NEW;
 END;
 $$ LANGUAGE plpgsql;
