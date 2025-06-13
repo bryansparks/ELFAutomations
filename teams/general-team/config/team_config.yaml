@@ -1,0 +1,71 @@
+team:
+  name: general-team
+  purpose: A full-featured Product team; including product management, engineering
+    management, QA engineering (test), an architect the offers architectural advice.
+  department: general
+  framework: CrewAI
+  reporting_to: null
+  members:
+  - name: team_lead
+    role: Team Lead
+    responsibilities: []
+    skills: []
+    personality: collaborative
+    is_manager: true
+    manages_teams: []
+  - name: specialist_1
+    role: Specialist
+    responsibilities: []
+    skills: []
+    personality: analytical
+    is_manager: false
+    manages_teams: []
+  - name: specialist_2
+    role: Specialist
+    responsibilities: []
+    skills: []
+    personality: creative
+    is_manager: false
+    manages_teams: []
+  - name: coordinator
+    role: Coordinator
+    responsibilities: []
+    skills: []
+    personality: pragmatic
+    is_manager: false
+    manages_teams: []
+  communication:
+    internal:
+      style: natural_language
+      logging:
+        enabled: true
+        format: conversation
+        path: logs/general-team_communications.log
+    external:
+      protocol: a2a
+      manager_only: true
+      logging:
+        enabled: true
+        format: structured
+        path: logs/general-team_a2a.log
+  workflow:
+    type: sequential
+    manager: Team Lead
+    delegation_enabled: false
+  memory:
+    enabled: true
+    provider: qdrant
+    continuous_learning: true
+    experience_replay: true
+  monitoring:
+    metrics:
+      enabled: true
+      prometheus_port: 9090
+    health_check:
+      enabled: true
+      endpoint: /health
+      interval: 30
+    logging:
+      level: INFO
+      format: json
+      separate_files: true

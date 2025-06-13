@@ -1,0 +1,29 @@
+a2a:
+  enabled: true
+  team_id: general-team-team
+  manager_agent: Team Lead
+  gateway_url: http://agentgateway-service:3003
+  capabilities:
+  - A full-featured Product team; including product management, engineering management,
+    QA engineering (test), an architect the offers architectural advice.
+  - Task execution
+  - Status reporting
+  - Team coordination
+  protocols:
+    task_request:
+      enabled: true
+      timeout: 3600
+      retry_count: 3
+    status_check:
+      enabled: true
+      timeout: 300
+    capability_registration:
+      enabled: true
+      auto_register: true
+  routing:
+    internal:
+      enabled: true
+      log_conversations: true
+    external:
+      enabled: true
+      require_auth: true

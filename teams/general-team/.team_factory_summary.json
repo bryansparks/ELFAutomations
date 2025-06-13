@@ -1,0 +1,60 @@
+{
+  "team_name": "general-team",
+  "framework": "CrewAI",
+  "department": "general",
+  "created_at": "2025-06-13T13:44:38.482403",
+  "llm_provider": "Anthropic",
+  "llm_model": "claude-3-sonnet-20240229",
+  "members": [
+    {
+      "role": "Team Lead",
+      "personality": "collaborative",
+      "is_manager": true
+    },
+    {
+      "role": "Specialist",
+      "personality": "analytical",
+      "is_manager": false
+    },
+    {
+      "role": "Specialist",
+      "personality": "creative",
+      "is_manager": false
+    },
+    {
+      "role": "Coordinator",
+      "personality": "pragmatic",
+      "is_manager": false
+    }
+  ],
+  "generated_files": [
+    "agents/__init__.py",
+    "agents/team_lead.py",
+    "agents/specialist_1.py",
+    "agents/specialist_2.py",
+    "agents/coordinator.py",
+    "general-team/crew.py",
+    "general-team/Dockerfile",
+    "general-team/k8s/deployment.yaml",
+    "general-team/make-deployable-team.py",
+    "general-team/health_check.sh",
+    "general-team/requirements.txt",
+    "general-team/team_server.py",
+    "general-team/config/team_config.yaml",
+    "general-team/config/a2a_config.yaml",
+    "general-team/config/llm_config.yaml",
+    "general-team/README.md",
+    "general-team/tasks/__init__.py",
+    "general-team/logs/__init__.py",
+    "tools/__init__.py",
+    "tools/shared_tools.py",
+    "tools/registry.py",
+    "general-team/evolution/run_improvement_loop.py",
+    "general-team/evolution/evolution_config.yaml",
+    "general-team/evolution/setup_cron.sh"
+  ],
+  "warnings": [
+    "Team registered in Supabase",
+    "Memory system configured"
+  ]
+}
