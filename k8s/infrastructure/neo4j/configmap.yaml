@@ -41,3 +41,6 @@ data:
 
     # Enable full-text search
     dbms.index.fulltext.enabled=true
+
+    # Disable strict validation to ignore K8s env vars
+    server.config.strict_validation.enabled=false
