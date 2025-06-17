@@ -4,9 +4,9 @@
 
 **Purpose**: A full-featured Product team; including product management, engineering management, QA engineering (test), an architect the offers architectural advice.
 
-**Framework**: CrewAI  
-**Department**: general  
-**Reports To**: None  
+**Framework**: CrewAI
+**Department**: general
+**Reports To**: None
 **Created**: 2025-06-13
 
 ## Team Composition
@@ -18,7 +18,7 @@
 | Specialist | creative |  |
 | Coordinator | pragmatic |  |
 
-**Team Size**: 4 members  
+**Team Size**: 4 members
 **Process Type**: Sequential
 
 ## Technical Details
@@ -134,7 +134,7 @@ curl http://localhost:8000/health
 # Submit a task
 curl -X POST http://localhost:8000/task \
   -H "Content-Type: application/json" \
-  -d '{"from_agent": "test", "to_agent": "general-team-manager", 
+  -d '{"from_agent": "test", "to_agent": "general-team-manager",
        "task_type": "request", "task_description": "Test task"}'
 ```
 

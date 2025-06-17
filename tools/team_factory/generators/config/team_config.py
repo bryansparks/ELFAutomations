@@ -27,26 +27,23 @@ class TeamConfigGenerator(BaseGenerator):
         team_dir = Path(team_spec.name)
         config_dir = team_dir / "config"
         config_dir.mkdir(exist_ok=True)
-        
+
         config_path = config_dir / "team_config.yaml"
-        
+
         # Generate team config
         team_config = self._generate_team_config(team_spec)
-        
+
         # Write config file
         with open(config_path, "w") as f:
             yaml.dump(team_config, f, default_flow_style=False, sort_keys=False)
-        
-        return {
-            "generated_files": [str(config_path)],
-            "errors": []
-        }
-    
+
+        return {"generated_files": [str(config_path)], "errors": []}
+
     def _generate_team_config(self, team_spec: TeamSpecification) -> Dict[str, Any]:
         """Generate team configuration content."""
         # Find manager
         manager = next((m for m in team_spec.members if m.is_manager), None)
-        
+
         config = {
             "team": {
                 "name": team_spec.name,
@@ -86,7 +83,9 @@ class TeamConfigGenerator(BaseGenerator):
                     },
                 },
                 "workflow": {
-                    "type": "hierarchical" if len(team_spec.members) >= 5 else "sequential",
+                    "type": "hierarchical"
+                    if len(team_spec.members) >= 5
+                    else "sequential",
                     "manager": manager.role if manager else None,
                     "delegation_enabled": bool(manager and manager.manages_teams),
                 },
@@ -114,7 +113,7 @@ class TeamConfigGenerator(BaseGenerator):
                 },
             }
         }
-        
+
         # Add sub-team recommendations if any
         if team_spec.sub_team_recommendations:
             config["team"]["recommended_sub_teams"] = [
@@ -126,5 +125,5 @@ class TeamConfigGenerator(BaseGenerator):
                 }
                 for sub in team_spec.sub_team_recommendations
             ]
-        
+
         return config

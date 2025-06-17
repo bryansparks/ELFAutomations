@@ -1,0 +1,66 @@
+{
+  "team_name": "n8n-interface-team",
+  "framework": "CrewAI",
+  "department": "infrastructure",
+  "created_at": "2025-06-14T22:40:39.324683",
+  "llm_provider": "OpenAI",
+  "llm_model": "gpt-4",
+  "members": [
+    {
+      "role": "Manager with A2A",
+      "personality": "strategic-thinker",
+      "is_manager": true
+    },
+    {
+      "role": "Validation Specialist",
+      "personality": "detail-oriented",
+      "is_manager": false
+    },
+    {
+      "role": "Monitoring Specialist",
+      "personality": "analytical",
+      "is_manager": false
+    },
+    {
+      "role": "Resilience Engineer",
+      "personality": "problem-solver",
+      "is_manager": false
+    },
+    {
+      "role": "Registry Specialist",
+      "personality": "methodical",
+      "is_manager": false
+    }
+  ],
+  "generated_files": [
+    "agents/__init__.py",
+    "agents/workflow_manager.py",
+    "agents/request_validator.py",
+    "agents/execution_tracker.py",
+    "agents/error_handler.py",
+    "agents/registry_maintainer.py",
+    "n8n-interface-team/crew.py",
+    "n8n-interface-team/Dockerfile",
+    "n8n-interface-team/k8s/deployment.yaml",
+    "n8n-interface-team/make-deployable-team.py",
+    "n8n-interface-team/health_check.sh",
+    "n8n-interface-team/requirements.txt",
+    "n8n-interface-team/team_server.py",
+    "n8n-interface-team/config/team_config.yaml",
+    "n8n-interface-team/config/a2a_config.yaml",
+    "n8n-interface-team/config/llm_config.yaml",
+    "n8n-interface-team/README.md",
+    "teams/n8n-interface-team/tasks/__init__.py",
+    "teams/n8n-interface-team/logs/__init__.py",
+    "tools/__init__.py",
+    "tools/shared_tools.py",
+    "tools/registry.py",
+    "n8n-interface-team/evolution/run_improvement_loop.py",
+    "n8n-interface-team/evolution/evolution_config.yaml",
+    "n8n-interface-team/evolution/setup_cron.sh"
+  ],
+  "warnings": [
+    "Team registered in Supabase",
+    "Memory system configured"
+  ]
+}

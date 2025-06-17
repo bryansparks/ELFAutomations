@@ -1,0 +1,1321 @@
+{
+  "name": "Content Clipper",
+  "nodes": [
+    {
+      "parameters": {
+        "public": true,
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.chatTrigger",
+      "typeVersion": 1.1,
+      "position": [
+        -920,
+        -1580
+      ],
+      "id": "b1ab4300-c845-4b2a-84ce-edaa652b42f3",
+      "name": "When chat message received",
+      "webhookId": "552faef9-e837-426a-a316-ab75816eb59f"
+    },
+    {
+      "parameters": {
+        "options": {
+          "systemMessage": "You an expert viral short form content creator.\n\nYour job is to create viral short content vertical video (9:16) from long form content video for platforms like yt shorts, tiktok and IG Reels.\n\nThis short form videos are composed by a clip, coming from a longer video, and a dopamine retention video, usually a minecraft parkour video or a sped up diy video. The final short form clip have the actual video clip in the upper half part of the screen while the dopamine retention video in the bottom half. This way we aim to hook the attention of the user and increase the average watch time.\n\nThe user will give you a youtube url and you will use the tool to get timestamped video transcriptions of that video. The transcriptions look like this:\n```\n[\n  {\n    \"end\": 30.811,\n    \"text\": \" The little tales they tell are false. The door was barred, locked and bolted as well. Ripe pears are fit for a queen's table. A big wet stain was on the round carpet. The kite dipped and swayed but stayed aloft. The pleasant hours fly by much too soon. The room was crowded with a mild wob.\",\n    \"start\": 2.585\n  },\n  {\n    \"end\": 48.592,\n    \"text\": \" The room was crowded with a wild mob. This strong arm shall shield your honor. She blushed when he gave her a white orchid. The beetle droned in the hot June sun.\",\n    \"start\": 33.029\n  }\n]\n```\n(THESE TIMESTAMPS ARE IN SECONDS)\n\nYour job is to then identify the main highlights in the video that you think are suitable for the final video. You will present them to the user, giving him the start and end timestamps and a brief summary of the content in those. You will give them immediately after getting the transcript with the tool.\n\nThe user will then tell you what clips he want to create and you will send them for video generation, using the video generation tool, giving the two timestamps and the video url in this EXACT format:\n```\n{\n  \"videoUrl\": \"<URL>\",\n  \"start\": \"HH:MM:SS\",\n  \"end\": \"HH:MM:SS\"\n}\n```\n\nYOU MUST FOLLOW THE FOLLOWING RULES:\n1. YOU CAN SEND ONE CLIP AT THE TIME WITH THE TOOL, NO MORE, meaning you can just send one pair of timestamps for tool call\n2. IF THE USER ASK FOR MULTIPLE VIDEO CREATIONS send the timestamps in different multiple tool calls\n3. ALWAYS ASK THE USER TO CONFIRM HE WANTS TO create the desired clips"
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 2,
+      "position": [
+        -720,
+        -1580
+      ],
+      "id": "254b2762-3f2e-45d8-ad57-b7336f339d80",
+      "name": "AI Agent"
+    },
+    {
+      "parameters": {
+        "model": {
+          "__rl": true,
+          "mode": "list",
+          "value": "claude-3-7-sonnet-20250219",
+          "cachedResultName": "Claude 3.7 Sonnet"
+        },
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatAnthropic",
+      "typeVersion": 1.3,
+      "position": [
+        -900,
+        -1420
+      ],
+      "id": "39cf2f69-df58-4a5d-8e76-cb2687704d2e",
+      "name": "Anthropic Chat Model",
+      "credentials": {
+        "anthropicApi": {
+          "id": "9c9yxx7Njl7hn93m",
+          "name": "Anthropic account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "contextWindowLength": 15
+      },
+      "type": "@n8n/n8n-nodes-langchain.memoryBufferWindow",
+      "typeVersion": 1.3,
+      "position": [
+        -760,
+        -1420
+      ],
+      "id": "ded5c98e-f403-4021-a28c-1461d98f8c0a",
+      "name": "Simple Memory"
+    },
+    {
+      "parameters": {
+        "content": "## Content Clipper Agent",
+        "height": 400,
+        "width": 680,
+        "color": 5
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        -980,
+        -1660
+      ],
+      "typeVersion": 1,
+      "id": "30ca8b25-17a4-40ca-86c3-8413f40a2681",
+      "name": "Sticky Note"
+    },
+    {
+      "parameters": {
+        "toolDescription": "Send two timestamps and a youtube video url to generate a video.",
+        "method": "POST",
+        "url": "https://paoloanzn.app.n8n.cloud/webhook/video",
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "timestamps",
+              "value": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('parameters0_Value', ``, 'string') }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequestTool",
+      "typeVersion": 4.2,
+      "position": [
+        -460,
+        -1420
+      ],
+      "id": "57385a19-8956-4690-9d1f-9ebc9d17217c",
+      "name": "Video Generation Tool"
+    },
+    {
+      "parameters": {
+        "toolDescription": "Get Timestamped Video Transcript of a Youtube video.",
+        "method": "POST",
+        "url": "https://paoloanzn.app.n8n.cloud/webhook/transcript",
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "videoUrl",
+              "value": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('parameters0_Value', ``, 'string') }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequestTool",
+      "typeVersion": 4.2,
+      "position": [
+        -620,
+        -1420
+      ],
+      "id": "8695c513-4a85-45cb-b5e9-04293bdbdc42",
+      "name": "Video Transcript Tool"
+    },
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "cb91c789-1b8b-4a5a-a625-b4c920445b83",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        -980,
+        -1120
+      ],
+      "id": "fa1a7cc5-c380-412b-9a8a-536c54bcaa00",
+      "name": "Webhook (Transcript)",
+      "webhookId": "cb91c789-1b8b-4a5a-a625-b4c920445b83"
+    },
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "d58bb2eb-558d-4971-ba0a-4d5e1abfe58b",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        -980,
+        -760
+      ],
+      "id": "4f77cbae-9c0b-4575-97ce-af1236eb83be",
+      "name": "Webhook (Video Generation)",
+      "webhookId": "d58bb2eb-558d-4971-ba0a-4d5e1abfe58b"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://video-trimmer-1092214094999.us-central1.run.app/download",
+        "sendBody": true,
+        "contentType": "form-urlencoded",
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "api_key",
+              "value": "API_KEY"
+            },
+            {
+              "name": "video_url",
+              "value": "={{ $('Webhook (Transcript)').item.json.body.videoUrl }}"
+            },
+            {
+              "name": "format",
+              "value": "mp3"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        -280,
+        -1120
+      ],
+      "id": "ad0b81e4-00eb-49df-9037-63d56f129c5b",
+      "name": "Download MP3"
+    },
+    {
+      "parameters": {
+        "resource": "folder",
+        "name": "=temp-{{ Math.floor(Math.random() * 100000) }}",
+        "driveId": {
+          "__rl": true,
+          "mode": "list",
+          "value": "My Drive"
+        },
+        "folderId": {
+          "__rl": true,
+          "mode": "list",
+          "value": "root",
+          "cachedResultName": "/ (Root folder)"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleDrive",
+      "typeVersion": 3,
+      "position": [
+        -760,
+        -1120
+      ],
+      "id": "31a2b6e5-0a4f-4b70-8ff8-865679f4e804",
+      "name": "Create Temp Folder",
+      "credentials": {
+        "googleDriveOAuth2Api": {
+          "id": "eBFhEOVIrK0AXZD9",
+          "name": "Google Drive account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "resource": "folder",
+        "operation": "share",
+        "folderNoRootId": {
+          "__rl": true,
+          "value": "={{ $json.id }}",
+          "mode": "id"
+        },
+        "permissionsUi": {
+          "permissionsValues": {
+            "role": "reader",
+            "type": "anyone"
+          }
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleDrive",
+      "typeVersion": 3,
+      "position": [
+        -580,
+        -1120
+      ],
+      "id": "aaef097b-ed94-4e1b-930a-79aed28fd4c8",
+      "name": "Set Share Perms",
+      "credentials": {
+        "googleDriveOAuth2Api": {
+          "id": "eBFhEOVIrK0AXZD9",
+          "name": "Google Drive account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.replicate.com/v1/predictions",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "Bearer API_KEY"
+            },
+            {
+              "name": "Prefer",
+              "value": "wait"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"version\": \"84d2ad2d6194fe98a17d2b60bef1c7f910c46b2f6fd38996ca457afd9c8abfcb\",\n  \"input\": {\n    \"audio_file\": \"{{ `https://drive.google.com/uc?export=download&id=${$json.id}` }}\"\n  }\n}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        180,
+        -1120
+      ],
+      "id": "d3cf415e-b804-4d71-842d-1c30aa0d0cc5",
+      "name": "Generate Transcripts (REPLICATE)"
+    },
+    {
+      "parameters": {
+        "driveId": {
+          "__rl": true,
+          "mode": "list",
+          "value": "My Drive"
+        },
+        "folderId": {
+          "__rl": true,
+          "value": "={{ $('Create Temp Folder').item.json.id }}",
+          "mode": "id"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleDrive",
+      "typeVersion": 3,
+      "position": [
+        -120,
+        -1120
+      ],
+      "id": "1e9f659a-d17e-46fe-8541-451c385a25f9",
+      "name": "Upload Audio",
+      "credentials": {
+        "googleDriveOAuth2Api": {
+          "id": "eBFhEOVIrK0AXZD9",
+          "name": "Google Drive account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.3,
+      "position": [
+        440,
+        -1200
+      ],
+      "id": "0d436c71-a9ef-417f-a27f-a3b56dc57528",
+      "name": "Forward Replicate Response"
+    },
+    {
+      "parameters": {
+        "resource": "folder",
+        "operation": "deleteFolder",
+        "folderNoRootId": {
+          "__rl": true,
+          "value": "={{ $('Create Temp Folder').item.json.id }}",
+          "mode": "id"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleDrive",
+      "typeVersion": 3,
+      "position": [
+        440,
+        -1020
+      ],
+      "id": "27216fdd-07d7-4fdd-b0ac-7db50642d385",
+      "name": "Delete Tmp Folder",
+      "credentials": {
+        "googleDriveOAuth2Api": {
+          "id": "eBFhEOVIrK0AXZD9",
+          "name": "Google Drive account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://video-trimmer-1092214094999.us-central1.run.app/trim",
+        "sendBody": true,
+        "contentType": "form-urlencoded",
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "api_key",
+              "value": "API_KEY"
+            },
+            {
+              "name": "video_url",
+              "value": "={{ $('Webhook (Video Generation)').item.json.body.timestamps.parseJson().videoUrl }}"
+            },
+            {
+              "name": "start_time",
+              "value": "={{ $('Webhook (Video Generation)').item.json.body.timestamps.parseJson().start }}"
+            },
+            {
+              "name": "end_time",
+              "value": "={{ $('Webhook (Video Generation)').item.json.body.timestamps.parseJson().end }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        -460,
+        -760
+      ],
+      "id": "ae526793-dc6d-4fd6-bc74-6ff46d243c71",
+      "name": "Download Video Clip"
+    },
+    {
+      "parameters": {
+        "resource": "fileFolder",
+        "queryString": "background-videos",
+        "limit": 1,
+        "filter": {},
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleDrive",
+      "typeVersion": 3,
+      "position": [
+        -120,
+        -760
+      ],
+      "id": "42583b21-8ae3-4a35-a767-ab9508a9741b",
+      "name": "Get Clips Folder",
+      "credentials": {
+        "googleDriveOAuth2Api": {
+          "id": "eBFhEOVIrK0AXZD9",
+          "name": "Google Drive account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "resource": "fileFolder",
+        "searchMethod": "query",
+        "queryString": "='{{ $json.id }}' in parents",
+        "returnAll": true,
+        "filter": {},
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleDrive",
+      "typeVersion": 3,
+      "position": [
+        0,
+        -760
+      ],
+      "id": "a04606b3-5ad3-4641-8cd6-d736775a0821",
+      "name": "List Clips Files",
+      "credentials": {
+        "googleDriveOAuth2Api": {
+          "id": "eBFhEOVIrK0AXZD9",
+          "name": "Google Drive account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "fieldsToAggregate": {
+          "fieldToAggregate": [
+            {
+              "fieldToAggregate": "id"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.aggregate",
+      "typeVersion": 1,
+      "position": [
+        160,
+        -760
+      ],
+      "id": "5ffceeee-8b40-4233-811c-ec89ba495a06",
+      "name": "Aggregate Clips"
+    },
+    {
+      "parameters": {
+        "jsCode": "return {\n  clipId: $input.first().json.id[Math.floor(Math.random() * $input.first().json.id.length)]\n};"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        320,
+        -760
+      ],
+      "id": "885b4473-e566-438c-a9db-ca75f7cb7060",
+      "name": "Select A Random Clip"
+    },
+    {
+      "parameters": {
+        "resource": "folder",
+        "name": "=temp-{{ Math.floor(Math.random() * 100000) }}",
+        "driveId": {
+          "__rl": true,
+          "mode": "list",
+          "value": "My Drive"
+        },
+        "folderId": {
+          "__rl": true,
+          "mode": "list",
+          "value": "root",
+          "cachedResultName": "/ (Root folder)"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleDrive",
+      "typeVersion": 3,
+      "position": [
+        -820,
+        -760
+      ],
+      "id": "0a29cc81-27a0-46ba-bbcf-125704392027",
+      "name": "Create Temp Folder1",
+      "credentials": {
+        "googleDriveOAuth2Api": {
+          "id": "eBFhEOVIrK0AXZD9",
+          "name": "Google Drive account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "resource": "folder",
+        "operation": "share",
+        "folderNoRootId": {
+          "__rl": true,
+          "value": "={{ $json.id }}",
+          "mode": "id"
+        },
+        "permissionsUi": {
+          "permissionsValues": {
+            "role": "reader",
+            "type": "anyone"
+          }
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleDrive",
+      "typeVersion": 3,
+      "position": [
+        -660,
+        -760
+      ],
+      "id": "8aba98ff-c758-4439-8974-4e3226ab97c8",
+      "name": "Set Share Perms1",
+      "credentials": {
+        "googleDriveOAuth2Api": {
+          "id": "eBFhEOVIrK0AXZD9",
+          "name": "Google Drive account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "driveId": {
+          "__rl": true,
+          "mode": "list",
+          "value": "My Drive"
+        },
+        "folderId": {
+          "__rl": true,
+          "value": "={{ $('Create Temp Folder1').item.json.id }}",
+          "mode": "id"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleDrive",
+      "typeVersion": 3,
+      "position": [
+        -300,
+        -760
+      ],
+      "id": "9b9c1783-542e-41e0-8cf6-702f9d01bba8",
+      "name": "Upload Clip",
+      "credentials": {
+        "googleDriveOAuth2Api": {
+          "id": "eBFhEOVIrK0AXZD9",
+          "name": "Google Drive account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": " // Input parameters\n const backgroundVideoUrl = `https://drive.google.com/uc?export=download&id=${$input.first().json.clipId}`;\n\n// Function to construct Google Drive URL\n function getGoogleDriveUrl(fileId) {\n  return `https://drive.google.com/uc?export=download&id=${fileId}`;\n }\n\nconst mainClipUrl = getGoogleDriveUrl($('Upload Clip').first().json.id)\n \n // Base render object\n const renderObject = {\n  \"comment\": \"Clip Viral Video\",\n  \"resolution\": \"custom\",\n  \"quality\": \"high\",\n  \"width\": 1080,\n  \"height\": 1920,\n  \"scenes\": [\n    {\n    \"elements\": \n    [\n    {\n      \"type\": \"video\",\n      \"src\": mainClipUrl,\n      \"x\": 0,\n      \"y\": 0,\n      \"width\": 1080,\n      \"height\": 960,\n      \"resize\": \"fit\",\n      \"duration\": -1,\n    },\n    {\n      \"type\": \"video\",\n      \"src\": backgroundVideoUrl,\n      \"x\": 0,\n      \"y\": 480,\n      \"width\": 1080,\n      \"height\": 960,\n      \"z-index\": -1,\n      \"resize\": \"cover\",\n      \"duration\": -2,\n    },\n    ]\n    }\n  ],\n  \"elements\": [\n  {\n  \"id\": \"q41n9kxp\",\n  \"type\": \"subtitles\",\n  \"settings\": {\n  \"style\": \"classic-progressive\",\n  \"font-family\": \"Luckiest Guy\", // More cartoonish font,\n  \"font-size\": 115,\n  \"word-color\": \"#04ECF0\", // Aqua highlight\n  \"line-color\": \"#FFFFFF\", // White text\n  \"shadow-color\": \"#000000\",\n  \"shadow-offset\": 2,\n  \"box-color\": \"#260B1B\",\n  \"position\": \"center-center\",// center\n  \"outline-color\": \"#000000\", // Black outline\n  \"outline-width\": 3  // Outline width in pixels\"\n  },\n  \"language\": \"en\"\n  }\n  ],\n };\n \n\n // Return the render object\n return [{json: renderObject}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -960,
+        -460
+      ],
+      "id": "529a3c54-cd12-4cb6-a81e-d1a77d1eef27",
+      "name": "Create Render Object",
+      "executeOnce": true
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.json2video.com/v2/movies",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "x-api-key",
+              "value": "API_KEY"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "=json",
+        "bodyParameters": {
+          "parameters": [
+            {}
+          ]
+        },
+        "jsonBody": "={{ JSON.stringify($json) }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        -760,
+        -460
+      ],
+      "id": "5506024c-b1df-4b75-92c5-9fde278dc166",
+      "name": "Send Render Request"
+    },
+    {
+      "parameters": {
+        "url": "=https://api.json2video.com/v2/movies?project={{ $('Send Render Request').item.json.project }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "x-api-key",
+              "value": "API_KEY"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        -480,
+        -460
+      ],
+      "id": "f0e4e562-2331-4fa7-a4ee-ac8d2231fa6f",
+      "name": "Check Status"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "473a0342-cf34-4e4a-95fc-8e781cd2dd7f",
+              "leftValue": "={{ $json.movie.status }}",
+              "rightValue": "done",
+              "operator": {
+                "type": "string",
+                "operation": "equals",
+                "name": "filter.operator.equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        -300,
+        -460
+      ],
+      "id": "dd446375-2383-4b4c-b013-004addbc528d",
+      "name": "If"
+    },
+    {
+      "parameters": {
+        "url": "={{ $json.movie.url }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        120,
+        -420
+      ],
+      "id": "98b81e85-459f-4b32-84f7-e40e2e2540dc",
+      "name": "Download the Video",
+      "executeOnce": true
+    },
+    {
+      "parameters": {
+        "driveId": {
+          "__rl": true,
+          "mode": "list",
+          "value": "My Drive"
+        },
+        "folderId": {
+          "__rl": true,
+          "mode": "list",
+          "value": "root",
+          "cachedResultName": "/ (Root folder)"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleDrive",
+      "typeVersion": 3,
+      "position": [
+        280,
+        -420
+      ],
+      "id": "4b47d5bf-114f-41fe-a436-c480863b8c55",
+      "name": "Upload the video",
+      "credentials": {
+        "googleDriveOAuth2Api": {
+          "id": "eBFhEOVIrK0AXZD9",
+          "name": "Google Drive account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "amount": 10
+      },
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1.1,
+      "position": [
+        -120,
+        -360
+      ],
+      "id": "7278f957-814a-4859-a0fa-5d4046ee570c",
+      "name": "Wait",
+      "webhookId": "c0512aed-ade0-4573-addc-0a623101e820"
+    },
+    {
+      "parameters": {
+        "content": "## Check Rendering Progress",
+        "height": 360,
+        "width": 600,
+        "color": 3
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        -540,
+        -520
+      ],
+      "typeVersion": 1,
+      "id": "f3cbaeee-b75f-436b-a01d-9ddeb68f5c7c",
+      "name": "Sticky Note10"
+    },
+    {
+      "parameters": {
+        "content": "## Upload the video",
+        "height": 240,
+        "width": 340,
+        "color": 5
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        80,
+        -480
+      ],
+      "typeVersion": 1,
+      "id": "921e7699-f5a7-4109-9ecb-13082cd3f654",
+      "name": "Sticky Note11"
+    },
+    {
+      "parameters": {
+        "resource": "folder",
+        "operation": "deleteFolder",
+        "folderNoRootId": {
+          "__rl": true,
+          "value": "={{ $('Create Temp Folder1').item.json.id }}",
+          "mode": "id"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleDrive",
+      "typeVersion": 3,
+      "position": [
+        480,
+        -420
+      ],
+      "id": "ebe39059-41d0-4804-b90b-964d656aae87",
+      "name": "Delete Tmp Folder1",
+      "credentials": {
+        "googleDriveOAuth2Api": {
+          "id": "eBFhEOVIrK0AXZD9",
+          "name": "Google Drive account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "content": "## Timescript Generation Chain",
+        "height": 120,
+        "width": 200
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        -1240,
+        -1120
+      ],
+      "typeVersion": 1,
+      "id": "3293c9c5-0159-40db-8a3a-5cdc2276ed5f",
+      "name": "Sticky Note1"
+    },
+    {
+      "parameters": {
+        "content": "## Video Rendering Chain",
+        "height": 120,
+        "width": 200,
+        "color": 4
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        -1240,
+        -760
+      ],
+      "typeVersion": 1,
+      "id": "3c2bffc5-94ec-4ef9-b0eb-659d860d3924",
+      "name": "Sticky Note2"
+    },
+    {
+      "parameters": {
+        "content": "## Create temp folder",
+        "height": 220,
+        "width": 360,
+        "color": 6
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        -800,
+        -1180
+      ],
+      "typeVersion": 1,
+      "id": "1d5abe8a-64d3-4beb-acd9-57375eb6d8d1",
+      "name": "Sticky Note3"
+    },
+    {
+      "parameters": {
+        "content": "## Download mp3 youtube video\nUsing [Content Clipper API](https://anzanipaolo.gumroad.com/l/content-clipper-api) (Unlimited Downloads)",
+        "height": 240,
+        "width": 380
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        -360,
+        -1200
+      ],
+      "typeVersion": 1,
+      "id": "228639ce-5608-43c7-9ee6-6f66af13fa1b",
+      "name": "Sticky Note4"
+    },
+    {
+      "parameters": {
+        "content": "## Generate Timestamped Transcripts\nUsing `victor-upmeet/whisperx` model on Replicate",
+        "height": 300,
+        "width": 300,
+        "color": 4
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        80,
+        -1240
+      ],
+      "typeVersion": 1,
+      "id": "83090068-6bb9-4873-9c8d-f06be97850c0",
+      "name": "Sticky Note5"
+    },
+    {
+      "parameters": {
+        "content": "## Clean Up",
+        "height": 200,
+        "width": 180,
+        "color": 3
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        400,
+        -1060
+      ],
+      "typeVersion": 1,
+      "id": "462d1a4e-9ccc-4f5a-8a5d-3cfe3a251c5f",
+      "name": "Sticky Note6"
+    },
+    {
+      "parameters": {
+        "content": "## Create temp folder",
+        "height": 220,
+        "width": 300,
+        "color": 7
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        -840,
+        -820
+      ],
+      "typeVersion": 1,
+      "id": "b8db4397-25e2-4f2f-bd73-aa6cf1f3d589",
+      "name": "Sticky Note7"
+    },
+    {
+      "parameters": {
+        "content": "## Generate & Download mp4 Clip from Youtube Video\nUsing [Content Clipper API](https://anzanipaolo.gumroad.com/l/content-clipper-api) (Unlimited Downloads)",
+        "height": 280,
+        "width": 360
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        -520,
+        -880
+      ],
+      "typeVersion": 1,
+      "id": "6676da8a-287f-4ffe-8676-f73a1cfcb254",
+      "name": "Sticky Note8"
+    },
+    {
+      "parameters": {
+        "content": "## Select Random Background clip",
+        "height": 220,
+        "width": 600,
+        "color": 4
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        -140,
+        -820
+      ],
+      "typeVersion": 1,
+      "id": "18306b31-c044-42bb-96de-c0dc3641af7f",
+      "name": "Sticky Note9"
+    },
+    {
+      "parameters": {
+        "content": "## Create Render Object & Start Rendering",
+        "height": 260,
+        "width": 400,
+        "color": 6
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        -980,
+        -540
+      ],
+      "typeVersion": 1,
+      "id": "eb2db936-77f0-471a-85c1-5c969a9330ce",
+      "name": "Sticky Note12"
+    },
+    {
+      "parameters": {
+        "content": "## Clean Up",
+        "height": 220,
+        "width": 180
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        440,
+        -480
+      ],
+      "typeVersion": 1,
+      "id": "28fceae8-1c1c-4a35-a81e-b98d069d1c6a",
+      "name": "Sticky Note13"
+    },
+    {
+      "parameters": {
+        "content": "## Viral Clipper Automation\n- This automation let you chat with an agent which can:\n- analyze the transcript of a youtube video\n- Find Highlights and Key Moments\n- Render a viral short form video of one or more specific clips\n- You can even give him specific timestamps to clip if you wish\n\n### Resources Used\n**Video/Audio Download from Youtube:**\n- [Content Clipper API](https://anzanipaolo.gumroad.com/l/content-clipper-api) (Unlimited Downloads)\n** Youtube Video Clipper:**\n- [Content Clipper API](https://anzanipaolo.gumroad.com/l/content-clipper-api) (Up to 200 clips/mo)\n**Transcript Generation**:\n- model `victor-upmeet/whisperx` on Replicate API\n**Video Rendering**:\n- [json2Video API](https://json2video.com/)\n",
+        "height": 400,
+        "width": 480,
+        "color": 6
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        -1480,
+        -1660
+      ],
+      "typeVersion": 1,
+      "id": "35511f42-174d-4bd9-8b1f-3f1ac6ee0693",
+      "name": "Sticky Note14"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "When chat message received": {
+      "main": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Anthropic Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Simple Memory": {
+      "ai_memory": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_memory",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Video Generation Tool": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Video Transcript Tool": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Webhook (Transcript)": {
+      "main": [
+        [
+          {
+            "node": "Create Temp Folder",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Download MP3": {
+      "main": [
+        [
+          {
+            "node": "Upload Audio",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Create Temp Folder": {
+      "main": [
+        [
+          {
+            "node": "Set Share Perms",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Set Share Perms": {
+      "main": [
+        [
+          {
+            "node": "Download MP3",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Upload Audio": {
+      "main": [
+        [
+          {
+            "node": "Generate Transcripts (REPLICATE)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Generate Transcripts (REPLICATE)": {
+      "main": [
+        [
+          {
+            "node": "Forward Replicate Response",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Delete Tmp Folder",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Forward Replicate Response": {
+      "main": [
+        []
+      ]
+    },
+    "Webhook (Video Generation)": {
+      "main": [
+        [
+          {
+            "node": "Create Temp Folder1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Clips Folder": {
+      "main": [
+        [
+          {
+            "node": "List Clips Files",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "List Clips Files": {
+      "main": [
+        [
+          {
+            "node": "Aggregate Clips",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Aggregate Clips": {
+      "main": [
+        [
+          {
+            "node": "Select A Random Clip",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Create Temp Folder1": {
+      "main": [
+        [
+          {
+            "node": "Set Share Perms1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Set Share Perms1": {
+      "main": [
+        [
+          {
+            "node": "Download Video Clip",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Download Video Clip": {
+      "main": [
+        [
+          {
+            "node": "Upload Clip",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Upload Clip": {
+      "main": [
+        [
+          {
+            "node": "Get Clips Folder",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Create Render Object": {
+      "main": [
+        [
+          {
+            "node": "Send Render Request",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send Render Request": {
+      "main": [
+        [
+          {
+            "node": "Check Status",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Check Status": {
+      "main": [
+        [
+          {
+            "node": "If",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If": {
+      "main": [
+        [
+          {
+            "node": "Download the Video",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Wait",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Download the Video": {
+      "main": [
+        [
+          {
+            "node": "Upload the video",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Upload the video": {
+      "main": [
+        [
+          {
+            "node": "Delete Tmp Folder1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Wait": {
+      "main": [
+        [
+          {
+            "node": "Check Status",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Select A Random Clip": {
+      "main": [
+        [
+          {
+            "node": "Create Render Object",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "14da1613-8c58-42a4-a364-e5301a84187f",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "db3c2d3698a1d65c9632c318b0f8874c99c3c8ec38f9fa1684001dc1e7ae08d8"
+  },
+  "id": "AqI5PZowSjUM9T6C",
+  "tags": [
+    {
+      "createdAt": "2025-06-04T14:01:48.950Z",
+      "updatedAt": "2025-06-04T14:01:48.950Z",
+      "id": "LccvK9gra902cmIJ",
+      "name": "share"
+    }
+  ]
+}

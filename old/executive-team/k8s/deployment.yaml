@@ -1,0 +1,151 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: general-team
+  namespace: elf-teams
+  labels:
+    app: general-team
+    department: general
+    framework: crewai
+    team-type: ai-agent-team
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: general-team
+  template:
+    metadata:
+      labels:
+        app: general-team
+        department: general
+        framework: crewai
+    spec:
+      containers:
+      - name: general-team
+        image: elf-automations/general-team:latest
+        imagePullPolicy: Never  # For local development
+        ports:
+        - containerPort: 8000
+          name: http
+          protocol: TCP
+        env:
+        - name: TEAM_NAME
+          value: "general-team"
+        - name: FRAMEWORK
+          value: "CrewAI"
+        - name: DEPARTMENT
+          value: "general"
+        - name: LLM_PROVIDER
+          value: "Anthropic"
+        - name: LLM_MODEL
+          value: "claude-3-sonnet-20240229"
+        - name: LOG_LEVEL
+          value: "INFO"
+        - name: OPENAI_API_KEY
+          valueFrom:
+            secretKeyRef:
+              name: llm-credentials
+              key: openai-api-key
+              optional: true
+        - name: ANTHROPIC_API_KEY
+          valueFrom:
+            secretKeyRef:
+              name: llm-credentials
+              key: anthropic-api-key
+              optional: true
+        - name: AGENTGATEWAY_URL
+          value: "http://agentgateway-service:3003"
+        - name: QDRANT_URL
+          value: "http://qdrant-service:6333"
+        - name: SUPABASE_URL
+          valueFrom:
+            secretKeyRef:
+              name: supabase-credentials
+              key: url
+        - name: SUPABASE_KEY
+          valueFrom:
+            secretKeyRef:
+              name: supabase-credentials
+              key: service-key
+        resources:
+          requests:
+            cpu: 200m
+            memory: 512Mi
+          limits:
+            cpu: 1000m
+            memory: 1Gi
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: 8000
+          initialDelaySeconds: 30
+          periodSeconds: 30
+          timeoutSeconds: 10
+          failureThreshold: 3
+        readinessProbe:
+          httpGet:
+            path: /health
+            port: 8000
+          initialDelaySeconds: 10
+          periodSeconds: 10
+          timeoutSeconds: 5
+          failureThreshold: 3
+        securityContext:
+          runAsNonRoot: true
+          runAsUser: 1000
+          allowPrivilegeEscalation: false
+          readOnlyRootFilesystem: false
+      restartPolicy: Always
+      serviceAccountName: general-team-sa
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: general-team-service
+  namespace: elf-teams
+  labels:
+    app: general-team
+spec:
+  selector:
+    app: general-team
+  ports:
+  - port: 80
+    targetPort: 8000
+    protocol: TCP
+    name: http
+  type: ClusterIP
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: general-team-sa
+  namespace: elf-teams
+  labels:
+    app: general-team
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: general-team-role
+  namespace: elf-teams
+rules:
+- apiGroups: [""]
+  resources: ["pods", "services"]
+  verbs: ["get", "list", "watch"]
+- apiGroups: [""]
+  resources: ["configmaps"]
+  verbs: ["get", "list", "watch", "create", "update", "patch"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: general-team-rolebinding
+  namespace: elf-teams
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: general-team-role
+subjects:
+- kind: ServiceAccount
+  name: general-team-sa
+  namespace: elf-teams

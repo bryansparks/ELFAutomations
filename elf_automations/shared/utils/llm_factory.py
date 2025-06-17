@@ -15,6 +15,7 @@ from langchain_openai import ChatOpenAI
 from ..quota import QuotaManager
 from .llm_with_quota import QuotaTrackedLLM
 from .llm_wrapper import FallbackLLM
+from .providers import ChatLocalModel, ChatOpenRouter
 
 # Ensure environment variables are loaded
 load_dotenv()
@@ -27,11 +28,19 @@ class LLMFactory:
 
     # Model hierarchy for fallbacks
     FALLBACK_CHAIN = [
+        # OpenRouter as primary option
+        ("openrouter", "auto", 0.7),  # Let OpenRouter choose
+        ("openrouter", "gpt-4", 0.7),  # Specific model via OpenRouter
+        ("openrouter", "claude-3-opus", 0.7),
+        # Direct providers as fallback
         ("openai", "gpt-4", 0.7),
         ("openai", "gpt-3.5-turbo", 0.5),
         ("anthropic", "claude-3-opus-20240229", 0.7),
         ("anthropic", "claude-3-sonnet-20240229", 0.5),
         ("anthropic", "claude-3-haiku-20240307", 0.3),
+        # Local models as last resort
+        ("local", "llama3-8b", 0.7),
+        ("local", "mistral-7b", 0.5),
     ]
 
     @classmethod
@@ -97,7 +106,35 @@ class LLMFactory:
     @classmethod
     def _create_single_llm(cls, provider: str, model: str, temperature: float):
         """Create a single LLM instance"""
-        if provider == "openai":
+        if provider == "openrouter":
+            api_key = os.getenv("OPENROUTER_API_KEY")
+            if not api_key:
+                raise ValueError("OPENROUTER_API_KEY not set")
+
+            # Get preferences from environment
+            preferences = {}
+            if os.getenv("OPENROUTER_PREFERENCES"):
+                import json
+
+                try:
+                    preferences = json.loads(os.getenv("OPENROUTER_PREFERENCES"))
+                except:
+                    logger.warning("Invalid OPENROUTER_PREFERENCES JSON")
+
+            return ChatOpenRouter(
+                model=model,
+                temperature=temperature,
+                api_key=api_key,
+                preferences=preferences,
+            )
+        elif provider == "local":
+            # Direct local model connection
+            return ChatLocalModel(
+                model=model,
+                temperature=temperature,
+                base_url=os.getenv("LOCAL_MODEL_URL", "http://localhost:11434"),
+            )
+        elif provider == "openai":
             api_key = os.getenv("OPENAI_API_KEY")
             if not api_key:
                 raise ValueError("OPENAI_API_KEY not set")

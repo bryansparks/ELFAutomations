@@ -1,0 +1,3 @@
+"Create me a create me a lead generation system that starts by scraping with Aplify then adds all of these leads into a Google sheet and then it
+goes and loops over each of these items verifies if indeed they are valid and if they are then it goes and scrapes their
+LinkedIn profile it uses Perplexity to research them it adds that data into an OpenAI module personalizes the message and then adds them to an instantly campaign.:

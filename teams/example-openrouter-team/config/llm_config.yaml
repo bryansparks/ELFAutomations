@@ -1,0 +1,63 @@
+# LLM Configuration for Example OpenRouter Team
+# This demonstrates different routing strategies
+
+llm_preferences:
+  # Primary provider - let OpenRouter choose best model
+  primary_provider: openrouter
+  model_preferences:
+    - openrouter:auto      # Let OpenRouter decide
+    - local:codellama-13b  # Prefer local for code
+    - openai:gpt-4         # Fallback to direct OpenAI
+
+  # Routing preferences by task type
+  routing_hints:
+    code_generation:
+      provider: local
+      model: codellama-13b
+      reason: "Keep code generation on-premise"
+
+    documentation:
+      provider: openrouter
+      model: auto
+      preferences:
+        quality_threshold: 0.9
+        prefer_faster: false
+
+    debugging:
+      provider: openrouter
+      model: auto
+      preferences:
+        prefer_faster: true
+        max_cost_per_token: 0.0005
+
+    general:
+      provider: openrouter
+      model: auto
+      preferences:
+        max_cost_per_token: 0.0001
+        prefer_local: true
+
+# Cost constraints
+cost_constraints:
+  daily_budget: 5.00  # $5 per day
+  alert_threshold: 0.8  # Alert at 80% of budget
+  hard_stop: true  # Stop at 100% of budget
+
+# Performance requirements
+performance:
+  max_latency_ms: 5000  # 5 second max
+  prefer_cached: true
+  batch_requests: true
+
+# Privacy settings
+privacy:
+  sensitive_data_local_only: true
+  log_prompts: false
+  log_responses: false
+
+# Monitoring
+monitoring:
+  track_model_selection: true
+  track_costs: true
+  track_latency: true
+  report_frequency: hourly

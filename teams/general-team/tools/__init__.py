@@ -4,7 +4,7 @@ Tools for general-team
 This module contains all tools available to agents in the team.
 """
 
-from .shared_tools import *
 from .registry import get_tools_for_agent
+from .shared_tools import *
 
 __all__ = ["get_tools_for_agent"]

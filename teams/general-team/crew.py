@@ -14,45 +14,43 @@ from pathlib import Path
 # Add parent directory to path for imports
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
-from crewai import Crew, Process, Task
-from typing import List, Dict, Any
 import logging
+from typing import Any, Dict, List
+
+from crewai import Crew, Process, Task
 
 # Import team members
-from agents import TeamLeadAgent
-from agents import SpecialistAgent
-from agents import SpecialistAgent
-from agents import CoordinatorAgent
+from agents import CoordinatorAgent, SpecialistAgent, TeamLeadAgent
 
 
 class GeneralTeamCrew:
     """Orchestrates the general-team team using CrewAI"""
-    
+
     def __init__(self):
         self.logger = logging.getLogger("general-team.crew")
-        
+
         # Initialize agents
         self.team_lead = TeamLeadAgent()
         self.specialist = SpecialistAgent()
         self.specialist = SpecialistAgent()
         self.coordinator = CoordinatorAgent()
-        
+
         # Create the crew
         self.crew = self._create_crew()
-    
+
     def _create_crew(self) -> Crew:
         """Create and configure the crew"""
-        
+
         agents = [
             self.team_lead.agent,
             self.specialist.agent,
             self.specialist.agent,
             self.coordinator.agent,
         ]
-        
+
         # Configure process based on team size and structure
         process = Process.sequential
-        
+
         return Crew(
             agents=agents,
             process=process,
@@ -61,7 +59,7 @@ class GeneralTeamCrew:
             manager_llm=self.team_lead.llm if process == Process.hierarchical else None,
             function_calling_llm=self.team_lead.llm,
         )
-    
+
     def create_task(self, description: str, context: Dict[str, Any] = None) -> Task:
         """Create a task for the crew"""
         return Task(
@@ -69,17 +67,17 @@ class GeneralTeamCrew:
             expected_output="A comprehensive response addressing all aspects of the task",
             context=context or {},
         )
-    
+
     def run(self, task_description: str, context: Dict[str, Any] = None) -> str:
         """Run the crew with a specific task"""
         self.logger.info(f"Starting crew execution: {task_description[:100]}...")
-        
+
         task = self.create_task(task_description, context)
         result = self.crew.kickoff(inputs={"task": task})
-        
+
         self.logger.info("Crew execution completed")
         return result
-    
+
     async def arun(self, task_description: str, context: Dict[str, Any] = None) -> str:
         """Async version of run"""
         # CrewAI doesn't have native async support yet
@@ -102,11 +100,11 @@ def get_orchestrator(tools: Dict[str, List] = None) -> GeneralTeamCrew:
 if __name__ == "__main__":
     # Example usage
     orchestrator = get_orchestrator()
-    
+
     # Example task
     result = orchestrator.run(
         "Create a comprehensive strategic plan for Q2 2024",
-        context={"budget": 100000, "team_size": 4}
+        context={"budget": 100000, "team_size": 4},
     )
-    
+
     print(result)

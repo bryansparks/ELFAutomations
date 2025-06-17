@@ -55,3 +55,8 @@ class TeamMember:
     def has_a2a_capabilities(self) -> bool:
         """Check if this member needs A2A capabilities."""
         return self.is_manager or bool(self.manages_teams)
+    
+    @property
+    def filename(self) -> str:
+        """Get filename for this member's agent file."""
+        return f"{self.filename_safe_name}.py"

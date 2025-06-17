@@ -24,24 +24,27 @@ class FastAPIServerGenerator(BaseGenerator):
         """
         team_dir = Path(team_spec.name)
         server_path = team_dir / "team_server.py"
-        
+
         # Generate server content
         server_content = self._generate_server_content(team_spec)
-        
+
         # Write file
         with open(server_path, "w") as f:
             f.write(server_content)
-        
-        return {
-            "generated_files": [str(server_path)],
-            "errors": []
-        }
-    
+
+        return {"generated_files": [str(server_path)], "errors": []}
+
     def _generate_server_content(self, team_spec: TeamSpecification) -> str:
         """Generate team server content."""
-        orchestrator_import = "from crew import get_orchestrator" if team_spec.framework == "CrewAI" else "from workflows.team_workflow import get_workflow"
-        orchestrator_var = "orchestrator" if team_spec.framework == "CrewAI" else "workflow"
-        
+        orchestrator_import = (
+            "from crew import get_orchestrator"
+            if team_spec.framework == "CrewAI"
+            else "from workflows.team_workflow import get_workflow"
+        )
+        orchestrator_var = (
+            "orchestrator" if team_spec.framework == "CrewAI" else "workflow"
+        )
+
         return f'''#!/usr/bin/env python3
 """
 Team Server - Runs the {team_spec.framework} team with A2A protocol endpoint
@@ -107,13 +110,13 @@ class HealthResponse(BaseModel):
 async def startup_event():
     """Initialize team on startup"""
     global {orchestrator_var}, a2a_server
-    
+
     logger.info("Starting {team_spec.name} team server...")
-    
+
     # Initialize orchestrator
     {orchestrator_var} = get_{orchestrator_var}()
     logger.info("Team orchestrator initialized")
-    
+
     # Initialize A2A server
     a2a_server = A2AServer(
         agent_id="{team_spec.name}-manager",
@@ -126,7 +129,7 @@ async def startup_event():
     )
     await a2a_server.start()
     logger.info("A2A server initialized")
-    
+
     logger.info("{team_spec.name} team server started successfully")
 
 
@@ -134,12 +137,12 @@ async def startup_event():
 async def shutdown_event():
     """Cleanup on shutdown"""
     global a2a_server
-    
+
     logger.info("Shutting down {team_spec.name} team server...")
-    
+
     if a2a_server:
         await a2a_server.stop()
-    
+
     logger.info("Shutdown complete")
 
 
@@ -156,7 +159,7 @@ async def health_check():
 async def handle_task(request: TaskRequestModel):
     """Handle incoming A2A task requests"""
     logger.info(f"Received task from {{request.from_agent}}: {{request.task_description[:100]}}...")
-    
+
     try:
         # Create task request
         task_request = TaskRequest(
@@ -167,7 +170,7 @@ async def handle_task(request: TaskRequestModel):
             context=request.context,
             timeout=request.timeout
         )
-        
+
         # Execute task using orchestrator
         if "{team_spec.framework}" == "CrewAI":
             result = {orchestrator_var}.run(
@@ -180,7 +183,7 @@ async def handle_task(request: TaskRequestModel):
                 objective=request.task_description,
                 context=request.context
             )
-        
+
         # Create response
         response = TaskResponse(
             request_id=task_request.request_id,
@@ -193,10 +196,10 @@ async def handle_task(request: TaskRequestModel):
                 "team_name": "{team_spec.name}"
             }}
         )
-        
+
         logger.info(f"Task completed successfully for {{request.from_agent}}")
         return response.dict()
-        
+
     except Exception as e:
         logger.error(f"Error executing task: {{str(e)}}")
         raise HTTPException(status_code=500, detail=str(e))
@@ -245,9 +248,9 @@ if __name__ == "__main__":
     # Run the server
     port = int(os.getenv("PORT", "8000"))
     host = os.getenv("HOST", "0.0.0.0")
-    
+
     logger.info(f"Starting server on {{host}}:{{port}}")
-    
+
     uvicorn.run(
         app,
         host=host,

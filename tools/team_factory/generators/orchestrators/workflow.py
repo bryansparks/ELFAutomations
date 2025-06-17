@@ -25,32 +25,29 @@ class LangGraphWorkflow(BaseGenerator):
         team_dir = Path(team_spec.name)
         workflows_dir = team_dir / "workflows"
         workflows_dir.mkdir(exist_ok=True)
-        
+
         generated_files = []
-        
+
         # Generate state definitions
         state_file = workflows_dir / "state_definitions.py"
         with open(state_file, "w") as f:
             f.write(self._generate_state_definitions(team_spec))
         generated_files.append(str(state_file))
-        
+
         # Generate workflow
         workflow_file = workflows_dir / "team_workflow.py"
         with open(workflow_file, "w") as f:
             f.write(self._generate_workflow_content(team_spec))
         generated_files.append(str(workflow_file))
-        
+
         # Generate __init__.py
         init_file = workflows_dir / "__init__.py"
         with open(init_file, "w") as f:
             f.write(self._generate_init_content())
         generated_files.append(str(init_file))
-        
-        return {
-            "generated_files": generated_files,
-            "errors": []
-        }
-    
+
+        return {"generated_files": generated_files, "errors": []}
+
     def _generate_state_definitions(self, team_spec: TeamSpecification) -> str:
         """Generate state definition file."""
         return f'''#!/usr/bin/env python3
@@ -100,22 +97,22 @@ class CommunicationState(TypedDict):
     timestamp: datetime
     metadata: Dict[str, Any]
 '''
-    
+
     def _generate_workflow_content(self, team_spec: TeamSpecification) -> str:
         """Generate workflow orchestrator content."""
         # Agent imports
         agent_imports = []
         agent_inits = []
-        
+
         for member in team_spec.members:
             class_name = member.role.replace(" ", "") + "Agent"
             var_name = member.role.lower().replace(" ", "_")
             agent_imports.append(f"from agents import {class_name}")
             agent_inits.append(f"        self.{var_name} = {class_name}()")
-        
+
         # Workflow type based on team size
         workflow_type = "hierarchical" if len(team_spec.members) >= 5 else "sequential"
-        
+
         return f'''#!/usr/bin/env python3
 """
 {team_spec.name} Workflow Orchestrator
@@ -144,32 +141,32 @@ from workflows.state_definitions import TeamState, TaskState
 class {team_spec.name.replace("-", " ").title().replace(" ", "")}Workflow:
     """
     Orchestrates the {team_spec.name} team using LangGraph
-    
+
     Workflow Type: {workflow_type.title()}
     Team Size: {len(team_spec.members)}
     """
-    
+
     def __init__(self, checkpoint_url: Optional[str] = None):
         self.logger = logging.getLogger("{team_spec.name}.workflow")
         self.team_name = "{team_spec.name}"
-        
+
         # Initialize agents
 {chr(10).join(agent_inits)}
-        
+
         # Initialize checkpointer
         if checkpoint_url:
             self.checkpointer = PostgresSaver.from_conn_string(checkpoint_url)
         else:
             self.checkpointer = MemorySaver()
-        
+
         # Build the workflow graph
         self.graph = self._build_graph()
         self.compiled_graph = self.graph.compile(checkpointer=self.checkpointer)
-    
+
     def _build_graph(self) -> StateGraph:
         """Build the team workflow graph"""
         workflow = StateGraph(TeamState)
-        
+
         # Add nodes for each phase
         workflow.add_node("initialize", self._initialize_team)
         workflow.add_node("analyze_objective", self._analyze_objective)
@@ -177,10 +174,10 @@ class {team_spec.name.replace("-", " ").title().replace(" ", "")}Workflow:
         workflow.add_node("execute_tasks", self._execute_tasks)
         workflow.add_node("review_progress", self._review_progress)
         workflow.add_node("finalize_results", self._finalize_results)
-        
+
         # Set entry point
         workflow.set_entry_point("initialize")
-        
+
         # Add edges based on workflow type
         if "{workflow_type}" == "hierarchical":
             # Hierarchical flow with delegation
@@ -203,11 +200,11 @@ class {team_spec.name.replace("-", " ").title().replace(" ", "")}Workflow:
             workflow.add_edge("plan_approach", "execute_tasks")
             workflow.add_edge("execute_tasks", "review_progress")
             workflow.add_edge("review_progress", "finalize_results")
-        
+
         workflow.add_edge("finalize_results", END)
-        
+
         return workflow
-    
+
     async def _initialize_team(self, state: TeamState) -> TeamState:
         """Initialize the team state"""
         state["team_name"] = self.team_name
@@ -215,91 +212,91 @@ class {team_spec.name.replace("-", " ").title().replace(" ", "")}Workflow:
         state["created_at"] = datetime.utcnow()
         state["updated_at"] = datetime.utcnow()
         state["agent_states"] = {{}}
-        
+
         # Add initial system message
         if not state.get("messages"):
             state["messages"] = []
-        
+
         state["messages"].append(
             SystemMessage(content=f"""
             This is the {team_spec.name} with the following members:
 {chr(10).join(f"            - {member.role}: {', '.join(member.responsibilities[:2])}" for member in team_spec.members)}
-            
+
             Team composition and roles have been initialized.
             """)
         )
-        
+
         return state
-    
+
     async def _analyze_objective(self, state: TeamState) -> TeamState:
         """Analyze the team objective"""
         # Manager analyzes the objective
         manager_agent = self.{next(m.role.lower().replace(" ", "_") for m in team_spec.members if m.is_manager)}
-        
+
         analysis_prompt = HumanMessage(
             content=f"Analyze the following objective and break it down into key components: {{state.get('current_objective', 'No objective set')}}"
         )
-        
+
         state["messages"].append(analysis_prompt)
         state["workflow_status"] = "analyzing"
         state["updated_at"] = datetime.utcnow()
-        
+
         return state
-    
+
     async def _plan_approach(self, state: TeamState) -> TeamState:
         """Plan the approach to achieve the objective"""
         state["workflow_status"] = "planning"
         state["updated_at"] = datetime.utcnow()
-        
+
         # Planning logic here
         planning_prompt = HumanMessage(
             content="Based on the analysis, create an execution plan with specific tasks and assignments."
         )
-        
+
         state["messages"].append(planning_prompt)
-        
+
         return state
-    
+
     def _should_delegate(self, state: TeamState) -> str:
         """Determine if tasks should be delegated"""
         # In hierarchical mode, always delegate
         # In sequential mode, continue to review
         return "delegate" if "{workflow_type}" == "hierarchical" else "continue"
-    
+
     async def _execute_tasks(self, state: TeamState) -> TeamState:
         """Execute planned tasks"""
         state["workflow_status"] = "executing"
         state["updated_at"] = datetime.utcnow()
-        
+
         # Task execution logic
         # Each agent executes their assigned tasks
-        
+
         return state
-    
+
     async def _review_progress(self, state: TeamState) -> TeamState:
         """Review progress and results"""
         state["workflow_status"] = "reviewing"
         state["updated_at"] = datetime.utcnow()
-        
+
         review_prompt = HumanMessage(
             content="Review the execution results and provide a summary of achievements and any gaps."
         )
-        
+
         state["messages"].append(review_prompt)
-        
+
         return state
-    
+
     async def _finalize_results(self, state: TeamState) -> TeamState:
         """Finalize and prepare results"""
         state["workflow_status"] = "completed"
         state["updated_at"] = datetime.utcnow()
-        
+
         return state
-    
+
     async def run(self, objective: str, context: Dict[str, Any] = None) -> Dict[str, Any]:
         """Run the workflow with a specific objective"""
         self.logger.info(f"Starting workflow for objective: {{objective[:100]}}...")
-        
+
         # Initialize state
         initial_state = {{
             "messages": [],
@@ -309,11 +306,11 @@ class {team_spec.name.replace("-", " ").title().replace(" ", "")}Workflow:
             "workflow_status": "starting",
             "metadata": {{}}
         }}
-        
+
         # Run the workflow
         config = {{"configurable": {{"thread_id": f"{{self.team_name}}-{{datetime.utcnow().isoformat()}}"}}}}
         result = await self.compiled_graph.ainvoke(initial_state, config)
-        
+
         self.logger.info("Workflow completed")
         return result
 
@@ -334,7 +331,7 @@ if __name__ == "__main__":
     # Example usage
     async def main():
         workflow = get_workflow()
-        
+
         result = await workflow.run(
             "Develop a comprehensive marketing strategy for Q2 2024",
             context={{
@@ -343,12 +340,12 @@ if __name__ == "__main__":
                 "team_size": {len(team_spec.members)}
             }}
         )
-        
+
         print("Workflow Result:", result)
-    
+
     asyncio.run(main())
 '''
-    
+
     def _generate_init_content(self) -> str:
         """Generate __init__.py for workflows directory."""
         return '''"""

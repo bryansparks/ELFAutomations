@@ -7,6 +7,7 @@ from typing import Dict, List, Optional
 
 from .sub_team import SubTeamRecommendation
 from .team_member import TeamMember
+from .team_charter import TeamCharter
 
 
 @dataclass
@@ -30,6 +31,9 @@ class TeamSpecification:
 
     # Team composition
     members: List[TeamMember] = field(default_factory=list)
+    
+    # Team charter
+    charter: Optional[TeamCharter] = None
 
     # Communication patterns
     communication_pattern: Dict[str, List[str]] = field(default_factory=dict)
@@ -38,6 +42,14 @@ class TeamSpecification:
     # Sub-teams
     sub_team_recommendations: List[SubTeamRecommendation] = field(default_factory=list)
     create_sub_teams: bool = False
+    
+    # Memory and evolution settings
+    enable_memory: bool = True  # Use persistent memory system
+    enable_evolution: bool = True  # Allow agents to evolve based on learnings
+    enable_conversation_logging: bool = True  # Log all team communications
+    memory_retention_days: int = 30  # How long to keep memories
+    evolution_confidence_threshold: float = 0.9  # Min confidence for evolution
+    improvement_cycle_frequency: str = "daily"  # daily, weekly, or manual
 
     # Validation
     size_validation: str = ""

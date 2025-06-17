@@ -1,0 +1,58 @@
+{
+  "name": "project-management",
+  "description": "Project and task management for autonomous team coordination",
+  "version": "1.0.0",
+  "transport": {
+    "type": "stdio"
+  },
+  "tools": [
+    {
+      "name": "create_project",
+      "description": "Create a new project with automatic task breakdown"
+    },
+    {
+      "name": "get_project_status",
+      "description": "Get detailed status of a project including tasks and progress"
+    },
+    {
+      "name": "list_projects",
+      "description": "List projects with optional filters"
+    },
+    {
+      "name": "create_task",
+      "description": "Create a new task within a project"
+    },
+    {
+      "name": "update_task_status",
+      "description": "Update the status of a task"
+    },
+    {
+      "name": "assign_task",
+      "description": "Assign or reassign a task to a team"
+    },
+    {
+      "name": "add_task_dependency",
+      "description": "Add a dependency between tasks"
+    },
+    {
+      "name": "list_team_tasks",
+      "description": "List all tasks assigned to a team"
+    },
+    {
+      "name": "find_available_work",
+      "description": "Find available tasks matching team skills"
+    },
+    {
+      "name": "report_blocker",
+      "description": "Report a blocker on a task"
+    },
+    {
+      "name": "get_project_analytics",
+      "description": "Get analytics and insights for a project"
+    }
+  ],
+  "env": {
+    "SUPABASE_URL": "${SUPABASE_URL}",
+    "SUPABASE_ANON_KEY": "${SUPABASE_ANON_KEY}"
+  }
+}

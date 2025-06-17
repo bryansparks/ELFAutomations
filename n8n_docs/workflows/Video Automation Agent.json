@@ -1,0 +1,1534 @@
+{
+  "name": "Video Automation Agent",
+  "nodes": [
+    {
+      "parameters": {
+        "public": true,
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.chatTrigger",
+      "typeVersion": 1.1,
+      "position": [
+        -900,
+        -640
+      ],
+      "id": "5df47d52-3631-4be9-8adf-57dd16f387c2",
+      "name": "When chat message received",
+      "webhookId": "5c773dd2-1ac9-4278-97b1-8f3403d647f7"
+    },
+    {
+      "parameters": {
+        "options": {
+          "systemMessage": "You are an expert copy writer for short form vertical viral video scripts, mainly for youtube shorts, tiktok and instagram reels.\n\nYou will help the user create scripts for a very specific type of short form content videos.\n\nThis type of videos include an attention retaining background video of a gameplay, tipically a Minecraft parkour video, and then there are subtitles and the video is a conversation between Stewie and Peter from family guys.\n\nUsually is stewie asking a specific question to peter, there are different channels doing specific videos on different topics, for example about coding related questions (eg: \"Peter, how discord handles millions of messages every minute?\"), car related videos (eg: \"Peter, I heard two guys talking about turbos vs supercharger, aren't basically the same thing?\") and more...\n\nThe whole video is basically an exchange of answers and questions starting from an initial questions from Stewie. While Peter explains stewie asks clarifying questions.\n\nYour job is ONLY to create these scripts, the user will brainstorm with you the topic and you will create the script.\n\nThe script should not be too long as these videos are short form content so they usually last ~1min.\n\nYou have access to a tool through which you will send the script out for the video generation, once the user confirms the script is ok (MUST ALWAYS CONFIRM) you will send the script using the tool with the following format:\n```json\n{\n  \"script\": [\n      {\n        actor: \"S\",\n        text: \"<text (never send/use newlines)>\",\n      },\n      {\n         actor: \"P\",\n         text: \"<text (never send/use newlines)>\"\n      },\n      ...\n  ]   \n}\n```\nYOU MUST use exactly this format, ALWAYS use \"S\" for Stewie and \"P\" for Peter.\nALWAYS ASK THE USER BEFORE SENDING THE SCRIPT."
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 2,
+      "position": [
+        -680,
+        -640
+      ],
+      "id": "f076d892-2e95-4882-b108-26185c25aebd",
+      "name": "AI Agent"
+    },
+    {
+      "parameters": {
+        "model": {
+          "__rl": true,
+          "mode": "list",
+          "value": "claude-3-7-sonnet-20250219",
+          "cachedResultName": "Claude 3.7 Sonnet"
+        },
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatAnthropic",
+      "typeVersion": 1.3,
+      "position": [
+        -800,
+        -460
+      ],
+      "id": "1d08c918-5756-4494-a7a6-e85fdb68d8ee",
+      "name": "Anthropic Chat Model",
+      "credentials": {
+        "anthropicApi": {
+          "id": "9c9yxx7Njl7hn93m",
+          "name": "Anthropic account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "contextWindowLength": 15
+      },
+      "type": "@n8n/n8n-nodes-langchain.memoryBufferWindow",
+      "typeVersion": 1.3,
+      "position": [
+        -640,
+        -460
+      ],
+      "id": "37d2bc54-dea9-4826-8953-09e8cce10e22",
+      "name": "Simple Memory"
+    },
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "e53647b1-14f5-4a53-a474-5a950c29f60d",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        -920,
+        -180
+      ],
+      "id": "3b071984-4998-438b-8a15-f07003f33c46",
+      "name": "Webhook",
+      "webhookId": "e53647b1-14f5-4a53-a474-5a950c29f60d"
+    },
+    {
+      "parameters": {
+        "toolDescription": "Send scripts to the generation workflow",
+        "method": "POST",
+        "url": "https://paoloanzn.app.n8n.cloud/webhook/e53647b1-14f5-4a53-a474-5a950c29f60d",
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "script",
+              "value": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('parameters0_Value', ``, 'string') }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequestTool",
+      "typeVersion": 4.2,
+      "position": [
+        -460,
+        -460
+      ],
+      "id": "5924eb19-fdec-4f1b-91d0-419b7475d94f",
+      "name": "HTTP Request"
+    },
+    {
+      "parameters": {
+        "jsCode": "const script = JSON.parse($('Webhook').last().json.body.script)\n\nreturn {\n  script\n};"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -460,
+        -180
+      ],
+      "id": "f86442b5-3650-46f6-a42b-17f00482f167",
+      "name": "Code"
+    },
+    {
+      "parameters": {
+        "fieldToSplitOut": "script.script",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.splitOut",
+      "typeVersion": 1,
+      "position": [
+        -320,
+        -180
+      ],
+      "id": "c524d644-e612-480f-a9d0-5cc448a10371",
+      "name": "Split Out"
+    },
+    {
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.actor }}",
+                    "rightValue": "S",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    },
+                    "id": "b3b261d7-c6ac-49c8-802f-ce9af8299216"
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "Stewie"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "id": "af42b8a5-edd5-4e17-ae99-1ea8fe4e1da9",
+                    "leftValue": "={{ $json.actor }}",
+                    "rightValue": "P",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals",
+                      "name": "filter.operator.equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "Peter"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3.2,
+      "position": [
+        -120,
+        -180
+      ],
+      "id": "13046314-5379-4a01-8feb-f01baae0f822",
+      "name": "Switch"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.replicate.com/v1/models/minimax/speech-02-hd/predictions",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "Bearer [Replicate API key]"
+            },
+            {
+              "name": "Prefer",
+              "value": "wait"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"input\": {\n    \"text\": {{ JSON.stringify($json.text) }},\n    \"pitch\": 0,\n    \"speed\": 1,\n    \"volume\": 1,\n    \"bitrate\": 128000,\n    \"channel\": \"mono\",\n    \"emotion\": \"auto\",\n    \"voice_id\": \"CLONED_VOICE_ID\",\n    \"sample_rate\": 32000,\n    \"language_boost\": \"English\",\n    \"english_normalization\": true\n  }\n}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        120,
+        -280
+      ],
+      "id": "8298f586-cf69-4809-8ce3-5d607cbd4caa",
+      "name": "Voice Generation (Stewie)"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.replicate.com/v1/models/minimax/speech-02-hd/predictions",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "Bearer [Replicate API key]"
+            },
+            {
+              "name": "Prefer",
+              "value": "wait"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"input\": {\n    \"text\": {{ JSON.stringify($json.text) }},\n    \"pitch\": 0,\n    \"speed\": 1,\n    \"volume\": 1,\n    \"bitrate\": 128000,\n    \"channel\": \"mono\",\n    \"emotion\": \"neutral\",\n    \"voice_id\": \"CLONED_VOICE_ID\",\n    \"sample_rate\": 32000,\n    \"language_boost\": \"English\",\n    \"english_normalization\": true\n  }\n}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        120,
+        -80
+      ],
+      "id": "bcc636e9-68e6-4e45-873e-705de1956c0a",
+      "name": "Voice Generation (Peter)"
+    },
+    {
+      "parameters": {
+        "amount": 6
+      },
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1.1,
+      "position": [
+        300,
+        -280
+      ],
+      "id": "c340bf33-c555-43f4-aae1-8371149e0d0f",
+      "name": "Wait (S)",
+      "webhookId": "3771ebd1-5f65-41a2-9323-339b53a14924"
+    },
+    {
+      "parameters": {
+        "url": "={{ $json.output }}",
+        "options": {
+          "response": {
+            "response": {
+              "responseFormat": "file",
+              "outputPropertyName": "={{ `Stewie-${Date.parse($now)}` }}"
+            }
+          }
+        }
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        460,
+        -280
+      ],
+      "id": "75f12093-9155-4bce-89d9-eb4e1df148b6",
+      "name": "Download Stewie Audio File"
+    },
+    {
+      "parameters": {
+        "url": "={{ $json.output }}",
+        "options": {
+          "response": {
+            "response": {
+              "responseFormat": "file",
+              "outputPropertyName": "={{ `Peter-${Date.parse($now)}` }}"
+            }
+          }
+        }
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        460,
+        -80
+      ],
+      "id": "bdc6cf4a-e42f-488c-add1-78f812f6f013",
+      "name": "Download Peter Audio File"
+    },
+    {
+      "parameters": {
+        "amount": 6
+      },
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1.1,
+      "position": [
+        300,
+        -80
+      ],
+      "id": "b7170f83-a569-4619-b3ef-5274bf7cd11b",
+      "name": "Wait (P)",
+      "webhookId": "63996245-9073-4a74-8bad-b49b9fff6091"
+    },
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3.1,
+      "position": [
+        700,
+        -180
+      ],
+      "id": "dc5c5c75-efcf-460d-9327-0ce6e572ab5c",
+      "name": "Merge"
+    },
+    {
+      "parameters": {
+        "resource": "folder",
+        "operation": "share",
+        "folderNoRootId": {
+          "__rl": true,
+          "value": "={{ $json.id }}",
+          "mode": "id"
+        },
+        "permissionsUi": {
+          "permissionsValues": {
+            "role": "reader",
+            "type": "anyone"
+          }
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleDrive",
+      "typeVersion": 3,
+      "position": [
+        -620,
+        -180
+      ],
+      "id": "bc96a88d-ca3a-4b5e-bb81-5d1d8eef21d3",
+      "name": "Share Render Folder",
+      "executeOnce": true,
+      "credentials": {
+        "googleDriveOAuth2Api": {
+          "id": "eBFhEOVIrK0AXZD9",
+          "name": "Google Drive account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "inputDataFieldName": "={{ $('Merge').item.binary.keys()[0] }}",
+        "name": "={{ $('Merge').item.binary.keys()[0] }}",
+        "driveId": {
+          "__rl": true,
+          "mode": "list",
+          "value": "My Drive"
+        },
+        "folderId": {
+          "__rl": true,
+          "value": "={{ $('Create Render Folder').item.json.id }}",
+          "mode": "id"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleDrive",
+      "typeVersion": 3,
+      "position": [
+        860,
+        -180
+      ],
+      "id": "3dbea159-5eb6-426d-8c28-4f0067c732f6",
+      "name": "Google Drive",
+      "credentials": {
+        "googleDriveOAuth2Api": {
+          "id": "eBFhEOVIrK0AXZD9",
+          "name": "Google Drive account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "99b007ec-1e0b-4fe1-a9d6-179fcb551cc4",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        -920,
+        220
+      ],
+      "id": "5ff83a65-2ad5-4e61-937e-a00f5ad07c50",
+      "name": "Webhook1",
+      "webhookId": "99b007ec-1e0b-4fe1-a9d6-179fcb551cc4"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://paoloanzn.app.n8n.cloud/webhook/99b007ec-1e0b-4fe1-a9d6-179fcb551cc4",
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "renderFolderId",
+              "value": "={{ $('Create Render Folder').item.json.id }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1080,
+        -180
+      ],
+      "id": "f3e7b1f0-8155-4607-a675-a715329c774c",
+      "name": "Trigger Render",
+      "executeOnce": true
+    },
+    {
+      "parameters": {
+        "jsCode": " // Input parameters\n const backgroundVideoUrl = `https://drive.google.com/uc?export=download&id=${$('Select Random Clips').first().json.clipId}`;\n const stewieImageUrl = `https://drive.google.com/uc?export=download&id=${$input.first().json.data[1].id}`;\n const peterImageUrl = `https://drive.google.com/uc?export=download&id=${$input.first().json.data[0].id}`;\n const audioFiles = $('List Audio Files').all().map(item => item.json); \n const totalDuration = $('Compute Duration').first().json.duration\n\n // Function to construct Google Drive URL\n function getGoogleDriveUrl(fileId) {\n  return `https://drive.google.com/uc?export=download&id=${fileId}`;\n }\n\n // Combine and sort audio data based on timestamp in name (assuming it's reliable)\n let clips = audioFiles.map((file, index) => {\n  return {\n  ...file,\n  timestamp: file.name.split('-')[1] // Extract timestamp from filename\n  };\n }).sort((a, b) => a.timestamp.localeCompare(b.timestamp)); // Sort by timestamp\n\nfunction reorderListAlternating(list) {\n    const stewieList = [];\n    const peterList = [];\n\n    // Separate the lists based on name\n    for (const item of list) {\n        if (item.name.startsWith(\"Stewie\")) {\n            stewieList.push(item);\n        } else if (item.name.startsWith(\"Peter\")) {\n            peterList.push(item);\n        }\n    }\n\n    const reorderedList = [];\n    let stewieIndex = 0;\n    let peterIndex = 0;\n    let turn = 'stewie'; // Start with Stewie\n\n    while (stewieIndex < stewieList.length || peterIndex < peterList.length) {\n        if (turn === 'stewie' && stewieIndex < stewieList.length) {\n            reorderedList.push(stewieList[stewieIndex]);\n            stewieIndex++;\n            turn = 'peter';\n        } else if (turn === 'peter' && peterIndex < peterList.length) {\n            reorderedList.push(peterList[peterIndex]);\n            peterIndex++;\n            turn = 'stewie';\n        } else if (stewieIndex < stewieList.length) { // If Peter list is exhausted, add remaining Stewie\n            reorderedList.push(stewieList[stewieIndex]);\n            stewieIndex++;\n        } else if (peterIndex < peterList.length) { // If Stewie list is exhausted, add remaining Peter\n            reorderedList.push(peterList[peterIndex]);\n            peterIndex++;\n        }\n    }\n\n    return reorderedList;\n}\n\nclips = reorderListAlternating(clips)\n \n\n // Function to create scenes\n function createScenes(clips) {\n  return clips.map((clip, index) => {\n  const isPeter = clip.name.includes(\"Peter\");\n  const imageUrl = isPeter ? peterImageUrl : stewieImageUrl;\n  const xPosition = isPeter ? 500 : 10; // Peter on the right, Stewie on the left\n \n\n  return {\n  \"id\": `scene-${index}`,\n  \"background-color\": \"transparent\",\n  \"elements\": [\n  {\n  \"type\": \"image\",\n  \"src\": imageUrl,\n  \"x\": xPosition,\n  \"y\": 1300, // Bottom position, keeps original image size\n  },\n  {\n  \"type\": \"audio\",\n  \"src\": getGoogleDriveUrl(clip.id),\n  }\n  ]\n  };\n  });\n }\n \n\n const scenes = createScenes(clips); \n\n // Base render object\n const renderObject = {\n  \"comment\": \"Dynamic Family Guy Viral Video\",\n  \"resolution\": \"custom\",\n  \"quality\": \"high\",\n  \"width\": 1080,\n  \"height\": 1920,\n  \"scenes\": scenes,\n  \"elements\": [\n  {\n  \"type\": \"video\",\n  \"src\": backgroundVideoUrl,\n  \"z-index\": -1,\n  \"volume\": 0.5, // Very low volume\n  \"resize\": \"fit\",\n  \"duration\": parseFloat(totalDuration) + 0.5\n  },\n  {\n  \"id\": \"q41n9kxp\",\n  \"type\": \"subtitles\",\n  \"settings\": {\n  \"style\": \"classic-progressive\",\n  \"font-family\": \"Luckiest Guy\", // More cartoonish font,\n  \"font-size\": 140,\n  \"word-color\": \"#24ff03\", // Green highlight\n  \"line-color\": \"#FFFFFF\", // White text\n  \"shadow-color\": \"#000000\",\n  \"shadow-offset\": 2,\n  \"box-color\": \"#260B1B\",\n  \"position\": \"center-center\",// center\n  \"outline-color\": \"#000000\", // Black outline\n  \"outline-width\": 3  // Outline width in pixels\"\n  },\n  \"language\": \"en\"\n  }\n  ],\n };\n \n\n // Return the render object\n return [{json: renderObject}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1020,
+        220
+      ],
+      "id": "9271a51b-d7f7-414e-bc5a-a2d6e51775f7",
+      "name": "Create Render Object",
+      "executeOnce": true
+    },
+    {
+      "parameters": {
+        "resource": "fileFolder",
+        "searchMethod": "query",
+        "queryString": "='{{ $('Webhook1').item.json.body.renderFolderId }}' in parents",
+        "returnAll": true,
+        "filter": {},
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleDrive",
+      "typeVersion": 3,
+      "position": [
+        -760,
+        220
+      ],
+      "id": "b068e21c-6ac6-4043-a177-3d41c691c404",
+      "name": "List Audio Files",
+      "credentials": {
+        "googleDriveOAuth2Api": {
+          "id": "eBFhEOVIrK0AXZD9",
+          "name": "Google Drive account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "resource": "fileFolder",
+        "queryString": "background-clips",
+        "limit": 1,
+        "filter": {},
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleDrive",
+      "typeVersion": 3,
+      "position": [
+        -100,
+        220
+      ],
+      "id": "5442006d-5951-407a-bbe5-66da2b651106",
+      "name": "Get Clips Folder",
+      "credentials": {
+        "googleDriveOAuth2Api": {
+          "id": "eBFhEOVIrK0AXZD9",
+          "name": "Google Drive account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "resource": "fileFolder",
+        "searchMethod": "query",
+        "queryString": "='{{ $json.id }}' in parents",
+        "returnAll": true,
+        "filter": {},
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleDrive",
+      "typeVersion": 3,
+      "position": [
+        40,
+        220
+      ],
+      "id": "c362693f-6e6c-44d0-8007-f0625691fcc8",
+      "name": "List Clips File",
+      "credentials": {
+        "googleDriveOAuth2Api": {
+          "id": "eBFhEOVIrK0AXZD9",
+          "name": "Google Drive account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "\nreturn {\n  clipId: $input.first().json.id[Math.floor(Math.random() * $input.first().json.id.length)]\n};"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        320,
+        220
+      ],
+      "id": "2369da7f-6650-4ab1-8cd7-5ffdaf4c6321",
+      "name": "Select Random Clips"
+    },
+    {
+      "parameters": {
+        "fieldsToAggregate": {
+          "fieldToAggregate": [
+            {
+              "fieldToAggregate": "id"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.aggregate",
+      "typeVersion": 1,
+      "position": [
+        180,
+        220
+      ],
+      "id": "619d442f-a114-4011-bcee-87445271995e",
+      "name": "Aggregate 1"
+    },
+    {
+      "parameters": {
+        "jsCode": "function calculateDuration(contentLength) {\n  const bitrate = 128000; // bits per second\n  // Duration in seconds = (Filesize in Bytes * 8 bits/byte) / Bitrate in bits/second\n  const durationInSeconds = (contentLength * 8) / bitrate;\n  return durationInSeconds;\n}\n\nconst totalDuration = () => {\n  let sum = 0\n  for (let item of Object($input.first().json.headers)['content-length']) {\n    sum += calculateDuration(parseInt(item))\n  }\n  return sum\n}\n\nreturn {\n  duration: totalDuration().toFixed(2)\n}"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -340,
+        220
+      ],
+      "id": "1d8602ac-a7f6-4391-b0d6-f894a5a0d0b7",
+      "name": "Compute Duration",
+      "retryOnFail": false,
+      "maxTries": 2
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.json2video.com/v2/movies",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "x-api-key",
+              "value": "[JSON2VIDEO API KEY]"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "=json",
+        "bodyParameters": {
+          "parameters": [
+            {}
+          ]
+        },
+        "jsonBody": "={{ JSON.stringify($json) }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1220,
+        220
+      ],
+      "id": "54d828b3-d06f-41d1-a899-5db4228862fd",
+      "name": "Send Render Request"
+    },
+    {
+      "parameters": {
+        "resource": "fileFolder",
+        "queryString": "assets",
+        "limit": 1,
+        "filter": {},
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleDrive",
+      "typeVersion": 3,
+      "position": [
+        520,
+        220
+      ],
+      "id": "af7fbc6f-7efd-40e6-87d4-582e2f246e94",
+      "name": "Get Assets Folder",
+      "credentials": {
+        "googleDriveOAuth2Api": {
+          "id": "eBFhEOVIrK0AXZD9",
+          "name": "Google Drive account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "resource": "fileFolder",
+        "searchMethod": "query",
+        "queryString": "='{{ $json.id }}' in parents",
+        "returnAll": true,
+        "filter": {},
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleDrive",
+      "typeVersion": 3,
+      "position": [
+        680,
+        220
+      ],
+      "id": "3c9d9050-fb29-4af3-adf9-59cc58d257ca",
+      "name": "Get Assets File Data",
+      "credentials": {
+        "googleDriveOAuth2Api": {
+          "id": "eBFhEOVIrK0AXZD9",
+          "name": "Google Drive account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "aggregate": "aggregateAllItemData",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.aggregate",
+      "typeVersion": 1,
+      "position": [
+        860,
+        220
+      ],
+      "id": "9ba5e4d4-7bc9-4bfc-b9d6-f3f5d6a90cbb",
+      "name": "Aggregate 2"
+    },
+    {
+      "parameters": {
+        "url": "=https://api.json2video.com/v2/movies?project={{ $('Send Render Request').item.json.project }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "x-api-key",
+              "value": "[JSON2VIDEO API KEY]"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1500,
+        220
+      ],
+      "id": "01425bc1-f158-4391-8825-e444b42a4843",
+      "name": "Check Status"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "473a0342-cf34-4e4a-95fc-8e781cd2dd7f",
+              "leftValue": "={{ $json.movie.status }}",
+              "rightValue": "done",
+              "operator": {
+                "type": "string",
+                "operation": "equals",
+                "name": "filter.operator.equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        1680,
+        220
+      ],
+      "id": "e6e083d1-f692-43a2-b47f-d6138b66b964",
+      "name": "If"
+    },
+    {
+      "parameters": {
+        "url": "={{ $json.movie.url }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        2160,
+        260
+      ],
+      "id": "2a6a0dab-f7ff-4b53-ba46-5448183ebf0a",
+      "name": "Download the Video",
+      "executeOnce": true
+    },
+    {
+      "parameters": {
+        "driveId": {
+          "__rl": true,
+          "mode": "list",
+          "value": "My Drive"
+        },
+        "folderId": {
+          "__rl": true,
+          "mode": "list",
+          "value": "root",
+          "cachedResultName": "/ (Root folder)"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleDrive",
+      "typeVersion": 3,
+      "position": [
+        2320,
+        260
+      ],
+      "id": "48c262af-a8c5-4ba4-b8ed-969c6708af89",
+      "name": "Upload the video",
+      "credentials": {
+        "googleDriveOAuth2Api": {
+          "id": "eBFhEOVIrK0AXZD9",
+          "name": "Google Drive account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "resource": "folder",
+        "operation": "deleteFolder",
+        "folderNoRootId": {
+          "__rl": true,
+          "value": "={{ $('Webhook1').first().json.body.renderFolderId }}",
+          "mode": "id"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleDrive",
+      "typeVersion": 3,
+      "position": [
+        2540,
+        260
+      ],
+      "id": "a7ae5deb-6b1b-4280-9d23-4e01ae283e66",
+      "name": "Clean Up Audio Clips",
+      "credentials": {
+        "googleDriveOAuth2Api": {
+          "id": "eBFhEOVIrK0AXZD9",
+          "name": "Google Drive account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "amount": 10
+      },
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1.1,
+      "position": [
+        1860,
+        320
+      ],
+      "id": "09a40f62-42f5-45ea-8e75-3d3ca2fcb869",
+      "name": "Wait",
+      "webhookId": "7595ee9c-0740-4dfb-8130-cf05f6cc2572"
+    },
+    {
+      "parameters": {
+        "content": "## Script Creator Agent",
+        "height": 400,
+        "width": 680,
+        "color": 5
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        -960,
+        -720
+      ],
+      "typeVersion": 1,
+      "id": "9668877a-b5a5-41c2-80c8-137bd5a090b6",
+      "name": "Sticky Note"
+    },
+    {
+      "parameters": {
+        "content": "## Audio Generation Chain",
+        "height": 120,
+        "width": 180,
+        "color": 4
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        -1140,
+        -180
+      ],
+      "typeVersion": 1,
+      "id": "fc31bc90-e15a-42a5-b8f0-c257b70fafae",
+      "name": "Sticky Note1"
+    },
+    {
+      "parameters": {
+        "content": "## Video Rendering Chain",
+        "height": 120,
+        "width": 200,
+        "color": 2
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        -1140,
+        200
+      ],
+      "typeVersion": 1,
+      "id": "da8c1491-6925-4a90-b88e-56be9c9884b8",
+      "name": "Sticky Note2"
+    },
+    {
+      "parameters": {
+        "content": "## Create folder to upload audio-clips",
+        "height": 260,
+        "width": 320,
+        "color": 3
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        -800,
+        -260
+      ],
+      "typeVersion": 1,
+      "id": "a9fd4e89-ada0-4ccf-963e-35ff0716ba1d",
+      "name": "Sticky Note3"
+    },
+    {
+      "parameters": {
+        "content": "## Audio Generation\nThe audio generation is done trough Replicate API using `minimax/speech-02-hd` voice model with custom generated voices",
+        "height": 500,
+        "width": 580
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        40,
+        -400
+      ],
+      "typeVersion": 1,
+      "id": "57e1053b-10e3-4a84-88e1-03ce8522f76f",
+      "name": "Sticky Note4"
+    },
+    {
+      "parameters": {
+        "resource": "folder",
+        "name": "render",
+        "driveId": {
+          "__rl": true,
+          "mode": "list",
+          "value": "My Drive"
+        },
+        "folderId": {
+          "__rl": true,
+          "mode": "list",
+          "value": "root",
+          "cachedResultName": "/ (Root folder)"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleDrive",
+      "typeVersion": 3,
+      "position": [
+        -760,
+        -180
+      ],
+      "id": "528ea9cc-fbad-4f64-b025-2cd79104ae0f",
+      "name": "Create Render Folder",
+      "executeOnce": true,
+      "credentials": {
+        "googleDriveOAuth2Api": {
+          "id": "eBFhEOVIrK0AXZD9",
+          "name": "Google Drive account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "content": "## Start the rendering process",
+        "height": 300,
+        "width": 260,
+        "color": 5
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        1020,
+        -280
+      ],
+      "typeVersion": 1,
+      "id": "58e2d721-0dc5-4a29-ae61-983ce53ec0b4",
+      "name": "Sticky Note5"
+    },
+    {
+      "parameters": {
+        "content": "## Upload Generated Files",
+        "height": 300,
+        "width": 300,
+        "color": 4
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        680,
+        -260
+      ],
+      "typeVersion": 1,
+      "id": "a364faa5-e44d-45d5-b1cc-eb76eec1f856",
+      "name": "Sticky Note6"
+    },
+    {
+      "parameters": {
+        "content": "## Compute Total Duration",
+        "height": 220,
+        "width": 580,
+        "color": 6
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        -800,
+        160
+      ],
+      "typeVersion": 1,
+      "id": "50d7705c-b466-444d-aeee-7af80786eae5",
+      "name": "Sticky Note7"
+    },
+    {
+      "parameters": {
+        "method": "HEAD",
+        "url": "={{ `https://drive.google.com/uc?export=download&id=${$json.id}` }}",
+        "options": {
+          "response": {
+            "response": {
+              "fullResponse": true
+            }
+          }
+        }
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        -620,
+        220
+      ],
+      "id": "fc08a97c-6630-4b82-85b2-443148bd7795",
+      "name": "Get File Size"
+    },
+    {
+      "parameters": {
+        "content": "## Select A Random Background video",
+        "height": 240,
+        "width": 580,
+        "color": 5
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        -120,
+        140
+      ],
+      "typeVersion": 1,
+      "id": "958e2256-7fcd-49aa-82bb-590d020d6a24",
+      "name": "Sticky Note8"
+    },
+    {
+      "parameters": {
+        "content": "## Start The Render Job\nRendering is done via [json2video](https://json2video.com/)",
+        "height": 280,
+        "width": 560
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        820,
+        140
+      ],
+      "typeVersion": 1,
+      "id": "36fd681f-df74-4cfd-be53-f8532c59cf02",
+      "name": "Sticky Note9"
+    },
+    {
+      "parameters": {
+        "content": "## Check Progress\n",
+        "height": 360,
+        "width": 600,
+        "color": 4
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        1440,
+        160
+      ],
+      "typeVersion": 1,
+      "id": "027b6b67-2f4d-4114-970a-7c54e87d2bc1",
+      "name": "Sticky Note10"
+    },
+    {
+      "parameters": {
+        "content": "## Upload the video to G Drive",
+        "height": 240,
+        "width": 340,
+        "color": 3
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        2120,
+        180
+      ],
+      "typeVersion": 1,
+      "id": "54c6c4ca-6220-466e-aa4d-f5ee5ed0b083",
+      "name": "Sticky Note11"
+    },
+    {
+      "parameters": {
+        "fieldsToAggregate": {
+          "fieldToAggregate": [
+            {
+              "fieldToAggregate": "headers['content-length']"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.aggregate",
+      "typeVersion": 1,
+      "position": [
+        -480,
+        220
+      ],
+      "id": "a145d4cb-517c-4a24-b778-d36d33bc813a",
+      "name": "Aggregate"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "When chat message received": {
+      "main": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Anthropic Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Simple Memory": {
+      "ai_memory": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_memory",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HTTP Request": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "Create Render Folder",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code": {
+      "main": [
+        [
+          {
+            "node": "Split Out",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Split Out": {
+      "main": [
+        [
+          {
+            "node": "Switch",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Switch": {
+      "main": [
+        [
+          {
+            "node": "Voice Generation (Stewie)",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Voice Generation (Peter)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Voice Generation (Stewie)": {
+      "main": [
+        [
+          {
+            "node": "Wait (S)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Voice Generation (Peter)": {
+      "main": [
+        [
+          {
+            "node": "Wait (P)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Wait (S)": {
+      "main": [
+        [
+          {
+            "node": "Download Stewie Audio File",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Wait (P)": {
+      "main": [
+        [
+          {
+            "node": "Download Peter Audio File",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Download Stewie Audio File": {
+      "main": [
+        [
+          {
+            "node": "Merge",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Download Peter Audio File": {
+      "main": [
+        [
+          {
+            "node": "Merge",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "Merge": {
+      "main": [
+        [
+          {
+            "node": "Google Drive",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Share Render Folder": {
+      "main": [
+        [
+          {
+            "node": "Code",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Google Drive": {
+      "main": [
+        [
+          {
+            "node": "Trigger Render",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Webhook1": {
+      "main": [
+        [
+          {
+            "node": "List Audio Files",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Create Render Object": {
+      "main": [
+        [
+          {
+            "node": "Send Render Request",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "List Audio Files": {
+      "main": [
+        [
+          {
+            "node": "Get File Size",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Clips Folder": {
+      "main": [
+        [
+          {
+            "node": "List Clips File",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "List Clips File": {
+      "main": [
+        [
+          {
+            "node": "Aggregate 1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Select Random Clips": {
+      "main": [
+        [
+          {
+            "node": "Get Assets Folder",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Aggregate 1": {
+      "main": [
+        [
+          {
+            "node": "Select Random Clips",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Compute Duration": {
+      "main": [
+        [
+          {
+            "node": "Get Clips Folder",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Assets Folder": {
+      "main": [
+        [
+          {
+            "node": "Get Assets File Data",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Assets File Data": {
+      "main": [
+        [
+          {
+            "node": "Aggregate 2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Aggregate 2": {
+      "main": [
+        [
+          {
+            "node": "Create Render Object",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send Render Request": {
+      "main": [
+        [
+          {
+            "node": "Check Status",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Check Status": {
+      "main": [
+        [
+          {
+            "node": "If",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If": {
+      "main": [
+        [
+          {
+            "node": "Download the Video",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Wait",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Download the Video": {
+      "main": [
+        [
+          {
+            "node": "Upload the video",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Clean Up Audio Clips": {
+      "main": [
+        []
+      ]
+    },
+    "Upload the video": {
+      "main": [
+        [
+          {
+            "node": "Clean Up Audio Clips",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Wait": {
+      "main": [
+        [
+          {
+            "node": "Check Status",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Create Render Folder": {
+      "main": [
+        [
+          {
+            "node": "Share Render Folder",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get File Size": {
+      "main": [
+        [
+          {
+            "node": "Aggregate",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Aggregate": {
+      "main": [
+        [
+          {
+            "node": "Compute Duration",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "86126aed-2708-4d7e-85c6-29c648ec367a",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "db3c2d3698a1d65c9632c318b0f8874c99c3c8ec38f9fa1684001dc1e7ae08d8"
+  },
+  "id": "731Vee4BOXkAaBIN",
+  "tags": [
+    {
+      "name": "share",
+      "id": "LccvK9gra902cmIJ",
+      "createdAt": "2025-06-04T14:01:48.950Z",
+      "updatedAt": "2025-06-04T14:01:48.950Z"
+    }
+  ]
+}
