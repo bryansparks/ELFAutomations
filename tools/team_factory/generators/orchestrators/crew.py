@@ -24,38 +24,35 @@ class CrewAIOrchestrator(BaseGenerator):
         """
         team_dir = Path(team_spec.name)
         crew_file = team_dir / "crew.py"
-        
+
         # Generate crew content
         crew_content = self._generate_crew_content(team_spec)
-        
+
         # Write crew file
         with open(crew_file, "w") as f:
             f.write(crew_content)
-        
-        return {
-            "generated_files": [str(crew_file)],
-            "errors": []
-        }
-    
+
+        return {"generated_files": [str(crew_file)], "errors": []}
+
     def _generate_crew_content(self, team_spec: TeamSpecification) -> str:
         """Generate crew.py content."""
         # Process type based on team size
         process_type = "hierarchical" if len(team_spec.members) >= 5 else "sequential"
-        
+
         # Get manager
         manager = next((m for m in team_spec.members if m.is_manager), None)
         manager_var = manager.role.lower().replace(" ", "_") if manager else "manager"
-        
+
         # Agent imports and variables
         agent_imports = []
         agent_vars = []
-        
+
         for member in team_spec.members:
             class_name = member.role.replace(" ", "") + "Agent"
             var_name = member.role.lower().replace(" ", "_")
             agent_imports.append(f"from agents import {class_name}")
             agent_vars.append(f"        self.{var_name} = {class_name}()")
-        
+
         return f'''#!/usr/bin/env python3
 """
 {team_spec.name} Crew Definition
@@ -82,26 +79,26 @@ import logging
 
 class {team_spec.name.replace("-", " ").title().replace(" ", "")}Crew:
     """Orchestrates the {team_spec.name} team using CrewAI"""
-    
+
     def __init__(self):
         self.logger = logging.getLogger("{team_spec.name}.crew")
-        
+
         # Initialize agents
 {chr(10).join(agent_vars)}
-        
+
         # Create the crew
         self.crew = self._create_crew()
-    
+
     def _create_crew(self) -> Crew:
         """Create and configure the crew"""
-        
+
         agents = [
 {chr(10).join(f"            self.{member.role.lower().replace(' ', '_')}.agent," for member in team_spec.members)}
         ]
-        
+
         # Configure process based on team size and structure
         process = Process.{process_type}
-        
+
         return Crew(
             agents=agents,
             process=process,
@@ -110,7 +107,7 @@ class {team_spec.name.replace("-", " ").title().replace(" ", "")}Crew:
             manager_llm=self.{manager_var}.llm if process == Process.hierarchical else None,
             function_calling_llm=self.{manager_var}.llm,
         )
-    
+
     def create_task(self, description: str, context: Dict[str, Any] = None) -> Task:
         """Create a task for the crew"""
         return Task(
@@ -118,17 +115,17 @@ class {team_spec.name.replace("-", " ").title().replace(" ", "")}Crew:
             expected_output="A comprehensive response addressing all aspects of the task",
             context=context or {{}},
         )
-    
+
     def run(self, task_description: str, context: Dict[str, Any] = None) -> str:
         """Run the crew with a specific task"""
         self.logger.info(f"Starting crew execution: {{task_description[:100]}}...")
-        
+
         task = self.create_task(task_description, context)
         result = self.crew.kickoff(inputs={{"task": task}})
-        
+
         self.logger.info("Crew execution completed")
         return result
-    
+
     async def arun(self, task_description: str, context: Dict[str, Any] = None) -> str:
         """Async version of run"""
         # CrewAI doesn't have native async support yet
@@ -151,12 +148,12 @@ def get_orchestrator(tools: Dict[str, List] = None) -> {team_spec.name.replace("
 if __name__ == "__main__":
     # Example usage
     orchestrator = get_orchestrator()
-    
+
     # Example task
     result = orchestrator.run(
         "Create a comprehensive strategic plan for Q2 2024",
         context={{"budget": 100000, "team_size": {len(team_spec.members)}}}
     )
-    
+
     print(result)
 '''

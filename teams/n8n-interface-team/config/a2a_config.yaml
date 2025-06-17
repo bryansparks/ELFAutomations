@@ -1,0 +1,28 @@
+a2a:
+  enabled: true
+  team_id: n8n-interface-team-team
+  manager_agent: Manager with A2A
+  gateway_url: http://agentgateway-service:3003
+  capabilities:
+  - Enable seamless integration between AI teams and n8n automation workflows
+  - Task execution
+  - Status reporting
+  - Team coordination
+  protocols:
+    task_request:
+      enabled: true
+      timeout: 3600
+      retry_count: 3
+    status_check:
+      enabled: true
+      timeout: 300
+    capability_registration:
+      enabled: true
+      auto_register: true
+  routing:
+    internal:
+      enabled: true
+      log_conversations: true
+    external:
+      enabled: true
+      require_auth: true

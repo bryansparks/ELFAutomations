@@ -83,3 +83,51 @@ def validate_member_names(members: List[str]) -> Tuple[bool, str]:
         return False, f"Duplicate member names found: {', '.join(set(duplicates))}"
 
     return True, "All member names are unique"
+
+
+def validate_team_spec(spec) -> List[str]:
+    """
+    Validate a complete team specification.
+    
+    Args:
+        spec: TeamSpecification object
+        
+    Returns:
+        List of validation errors (empty if valid)
+    """
+    from ..models import TeamSpecification
+    
+    errors = []
+    
+    # Validate team size
+    team_size = len(spec.members)
+    valid, msg = validate_team_size(team_size)
+    if not valid:
+        errors.append(msg)
+    
+    # Validate framework
+    valid, msg = validate_framework(spec.framework)
+    if not valid:
+        errors.append(msg)
+    
+    # Validate LLM provider
+    valid, msg = validate_llm_provider(spec.llm_provider)
+    if not valid:
+        errors.append(msg)
+    
+    # Validate member names
+    member_names = [m.name for m in spec.members]
+    valid, msg = validate_member_names(member_names)
+    if not valid:
+        errors.append(msg)
+    
+    # Check for at least one manager
+    has_manager = any(m.is_manager for m in spec.members)
+    if not has_manager:
+        errors.append("Team must have at least one manager")
+    
+    # Validate team name
+    if not spec.name or not spec.name.strip():
+        errors.append("Team name cannot be empty")
+    
+    return errors

@@ -14,6 +14,96 @@ from rich.table import Table
 console = Console()
 
 
+class TeamFactoryConsole:
+    """Console UI for team factory operations."""
+    
+    def __init__(self):
+        """Initialize console."""
+        self.console = console
+    
+    def show_progress(self, message: str) -> None:
+        """Show a progress message."""
+        self.console.print(f"[cyan]→[/cyan] {message}")
+    
+    def show_success(self, message: str) -> None:
+        """Show a success message."""
+        self.console.print(f"[green]✓[/green] {message}")
+    
+    def show_error(self, message: str) -> None:
+        """Show an error message."""
+        self.console.print(f"[red]✗[/red] {message}")
+    
+    def show_info(self, message: str) -> None:
+        """Show an informational message."""
+        self.console.print(f"[blue]ℹ[/blue] {message}")
+    
+    def show_welcome(self) -> None:
+        """Show welcome banner."""
+        welcome_text = """
+# 🤖 ElfAutomations Team Factory
+
+Create production-ready AI teams with:
+- 🧠 CrewAI or LangGraph frameworks
+- 💬 Natural language team design
+- 🔄 A2A inter-team communication
+- 📊 Monitoring and observability
+- 🚀 K8s deployment ready
+"""
+        panel = Panel(
+            Markdown(welcome_text),
+            title="Welcome to Team Factory",
+            border_style="bright_blue"
+        )
+        self.console.print(panel)
+    
+    def get_team_requirements(self):
+        """Get team requirements from user interactively."""
+        from ..ui.prompts import get_team_specification
+        return get_team_specification()
+    
+    def show_next_steps(self, team_name: str) -> None:
+        """Show next steps after team creation."""
+        next_steps = f"""
+## ✅ Team '{team_name}' created successfully!
+
+### 📁 Generated Files:
+- `teams/{team_name}/` - Team implementation
+- `k8s/teams/{team_name}/` - Kubernetes manifests
+
+### 🚀 Next Steps:
+
+1. **Build Docker Image:**
+   ```bash
+   cd teams/{team_name}
+   docker build -t elf-automations/{team_name}:latest .
+   ```
+
+2. **Transfer to ArgoCD Machine:**
+   ```bash
+   ./scripts/transfer-docker-images-ssh.sh
+   ```
+
+3. **Deploy via GitOps:**
+   ```bash
+   git add -A
+   git commit -m "Deploy {team_name}"
+   git push
+   ```
+
+4. **Monitor Deployment:**
+   ```bash
+   kubectl get pods -n elf-teams
+   kubectl logs -n elf-teams -l team={team_name}
+   ```
+"""
+        panel = Panel(
+            Markdown(next_steps),
+            title="Next Steps",
+            border_style="green"
+        )
+        self.console.print(panel)
+
+
 def create_panel(
     content: str,
     title: str = "",

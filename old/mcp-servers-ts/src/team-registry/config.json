@@ -1,0 +1,116 @@
+{
+  "name": "team-registry",
+  "displayName": "Team Registry MCP",
+  "description": "MCP server for managing ElfAutomations team registry in Supabase",
+  "version": "1.0.0",
+  "type": "internal",
+  "language": "typescript",
+  "command": "npm",
+  "args": ["run", "start:team-registry"],
+  "workingDirectory": "/Users/bryansparks/projects/ELFAutomations/mcp-servers-ts",
+  "environment": {
+    "SUPABASE_URL": "${SUPABASE_URL}",
+    "SUPABASE_ANON_KEY": "${SUPABASE_ANON_KEY}"
+  },
+  "tools": [
+    {
+      "name": "register_team",
+      "description": "Register a new team in the team registry",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "name": { "type": "string", "description": "Team name (e.g., marketing-team)" },
+          "display_name": { "type": "string", "description": "Display name (e.g., Marketing Team)" },
+          "department": { "type": "string", "description": "Department (e.g., marketing)" },
+          "placement": { "type": "string", "description": "Organizational placement (e.g., marketing.brand)" },
+          "purpose": { "type": "string", "description": "Team purpose/description" },
+          "framework": { "type": "string", "enum": ["CrewAI", "LangGraph"], "description": "Framework used" },
+          "llm_provider": { "type": "string", "enum": ["OpenAI", "Anthropic"], "description": "LLM provider" },
+          "llm_model": { "type": "string", "description": "LLM model name" },
+          "reports_to": { "type": "string", "description": "Who this team reports to" }
+        },
+        "required": ["name", "display_name", "department", "placement", "purpose", "framework", "llm_provider", "llm_model"]
+      }
+    },
+    {
+      "name": "add_team_member",
+      "description": "Add a member to an existing team",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "team_name": { "type": "string", "description": "Team name" },
+          "role": { "type": "string", "description": "Member role (e.g., Marketing Manager)" },
+          "is_manager": { "type": "boolean", "description": "Is this member the team manager?" },
+          "responsibilities": { "type": "array", "items": { "type": "string" }, "description": "List of responsibilities" },
+          "skills": { "type": "array", "items": { "type": "string" }, "description": "List of skills" },
+          "system_prompt": { "type": "string", "description": "Agent system prompt" }
+        },
+        "required": ["team_name", "role", "is_manager", "responsibilities", "skills", "system_prompt"]
+      }
+    },
+    {
+      "name": "query_teams",
+      "description": "Query teams by various criteria",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "team_name": { "type": "string", "description": "Team name to query" },
+          "department": { "type": "string", "description": "Department to filter by" },
+          "executive_role": { "type": "string", "description": "Executive role to find teams for" }
+        }
+      }
+    },
+    {
+      "name": "get_team_hierarchy",
+      "description": "Get the complete team hierarchy",
+      "inputSchema": {
+        "type": "object",
+        "properties": {}
+      }
+    },
+    {
+      "name": "get_executive_teams",
+      "description": "Get all teams managed by an executive",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "executive_role": { "type": "string", "description": "Executive role (e.g., Chief Marketing Officer)" }
+        },
+        "required": ["executive_role"]
+      }
+    },
+    {
+      "name": "update_team_relationship",
+      "description": "Update team reporting relationships",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "child_team": { "type": "string", "description": "Child team name" },
+          "parent_entity": { "type": "string", "description": "Parent entity name (team or executive)" },
+          "entity_type": { "type": "string", "enum": ["team", "executive"], "description": "Type of parent entity" },
+          "relationship_type": { "type": "string", "enum": ["reports_to", "collaborates_with"], "default": "reports_to" }
+        },
+        "required": ["child_team", "parent_entity", "entity_type"]
+      }
+    },
+    {
+      "name": "get_team_members",
+      "description": "Get all members of a team",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "team_name": { "type": "string", "description": "Team name" }
+        },
+        "required": ["team_name"]
+      }
+    },
+    {
+      "name": "get_team_composition",
+      "description": "Get team composition summary",
+      "inputSchema": {
+        "type": "object",
+        "properties": {}
+      }
+    }
+  ]
+}

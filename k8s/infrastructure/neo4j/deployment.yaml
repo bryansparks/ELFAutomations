@@ -1,0 +1,92 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: neo4j
+  namespace: elf-infrastructure
+  labels:
+    app: neo4j
+    component: database
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: neo4j
+      component: database
+  template:
+    metadata:
+      labels:
+        app: neo4j
+        component: database
+    spec:
+      containers:
+      - name: neo4j
+        image: neo4j:5.15-community
+        imagePullPolicy: IfNotPresent
+        ports:
+        - containerPort: 7474
+          name: http
+          protocol: TCP
+        - containerPort: 7687
+          name: bolt
+          protocol: TCP
+        env:
+        - name: NEO4J_AUTH
+          valueFrom:
+            secretKeyRef:
+              name: neo4j-credentials
+              key: NEO4J_AUTH
+        - name: NEO4J_ACCEPT_LICENSE_AGREEMENT
+          value: "yes"
+        - name: NEO4J_server_memory_heap_max__size
+          value: "2G"
+        - name: NEO4J_server_memory_heap_initial__size
+          value: "1G"
+        - name: NEO4J_server_memory_pagecache_size
+          value: "1G"
+        # Enable APOC plugin
+        - name: NEO4J_PLUGINS
+          value: '["apoc"]'
+        # Multi-database support
+        - name: NEO4J_dbms_multi__database
+          value: "true"
+        volumeMounts:
+        - name: data
+          mountPath: /data
+        - name: logs
+          mountPath: /logs
+        - name: config
+          mountPath: /var/lib/neo4j/conf/neo4j.conf
+          subPath: neo4j.conf
+        resources:
+          requests:
+            memory: "2Gi"
+            cpu: "1"
+          limits:
+            memory: "4Gi"
+            cpu: "2"
+        livenessProbe:
+          httpGet:
+            path: /
+            port: http
+          initialDelaySeconds: 300
+          periodSeconds: 10
+          timeoutSeconds: 5
+          failureThreshold: 3
+        readinessProbe:
+          httpGet:
+            path: /
+            port: http
+          initialDelaySeconds: 30
+          periodSeconds: 5
+          timeoutSeconds: 3
+          failureThreshold: 3
+      volumes:
+      - name: data
+        persistentVolumeClaim:
+          claimName: neo4j-pvc
+      - name: logs
+        persistentVolumeClaim:
+          claimName: neo4j-logs-pvc
+      - name: config
+        configMap:
+          name: neo4j-config

@@ -1,0 +1,108 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: team-registry-mcp-config
+  namespace: elf-automations
+data:
+  config.json: |
+    {
+      "name": "team-registry",
+      "displayName": "Team Registry MCP",
+      "description": "MCP server for managing ElfAutomations team registry in Supabase",
+      "version": "1.0.0",
+      "type": "internal",
+      "language": "typescript",
+      "command": "node",
+      "args": ["dist/team-registry/server.js"],
+      "workingDirectory": "/app",
+      "environment": {
+        "SUPABASE_URL": "${SUPABASE_URL}",
+        "SUPABASE_ANON_KEY": "${SUPABASE_ANON_KEY}"
+      },
+      "tools": [
+        {
+          "name": "register_team",
+          "description": "Register a new team in the team registry"
+        },
+        {
+          "name": "add_team_member",
+          "description": "Add a member to an existing team"
+        },
+        {
+          "name": "query_teams",
+          "description": "Query teams by various criteria"
+        },
+        {
+          "name": "get_team_hierarchy",
+          "description": "Get the complete team hierarchy"
+        },
+        {
+          "name": "get_executive_teams",
+          "description": "Get all teams managed by an executive"
+        },
+        {
+          "name": "update_team_relationship",
+          "description": "Update team reporting relationships"
+        },
+        {
+          "name": "get_team_members",
+          "description": "Get all members of a team"
+        },
+        {
+          "name": "get_team_composition",
+          "description": "Get team composition summary"
+        }
+      ]
+    }
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: team-registry-mcp
+  namespace: elf-automations
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: team-registry-mcp
+  template:
+    metadata:
+      labels:
+        app: team-registry-mcp
+        type: mcp-server
+    spec:
+      containers:
+      - name: mcp-server
+        image: elf-automations/team-registry-mcp:latest
+        imagePullPolicy: Never
+        env:
+        - name: SUPABASE_URL
+          valueFrom:
+            secretKeyRef:
+              name: supabase-credentials
+              key: url
+        - name: SUPABASE_ANON_KEY
+          valueFrom:
+            secretKeyRef:
+              name: supabase-credentials
+              key: anon-key
+        resources:
+          requests:
+            memory: "128Mi"
+            cpu: "100m"
+          limits:
+            memory: "256Mi"
+            cpu: "200m"
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: team-registry-mcp
+  namespace: elf-automations
+spec:
+  selector:
+    app: team-registry-mcp
+  ports:
+  - protocol: TCP
+    port: 5000
+    targetPort: 5000

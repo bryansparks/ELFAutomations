@@ -27,21 +27,18 @@ class LLMConfigGenerator(BaseGenerator):
         team_dir = Path(team_spec.name)
         config_dir = team_dir / "config"
         config_dir.mkdir(exist_ok=True)
-        
+
         config_path = config_dir / "llm_config.yaml"
-        
+
         # Generate LLM config
         llm_config = self._generate_llm_config(team_spec)
-        
+
         # Write config file
         with open(config_path, "w") as f:
             yaml.dump(llm_config, f, default_flow_style=False, sort_keys=False)
-        
-        return {
-            "generated_files": [str(config_path)],
-            "errors": []
-        }
-    
+
+        return {"generated_files": [str(config_path)], "errors": []}
+
     def _generate_llm_config(self, team_spec: TeamSpecification) -> Dict[str, Any]:
         """Generate LLM configuration content."""
         config = {
@@ -66,7 +63,7 @@ class LLMConfigGenerator(BaseGenerator):
                 },
             }
         }
-        
+
         # Add provider-specific settings
         if team_spec.llm_provider == "OpenAI":
             config["llm"]["openai"] = {
@@ -79,9 +76,9 @@ class LLMConfigGenerator(BaseGenerator):
                 "api_key_env": "ANTHROPIC_API_KEY",
                 "base_url": None,
             }
-        
+
         return config
-    
+
     def _get_fallback_chain(self, primary_provider: str) -> list:
         """Get fallback chain based on primary provider."""
         if primary_provider == "OpenAI":

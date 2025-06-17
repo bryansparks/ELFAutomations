@@ -25,21 +25,18 @@ class KubernetesGenerator(BaseGenerator):
         team_dir = Path(team_spec.name)
         k8s_dir = team_dir / "k8s"
         k8s_dir.mkdir(exist_ok=True)
-        
+
         deployment_path = k8s_dir / "deployment.yaml"
-        
+
         # Generate deployment manifest
         deployment_content = self._generate_deployment_manifest(team_spec)
-        
+
         # Write file
         with open(deployment_path, "w") as f:
             f.write(deployment_content)
-        
-        return {
-            "generated_files": [str(deployment_path)],
-            "errors": []
-        }
-    
+
+        return {"generated_files": [str(deployment_path)], "errors": []}
+
     def _generate_deployment_manifest(self, team_spec: TeamSpecification) -> str:
         """Generate Kubernetes deployment manifest."""
         # Resource calculations based on team size
@@ -47,8 +44,8 @@ class KubernetesGenerator(BaseGenerator):
         cpu_limit = "500m" if len(team_spec.members) <= 3 else "1000m"
         memory_request = "256Mi" if len(team_spec.members) <= 3 else "512Mi"
         memory_limit = "512Mi" if len(team_spec.members) <= 3 else "1Gi"
-        
-        return f'''apiVersion: apps/v1
+
+        return f"""apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: {team_spec.name}
@@ -199,4 +196,4 @@ subjects:
 - kind: ServiceAccount
   name: {team_spec.name}-sa
   namespace: elf-teams
-'''
+"""

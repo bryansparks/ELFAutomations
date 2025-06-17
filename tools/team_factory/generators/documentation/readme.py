@@ -25,39 +25,40 @@ class ReadmeGenerator(BaseGenerator):
         """
         team_dir = Path(team_spec.name)
         readme_path = team_dir / "README.md"
-        
+
         # Generate README content
         readme_content = self._generate_readme_content(team_spec)
-        
+
         # Write file
         with open(readme_path, "w") as f:
             f.write(readme_content)
-        
-        return {
-            "generated_files": [str(readme_path)],
-            "errors": []
-        }
-    
+
+        return {"generated_files": [str(readme_path)], "errors": []}
+
     def _generate_readme_content(self, team_spec: TeamSpecification) -> str:
         """Generate README content."""
         # Process type based on team size
         process_type = "Hierarchical" if len(team_spec.members) >= 5 else "Sequential"
-        
+
         # Team member table
         member_rows = []
         for member in team_spec.members:
             role_marker = " (Manager)" if member.is_manager else ""
             responsibilities = ", ".join(member.responsibilities[:3])
-            member_rows.append(f"| {member.role}{role_marker} | {member.personality} | {responsibilities} |")
-        
+            member_rows.append(
+                f"| {member.role}{role_marker} | {member.personality} | {responsibilities} |"
+            )
+
         members_table = "\n".join(member_rows)
-        
+
         # Sub-teams section if applicable
         sub_teams_section = ""
         if team_spec.sub_team_recommendations:
             sub_team_items = []
             for sub in team_spec.sub_team_recommendations:
-                sub_team_items.append(f"- **{sub.name}** ({sub.size} members): {sub.purpose}")
+                sub_team_items.append(
+                    f"- **{sub.name}** ({sub.size} members): {sub.purpose}"
+                )
             sub_teams_section = f"""
 ## Recommended Sub-Teams
 
@@ -65,16 +66,16 @@ As the team grows, consider creating these specialized sub-teams:
 
 {chr(10).join(sub_team_items)}
 """
-        
+
         return f"""# {team_spec.name.replace("-", " ").title()}
 
 ## Overview
 
 **Purpose**: {team_spec.purpose}
 
-**Framework**: {team_spec.framework}  
-**Department**: {team_spec.department}  
-**Reports To**: {team_spec.reporting_to}  
+**Framework**: {team_spec.framework}
+**Department**: {team_spec.department}
+**Reports To**: {team_spec.reporting_to}
 **Created**: {datetime.now().strftime("%Y-%m-%d")}
 
 ## Team Composition
@@ -83,7 +84,7 @@ As the team grows, consider creating these specialized sub-teams:
 |------|-------------|----------------------|
 {members_table}
 
-**Team Size**: {len(team_spec.members)} members  
+**Team Size**: {len(team_spec.members)} members
 **Process Type**: {process_type}
 
 ## Technical Details
@@ -199,7 +200,7 @@ curl http://localhost:8000/health
 # Submit a task
 curl -X POST http://localhost:8000/task \\
   -H "Content-Type: application/json" \\
-  -d '{{"from_agent": "test", "to_agent": "{team_spec.name}-manager", 
+  -d '{{"from_agent": "test", "to_agent": "{team_spec.name}-manager",
        "task_type": "request", "task_description": "Test task"}}'
 ```
 

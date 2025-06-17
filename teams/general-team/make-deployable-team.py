@@ -18,22 +18,29 @@ from pathlib import Path
 def create_deployable_team():
     """Create all files needed for deployment"""
     print("Creating deployable team structure...")
-    
+
     # Check if team_server.py exists
     if not Path("team_server.py").exists():
         print("ERROR: team_server.py not found. Run from team directory.")
         sys.exit(1)
-    
+
     # Check required files
-    required_files = ["crew.py" if "CrewAI" == "CrewAI" else "workflows/team_workflow.py", 
-                      "requirements.txt", "Dockerfile"]
-    
-    missing = [f for f in required_files if not Path(f).exists() and not Path(f).parent.exists()]
+    required_files = [
+        "crew.py" if "CrewAI" == "CrewAI" else "workflows/team_workflow.py",
+        "requirements.txt",
+        "Dockerfile",
+    ]
+
+    missing = [
+        f
+        for f in required_files
+        if not Path(f).exists() and not Path(f).parent.exists()
+    ]
     if missing:
         print(f"Warning: Missing files: {missing}")
-    
+
     print("✓ Team structure verified")
-    
+
     # Create deployment instructions
     deploy_instructions = """
 # Deployment Instructions
@@ -70,10 +77,10 @@ def create_deployable_team():
 2. Push to repository
 3. ArgoCD will automatically deploy
 """
-    
+
     with open("DEPLOYMENT.md", "w") as f:
         f.write(deploy_instructions)
-    
+
     print("✓ Created DEPLOYMENT.md")
     print("\nDeployable team structure created successfully!")
     print("\nNext steps:")

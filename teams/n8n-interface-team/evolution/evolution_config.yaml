@@ -1,0 +1,21 @@
+# Evolution Configuration for n8n-interface-team
+
+team:
+  name: n8n-interface-team
+  id: n8n-interface-team
+  department: infrastructure
+
+evolution:
+  enabled: True
+  confidence_threshold: 0.9
+  improvement_frequency: daily
+
+memory:
+  enabled: True
+  retention_days: 30
+
+conversation_logging:
+  enabled: True
+
+# Agent roles to evolve
+agents:

@@ -6,19 +6,29 @@ This allows existing code to continue using 'import team_factory' while
 the actual implementation is now in the team_factory package.
 """
 
+import sys
 from pathlib import Path
+
+# Add parent directory to path for imports
+sys.path.insert(0, str(Path(__file__).parent))
+
+# Also add project root for elf_automations imports
+project_root = Path(__file__).parent.parent
+if project_root.exists():
+    sys.path.insert(0, str(project_root))
 
 # Import everything from the package
 try:
-    # Import main function for CLI compatibility
-    from team_factory import *
     from team_factory import main
     from team_factory.models import *
-except ImportError:
-    # Fallback for when package is not yet complete
-    import sys
-
-    sys.path.insert(0, str(Path(__file__).parent))
+except ImportError as e:
+    print(f"Import error: {e}")
+    # If the new structure fails, try direct import
+    try:
+        from team_factory.cli import main
+    except ImportError:
+        print("Error: Could not import team factory. Make sure all files are in place.")
+        sys.exit(1)
 
 # For complete backward compatibility, import internal functions
 # Note: These should be migrated to use the package structure

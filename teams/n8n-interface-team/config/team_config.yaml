@@ -1,0 +1,130 @@
+team:
+  name: n8n-interface-team
+  purpose: Enable seamless integration between AI teams and n8n automation workflows
+  department: infrastructure
+  framework: CrewAI
+  reporting_to: null
+  members:
+  - name: Workflow Manager
+    role: Manager with A2A
+    responsibilities:
+    - Receives workflow execution requests from other teams via A2A protocol
+    - Delegates tasks to appropriate team members based on request type
+    - Monitors overall team performance and workflow execution metrics
+    - Responds to requesting teams with execution results or error details
+    skills:
+    - A2A protocol
+    - workflow orchestration
+    - team management
+    - error handling
+    personality: strategic-thinker
+    is_manager: true
+    manages_teams: []
+  - name: Request Validator
+    role: Validation Specialist
+    responsibilities:
+    - Validates incoming workflow requests against schema definitions
+    - Ensures all required parameters are present and properly formatted
+    - Checks authorization and permissions for workflow execution
+    - Reports validation errors back to manager for client response
+    skills:
+    - schema validation
+    - data validation
+    - error reporting
+    - API specifications
+    personality: detail-oriented
+    is_manager: false
+    manages_teams: []
+  - name: Execution Tracker
+    role: Monitoring Specialist
+    responsibilities:
+    - Monitors n8n workflow executions in real-time
+    - Updates Supabase with execution status and progress
+    - Tracks execution metrics and performance data
+    - Alerts team on failures or long-running executions
+    skills:
+    - n8n API
+    - Supabase
+    - monitoring
+    - alerting
+    - performance tracking
+    personality: analytical
+    is_manager: false
+    manages_teams: []
+  - name: Error Handler
+    role: Resilience Engineer
+    responsibilities:
+    - Manages workflow execution failures and implements retry logic
+    - Categorizes errors and determines appropriate recovery strategies
+    - Maintains error logs and patterns for continuous improvement
+    - Coordinates with n8n team for persistent issues
+    skills:
+    - error handling
+    - retry strategies
+    - logging
+    - pattern recognition
+    personality: problem-solver
+    is_manager: false
+    manages_teams: []
+  - name: Registry Maintainer
+    role: Registry Specialist
+    responsibilities:
+    - Maintains up-to-date workflow registry in Supabase
+    - Synchronizes workflow definitions with n8n instance
+    - Tracks workflow versions and deprecation status
+    - Provides workflow discovery capabilities to requesting teams
+    skills:
+    - registry management
+    - version control
+    - API documentation
+    - data synchronization
+    personality: methodical
+    is_manager: false
+    manages_teams: []
+  communication:
+    internal:
+      style: natural_language
+      logging:
+        enabled: true
+        format: conversation
+        path: logs/n8n-interface-team_communications.log
+    external:
+      protocol: a2a
+      manager_only: true
+      logging:
+        enabled: true
+        format: structured
+        path: logs/n8n-interface-team_a2a.log
+  workflow:
+    type: hierarchical
+    manager: Manager with A2A
+    delegation_enabled: false
+  memory:
+    enabled: true
+    provider: qdrant
+    continuous_learning: true
+    experience_replay: true
+  monitoring:
+    metrics:
+      enabled: true
+      prometheus_port: 9090
+    health_check:
+      enabled: true
+      endpoint: /health
+      interval: 30
+    logging:
+      level: INFO
+      format: json
+      separate_files: true
+  integrations:
+    n8n:
+      base_url: ${N8N_BASE_URL:http://n8n:5678}
+      webhook_timeout: 30
+      retry_attempts: 3
+      retry_delay: 5
+    supabase:
+      tables:
+        - workflow_registry
+        - workflow_executions
+        - workflow_errors
+        - workflow_metrics

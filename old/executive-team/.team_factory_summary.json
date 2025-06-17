@@ -1,0 +1,67 @@
+{
+  "team_name": "general-team",
+  "framework": "CrewAI",
+  "department": "general",
+  "created_at": "2025-06-12T17:02:32.602981",
+  "llm_provider": "Anthropic",
+  "llm_model": "claude-3-sonnet-20240229",
+  "members": [
+    {
+      "role": "Chief Executive Officer",
+      "personality": "visionary",
+      "is_manager": true
+    },
+    {
+      "role": "Chief Technology Officer",
+      "personality": "analytical",
+      "is_manager": false
+    },
+    {
+      "role": "Chief Marketing Officer",
+      "personality": "creative",
+      "is_manager": false
+    },
+    {
+      "role": "Chief Operating Officer",
+      "personality": "pragmatic",
+      "is_manager": false
+    },
+    {
+      "role": "Chief Financial Officer",
+      "personality": "detail_oriented",
+      "is_manager": false
+    },
+    {
+      "role": "Chief Product Officer",
+      "personality": "collaborator",
+      "is_manager": false
+    }
+  ],
+  "generated_files": [
+    "agents/__init__.py",
+    "agents/ceo.py",
+    "agents/cto.py",
+    "agents/cmo.py",
+    "agents/coo.py",
+    "agents/cfo.py",
+    "agents/cpo.py",
+    "general-team/crew.py",
+    "general-team/Dockerfile",
+    "general-team/k8s/deployment.yaml",
+    "general-team/make-deployable-team.py",
+    "general-team/health_check.sh",
+    "general-team/requirements.txt",
+    "general-team/team_server.py",
+    "general-team/config/team_config.yaml",
+    "general-team/config/a2a_config.yaml",
+    "general-team/config/llm_config.yaml",
+    "general-team/README.md",
+    "general-team/tasks/__init__.py",
+    "general-team/tools/__init__.py",
+    "general-team/logs/__init__.py"
+  ],
+  "warnings": [
+    "Team registered in Supabase",
+    "Memory system configured"
+  ]
+}

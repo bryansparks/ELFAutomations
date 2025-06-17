@@ -1,0 +1,2305 @@
+{
+  "name": "Study App AI Agent Backend",
+  "nodes": [
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "=https://[PROJECT_ID].supabase.co/storage/v1/object/files/{{ `${Math.floor(Math.random() * 99999)}-${$binary.data.fileName}` }}",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "supabaseApi",
+        "sendBody": true,
+        "contentType": "multipart-form-data",
+        "bodyParameters": {
+          "parameters": [
+            {
+              "parameterType": "formBinaryData",
+              "name": "file",
+              "inputDataFieldName": "data"
+            }
+          ]
+        },
+        "options": {
+          "response": {
+            "response": {
+              "fullResponse": true
+            }
+          }
+        }
+      },
+      "id": "292cf8e9-5344-4b26-978d-fdc595a3c214",
+      "name": "Upload object",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [
+        -600,
+        1440
+      ],
+      "credentials": {
+        "supabaseApi": {
+          "id": "6rCvzKWRmCqAynOD",
+          "name": "Supabase account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "=https://[PROJECT_ID].supabase.co/storage/v1/object/sign/{{ $json.body.Key }}",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "supabaseApi",
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "expiresIn",
+              "value": "1972673858"
+            }
+          ]
+        },
+        "options": {
+          "response": {
+            "response": {
+              "fullResponse": true
+            }
+          }
+        }
+      },
+      "id": "f0170117-66be-47b6-b61a-521c97d65b8a",
+      "name": "Generate presigned URL",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [
+        -420,
+        1440
+      ],
+      "credentials": {
+        "supabaseApi": {
+          "id": "6rCvzKWRmCqAynOD",
+          "name": "Supabase account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "toBinary",
+        "sourceProperty": "=data",
+        "options": {
+          "mimeType": "={{ $('Split Out').item.json.mime_type }}"
+        }
+      },
+      "type": "n8n-nodes-base.convertToFile",
+      "typeVersion": 1.1,
+      "position": [
+        -760,
+        1440
+      ],
+      "id": "ab311962-a510-4e26-bba3-e0aa2f07b059",
+      "name": "Convert to File"
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "const data =  $json.content.split(',')[1]\nreturn {\n  data\n}"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -920,
+        1440
+      ],
+      "id": "0ef94622-520b-456f-b272-29ea4831b5a2",
+      "name": "Code"
+    },
+    {
+      "parameters": {
+        "fieldToSplitOut": "body.files",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.splitOut",
+      "typeVersion": 1,
+      "position": [
+        -1120,
+        1180
+      ],
+      "id": "f089506c-9df9-49a7-ad4f-2585642cc1ed",
+      "name": "Split Out"
+    },
+    {
+      "parameters": {
+        "fieldsToAggregate": {
+          "fieldToAggregate": [
+            {
+              "fieldToAggregate": "body.signedURL"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.aggregate",
+      "typeVersion": 1,
+      "position": [
+        -220,
+        1440
+      ],
+      "id": "c8e9b066-4839-4231-9fb8-231e774e9023",
+      "name": "Aggregate File Urls"
+    },
+    {
+      "parameters": {
+        "fieldsToAggregate": {
+          "fieldToAggregate": [
+            {
+              "fieldToAggregate": "candidates[0].content.parts[0].text"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.aggregate",
+      "typeVersion": 1,
+      "position": [
+        -340,
+        1060
+      ],
+      "id": "9e72aad9-dd0f-4156-9e78-542a67464976",
+      "name": "Aggregate Content Data"
+    },
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3.1,
+      "position": [
+        -20,
+        1180
+      ],
+      "id": "9776eaff-61cd-48c3-8855-d06cf2546741",
+      "name": "Merge"
+    },
+    {
+      "parameters": {
+        "fieldsToAggregate": {
+          "fieldToAggregate": [
+            {
+              "fieldToAggregate": "text"
+            },
+            {
+              "fieldToAggregate": "signedURL"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.aggregate",
+      "typeVersion": 1,
+      "position": [
+        160,
+        1180
+      ],
+      "id": "93f43865-19ed-455f-9e5f-9c9cf601d623",
+      "name": "Aggregate"
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify($json) }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.3,
+      "position": [
+        700,
+        1180
+      ],
+      "id": "78283e36-11c3-44a5-9531-0db093722a43",
+      "name": "Respond to Webhook"
+    },
+    {
+      "parameters": {
+        "jsCode": "const response = {\n  success: \"true\",\n  note_id: $input.first().json.id,\n  processed_content: $input.first().json.content,\n  file_urls: $input.first().json.file_urls,\n  error: null\n}\n\nreturn response;"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        520,
+        1180
+      ],
+      "id": "420e682d-b20c-4bda-afbf-87fa9a10a340",
+      "name": "Craft Response"
+    },
+    {
+      "parameters": {
+        "model": {
+          "__rl": true,
+          "mode": "list",
+          "value": "claude-3-7-sonnet-20250219",
+          "cachedResultName": "Claude 3.7 Sonnet"
+        },
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatAnthropic",
+      "typeVersion": 1.3,
+      "position": [
+        -620,
+        660
+      ],
+      "id": "49a43d72-5d77-4232-abd7-c401ab4a6abe",
+      "name": "Anthropic Chat Model",
+      "credentials": {
+        "anthropicApi": {
+          "id": "9c9yxx7Njl7hn93m",
+          "name": "Anthropic account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "schemaType": "manual",
+        "inputSchema": "{\n  \"$schema\": \"http://json-schema.org/draft-07/schema#\",\n  \"type\": \"object\",\n  \"required\": [\"exam_id\", \"questions\"],\n  \"properties\": {\n    \"exam_id\": {\n      \"type\": \"string\",\n      \"description\": \"Unique identifier for the exam\"\n    },\n    \"questions\": {\n      \"type\": \"array\",\n      \"items\": {\n        \"type\": \"object\",\n        \"required\": [\"id\", \"question_text\", \"question_type\", \"difficulty\", \"points\", \"order_index\", \"multiple_choice_options\"],\n        \"properties\": {\n          \"id\": {\n            \"type\": \"string\",\n            \"description\": \"Unique identifier for the question\"\n          },\n          \"question_text\": {\n            \"type\": \"string\",\n            \"description\": \"The actual question text\"\n          },\n          \"question_type\": {\n            \"type\": \"string\",\n            \"enum\": [\"multiple_choice\", \"open_ended\", \"true_false\"],\n            \"description\": \"Type of question\"\n          },\n          \"difficulty\": {\n            \"type\": \"string\",\n            \"enum\": [\"easy\", \"medium\", \"hard\"],\n            \"description\": \"Difficulty level of the question\"\n          },\n          \"points\": {\n            \"type\": \"number\",\n            \"minimum\": 1,\n            \"maximum\": 10,\n            \"description\": \"Points awarded for correct answer\"\n          },\n          \"order_index\": {\n            \"type\": \"number\",\n            \"minimum\": 0,\n            \"description\": \"Order of the question in the exam\"\n          },\n          \"multiple_choice_options\": {\n            \"oneOf\": [\n              {\n                \"type\": \"object\",\n                \"required\": [\"options\", \"correct_answer\"],\n                \"properties\": {\n                  \"options\": {\n                    \"type\": \"array\",\n                    \"items\": {\n                      \"type\": \"string\"\n                    },\n                    \"minItems\": 2,\n                    \"maxItems\": 4,\n                    \"description\": \"Array of possible answers\"\n                  },\n                  \"correct_answer\": {\n                    \"type\": \"string\",\n                    \"description\": \"The correct answer from the options\"\n                  }\n                }\n              },\n              {\n                \"type\": \"null\",\n                \"description\": \"Null for non-multiple choice questions\"\n              }\n            ],\n            \"description\": \"Multiple choice options object or null for non-multiple choice questions\"\n          }\n        },\n        \"allOf\": [\n          {\n            \"if\": {\n              \"properties\": { \"question_type\": { \"enum\": [\"multiple_choice\"] } }\n            },\n            \"then\": {\n              \"properties\": {\n                \"multiple_choice_options\": {\n                  \"type\": \"object\",\n                  \"required\": [\"options\", \"correct_answer\"]\n                }\n              }\n            }\n          },\n          {\n            \"if\": {\n              \"properties\": { \"question_type\": { \"enum\": [\"open_ended\", \"true_false\"] } }\n            },\n            \"then\": {\n              \"properties\": {\n                \"multiple_choice_options\": { \"type\": \"null\" }\n              }\n            }\n          }\n        ]\n      }\n    }\n  }\n}"
+      },
+      "type": "@n8n/n8n-nodes-langchain.outputParserStructured",
+      "typeVersion": 1.2,
+      "position": [
+        -440,
+        660
+      ],
+      "id": "bfe26b16-ba74-4918-a371-e98c3da4eeee",
+      "name": "Structured Output Parser"
+    },
+    {
+      "parameters": {
+        "operation": "get",
+        "tableId": "notes",
+        "filters": {
+          "conditions": [
+            {
+              "keyName": "id",
+              "keyValue": "={{ $('[N3] Webhook').item.json.body.notes_id }}"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [
+        -860,
+        540
+      ],
+      "id": "bd8c7f98-a8e3-4832-9991-09c3c39ff046",
+      "name": "Get Notes Data",
+      "credentials": {
+        "supabaseApi": {
+          "id": "6rCvzKWRmCqAynOD",
+          "name": "Supabase account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.mime_type }}",
+                    "rightValue": "=image/",
+                    "operator": {
+                      "type": "string",
+                      "operation": "startsWith"
+                    },
+                    "id": "4464223a-901c-4d66-aca4-68cb621ec4b1"
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "image"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "id": "7aa72c2e-68e1-49c3-907b-9383b3c10334",
+                    "leftValue": "={{ $json.mime_type }}",
+                    "rightValue": "text",
+                    "operator": {
+                      "type": "string",
+                      "operation": "contains"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "text"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "id": "4b0e0984-5232-40e7-b7bc-28fe379fd4da",
+                    "leftValue": "={{ $json.mime_type }}",
+                    "rightValue": "application/pdf",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals",
+                      "name": "filter.operator.equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "pdf"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3.2,
+      "position": [
+        -920,
+        1060
+      ],
+      "id": "cfd096c2-9af0-4342-96c4-428d04e892a1",
+      "name": "Switch1"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "googlePalmApi",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"contents\": [{\n    \"parts\":[\n      {\"text\": \"Extract full content from this PDF, report exactly as it is.\"},\n      {\n        \"inline_data\": {\n          \"mime_type\": \"{{ $('Split Out').item.json.mime_type }}\",\n          \"data\": \"{{ $('Split Out').item.json.content.split(',')[1] }}\"\n        }\n      }\n    ]\n  }]\n}\n",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        -660,
+        1140
+      ],
+      "id": "690486cb-0a75-404c-97d0-39d3c0261c78",
+      "name": "GEMINI API HTTP Request (PDF)1",
+      "retryOnFail": true,
+      "credentials": {
+        "googlePalmApi": {
+          "id": "HeQ7jFCj7D7CdQSi",
+          "name": "Google Gemini(PaLM) Api account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "googlePalmApi",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"contents\": [{\n    \"parts\":[\n      {\"text\": \"Extract informations from this notes image.\"},\n      {\n        \"inline_data\": {\n          \"mime_type\": \"{{ $json.mime_type }}\",\n          \"data\": \"{{ $json.content.split(',')[1] }}\"\n        }\n      }\n    ]\n  }]\n}\n",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        -660,
+        940
+      ],
+      "id": "5b9262d2-af6e-4190-b576-ca57781727b2",
+      "name": "GEMINI API HTTP Request (IMAGE)1",
+      "retryOnFail": true,
+      "credentials": {
+        "googlePalmApi": {
+          "id": "HeQ7jFCj7D7CdQSi",
+          "name": "Google Gemini(PaLM) Api account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "tableId": "notes",
+        "fieldsUi": {
+          "fieldValues": [
+            {
+              "fieldId": "title",
+              "fieldValue": "={{ $('[N4] Webhook').item.json.body.title }}"
+            },
+            {
+              "fieldId": "content",
+              "fieldValue": "={{ '#####NOTE:\\n\\n' + $json.text[0].join('\\n\\n#####NOTE:\\n\\n') }}"
+            },
+            {
+              "fieldId": "user_id",
+              "fieldValue": "={{ $('[N4] Webhook').item.json.body.user_id }}"
+            },
+            {
+              "fieldId": "file_urls",
+              "fieldValue": "={{  $json.signedURL[0].map(item => {\n    return \"https://nmlkapxvilsvnkroerqw.supabase.co/storage/v1\" + item\n}) }}"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [
+        340,
+        1180
+      ],
+      "id": "f75ffd16-5061-4c66-b183-ff7a617d5f4a",
+      "name": "Supabase1",
+      "executeOnce": true,
+      "credentials": {
+        "supabaseApi": {
+          "id": "6rCvzKWRmCqAynOD",
+          "name": "Supabase account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "fieldToSplitOut": "output.questions",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.splitOut",
+      "typeVersion": 1,
+      "position": [
+        -240,
+        540
+      ],
+      "id": "a319dc8d-5619-4df7-a8cf-f17bf308e1d2",
+      "name": "Split Questions"
+    },
+    {
+      "parameters": {
+        "tableId": "exams",
+        "fieldsUi": {
+          "fieldValues": [
+            {
+              "fieldId": "user_id",
+              "fieldValue": "={{ $json.body.user_id }}"
+            },
+            {
+              "fieldId": "notes_id",
+              "fieldValue": "={{ $json.body.notes_id }}"
+            },
+            {
+              "fieldId": "question_count",
+              "fieldValue": "={{ $json.body.question_count }}"
+            },
+            {
+              "fieldId": "status",
+              "fieldValue": "setup"
+            },
+            {
+              "fieldId": "title",
+              "fieldValue": "={{ `${Math.floor(Math.random() * 9999)}-Exam` }}"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [
+        -1120,
+        540
+      ],
+      "id": "7a36e918-6dc3-4636-b44c-4dbed3848f5c",
+      "name": "Create New Exam",
+      "credentials": {
+        "supabaseApi": {
+          "id": "6rCvzKWRmCqAynOD",
+          "name": "Supabase account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "tableId": "questions",
+        "fieldsUi": {
+          "fieldValues": [
+            {
+              "fieldId": "exam_id",
+              "fieldValue": "={{ $('Create New Exam').item.json.id }}"
+            },
+            {
+              "fieldId": "question_text",
+              "fieldValue": "={{ $json.question_text }}"
+            },
+            {
+              "fieldId": "question_type",
+              "fieldValue": "={{ $json.question_type }}"
+            },
+            {
+              "fieldId": "difficulty",
+              "fieldValue": "={{ $json.difficulty }}"
+            },
+            {
+              "fieldId": "correct_answer",
+              "fieldValue": "={{ $json.multiple_choice_options ? $json.multiple_choice_options.correct_answer : null }}"
+            },
+            {
+              "fieldId": "points",
+              "fieldValue": "={{ $json.points }}"
+            },
+            {
+              "fieldId": "order_index",
+              "fieldValue": "={{ $json.order_index }}"
+            },
+            {
+              "fieldId": "multiple_choice_options",
+              "fieldValue": "={{ $json.multiple_choice_options ? $json.multiple_choice_options.options : null }}"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [
+        -20,
+        540
+      ],
+      "id": "c5e46afc-4b4d-466d-9f76-e90959ccee29",
+      "name": "Insert Question",
+      "executeOnce": false,
+      "credentials": {
+        "supabaseApi": {
+          "id": "6rCvzKWRmCqAynOD",
+          "name": "Supabase account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "aggregate": "aggregateAllItemData",
+        "destinationFieldName": "questions",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.aggregate",
+      "typeVersion": 1,
+      "position": [
+        200,
+        540
+      ],
+      "id": "c37ef1d1-b801-4ce1-8b46-0539dc57c4cd",
+      "name": "Aggregate Questions"
+    },
+    {
+      "parameters": {
+        "jsCode": "const data = {\n  exam_id: $('Create New Exam').first().json.id,\n  questions: $input.first().json.questions\n}\n\nreturn data"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        420,
+        540
+      ],
+      "id": "884b346a-2998-425f-898e-a1a8cec64fb0",
+      "name": "Format Response"
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify($json) }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.3,
+      "position": [
+        600,
+        540
+      ],
+      "id": "b416e9f2-aa6d-475d-8ef3-3137a2be016e",
+      "name": "Send Response Data"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.replicate.com/v1/predictions",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "Bearer [API_KEY]"
+            },
+            {
+              "name": "Prefer",
+              "value": "wait"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"version\": \"3ab86df6c8f54c11309d4d1f930ac292bad43ace52d10c80d87eb258b3c9f79c\",\n  \"input\": {\n    \"audio\": \"{{ \"https://[PROJECT_ID].supabase.co/storage/v1\" + $json.body.signedURL }}\",\n    \"batch_size\": 64,\n    \"return_timestamps\": true\n  }\n}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        -400,
+        120
+      ],
+      "id": "ae968bcc-f6f9-4ec9-8170-89b1d195e160",
+      "name": "Transcribe Audio (REPLICATE API)"
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "const data =  $json.body.audio_data.split(',')[1]\nreturn {\n  data\n}"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -1120,
+        120
+      ],
+      "id": "255044e7-c388-44af-b45b-fae82a241691",
+      "name": "Extract Base64 String"
+    },
+    {
+      "parameters": {
+        "operation": "toBinary",
+        "sourceProperty": "data",
+        "options": {
+          "mimeType": "={{ $('[N2] Webhook').item.json.body.audio_data.split(';')[0].split(':')[1] }}"
+        }
+      },
+      "type": "n8n-nodes-base.convertToFile",
+      "typeVersion": 1.1,
+      "position": [
+        -940,
+        120
+      ],
+      "id": "82c59daf-aba9-4021-b9dd-d4a0afc55ec3",
+      "name": "Create Audio FIle"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "=https://[PROJECT_ID].supabase.co/storage/v1/object/sign/{{ $json.body.Key }}",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "supabaseApi",
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "expiresIn",
+              "value": "1972673858"
+            }
+          ]
+        },
+        "options": {
+          "response": {
+            "response": {
+              "fullResponse": true
+            }
+          }
+        }
+      },
+      "id": "b80334ae-0212-4735-92fc-ca59f918ca6c",
+      "name": "Generate presigned URL 2",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [
+        -600,
+        120
+      ],
+      "credentials": {
+        "supabaseApi": {
+          "id": "6rCvzKWRmCqAynOD",
+          "name": "Supabase account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "tableId": "answers",
+        "fieldsUi": {
+          "fieldValues": [
+            {
+              "fieldId": "question_id",
+              "fieldValue": "={{ $('[N2] Webhook').item.json.body.question_id }}"
+            },
+            {
+              "fieldId": "user_answer",
+              "fieldValue": "={{ $('Craft Input Data').item.json.user_answer }}"
+            },
+            {
+              "fieldId": "audio_url",
+              "fieldValue": "={{ $('Transcribe Audio (REPLICATE API)').item.json.input.audio }}"
+            },
+            {
+              "fieldId": "score",
+              "fieldValue": "={{ $json.output.score }}"
+            },
+            {
+              "fieldId": "feedback",
+              "fieldValue": "={{ $json.output.feedback }}"
+            },
+            {
+              "fieldId": "is_correct",
+              "fieldValue": "={{ $json.output.is_correct }}"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [
+        560,
+        120
+      ],
+      "id": "92fb275d-4639-4c17-92e1-f6ad1584e1b3",
+      "name": "Insert Answer",
+      "credentials": {
+        "supabaseApi": {
+          "id": "6rCvzKWRmCqAynOD",
+          "name": "Supabase account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=### NUMBER OF QUESTIONS TO CREATE\n{{ $('[N3] Webhook').item.json.body.question_count }}\n\n### IMPORTANT NOTE\nFor `open_endend` question type, insert the proproperty `multiple_choice_options` as `null`, don't omit it.\n\n### NOTES DATA\n{{ $json.content }}",
+        "hasOutputParser": true,
+        "messages": {
+          "messageValues": [
+            {
+              "message": "You are an expert educator and exam creator. Your task is to create a comprehensive oral exam based on the provided study notes. Follow these guidelines:  1. Question Distribution:    - Create a balanced mix of question types:      * 40% multiple choice      * 40% open-ended      * 20% true/false    - Distribute difficulty levels:      * 30% easy (basic recall and understanding)      * 40% medium (application and analysis)      * 30% hard (evaluation and synthesis)  2. Question Quality Guidelines:    - Avoid trivial or obvious questions    - Include questions that test:      * Conceptual understanding      * Critical thinking      * Application of knowledge      * Analysis of relationships      * Evaluation of scenarios    - For multiple choice:      * Create plausible distractors      * Avoid obvious wrong answers      * Ensure options are similar in length      * Don't use \"all of the above\" or \"none of the above\"  3. Difficulty Levels:    - Easy: Basic recall, definitions, simple concepts    - Medium: Application of concepts, analysis of relationships    - Hard: Complex scenarios, evaluation, synthesis of multiple concepts  4. Points Distribution:    - Easy questions: 1-3 points    - Medium questions: 4-7 points    - Hard questions: 8-10 points  5. Question Order:    - Start with easier questions    - Progress to more complex ones    - End with challenging synthesis questions  6. Multiple Choice Guidelines:    - Include 4 options for each question    - Ensure only one correct answer    - Make distractors plausible but clearly incorrect    - Avoid patterns in correct answer positions  7. Open-ended Guidelines:    - Ask for explanations, not just facts    - Include questions that require:      * Analysis of relationships      * Comparison of concepts      * Evaluation of scenarios      * Application of principles  8. True/False Guidelines:    - Avoid obvious statements    - Include nuanced concepts    - Make statements that require careful consideration  Format your response exactly according to this JSON schema: {   \"exam_id\": \"string\",   \"questions\": [     {       \"id\": \"string\",       \"question_text\": \"string\",       \"question_type\": \"multiple_choice | open_ended | true_false\",       \"difficulty\": \"easy | medium | hard\",       \"points\": number,       \"order_index\": number,       \"multiple_choice_options\": {         \"options\": [\"string\"],         \"correct_answer\": \"string\"       }     }   ] }  Remember to: - Generate unique IDs for each question - Ensure questions progress in difficulty - Maintain a good mix of question types - Create questions that test deep understanding - Avoid surface-level or trivial questions - Make sure multiple choice options are well-crafted - Ensure open-ended questions require thoughtful responses - Create true/false questions that test nuanced understanding  The goal is to create an exam that: 1. Tests comprehensive understanding 2. Challenges students to think critically 3. Evaluates application of knowledge 4. Assesses higher-order thinking skills 5. Provides a fair and balanced assessment"
+            }
+          ]
+        },
+        "batching": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.chainLlm",
+      "typeVersion": 1.7,
+      "position": [
+        -600,
+        540
+      ],
+      "id": "db636366-4bd6-4973-afd4-cf0b3d61d099",
+      "name": "LLM Chain (Questions Generation)",
+      "retryOnFail": true
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=### INPUT DATA\n{{ JSON.stringify($json) }}",
+        "hasOutputParser": true,
+        "messages": {
+          "messageValues": [
+            {
+              "message": "You are an expert educational AI assistant tasked with evaluating student answers to exam questions. Your role is to:  1. Analyze the student's transcribed audio response against the correct answer 2. Evaluate the response based on:    - Accuracy of the answer    - Completeness of the response    - Clarity of explanation    - Use of relevant terminology    - Logical flow of the response  3. Provide constructive feedback that:    - Highlights what was done well    - Points out areas for improvement    - Suggests specific ways to enhance the answer    - Maintains a supportive and encouraging tone  4. Assign a score based on:    - For multiple choice questions: Full points for correct answer, 0 for incorrect    - For open-ended questions: Partial points based on completeness and accuracy    - For true/false questions: Full points for correct answer, 0 for incorrect  Important Guidelines: - Be fair and consistent in your evaluation - Consider the difficulty level of the question - Account for different ways of expressing the same concept - Provide specific, actionable feedback - Maintain academic rigor while being encouraging - Consider the context of the question and its intended learning objectives "
+            }
+          ]
+        },
+        "batching": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.chainLlm",
+      "typeVersion": 1.7,
+      "position": [
+        160,
+        120
+      ],
+      "id": "ad95d5b3-1ea8-4fb9-9320-9b8362f6d53a",
+      "name": "LLM Chain (Answer Scoring)",
+      "retryOnFail": true
+    },
+    {
+      "parameters": {
+        "model": {
+          "__rl": true,
+          "mode": "list",
+          "value": "claude-3-7-sonnet-20250219",
+          "cachedResultName": "Claude 3.7 Sonnet"
+        },
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatAnthropic",
+      "typeVersion": 1.3,
+      "position": [
+        140,
+        240
+      ],
+      "id": "1eea0447-ee11-4336-bd0e-aa8d57d11de3",
+      "name": "Anthropic Chat Model1",
+      "credentials": {
+        "anthropicApi": {
+          "id": "9c9yxx7Njl7hn93m",
+          "name": "Anthropic account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "schemaType": "manual",
+        "inputSchema": "{\n  \"$schema\": \"http://json-schema.org/draft-07/schema#\",\n  \"type\": \"object\",\n  \"required\": [\"is_correct\", \"score\", \"feedback\"],\n  \"properties\": {\n    \"is_correct\": {\n      \"type\": \"boolean\",\n      \"description\": \"Whether the answer is correct or not\"\n    },\n    \"score\": {\n      \"type\": \"number\",\n      \"description\": \"The score awarded for the answer (0 to max_points)\",\n      \"minimum\": 0,\n      \"maximum\": 10\n    },\n    \"feedback\": {\n      \"type\": \"string\",\n      \"description\": \"Detailed feedback on the answer\",\n      \"minLength\": 50,\n      \"maxLength\": 10000\n    }\n  }\n}"
+      },
+      "type": "@n8n/n8n-nodes-langchain.outputParserStructured",
+      "typeVersion": 1.2,
+      "position": [
+        280,
+        240
+      ],
+      "id": "8727a2de-5ccf-4d8b-b58f-5de1113c59d0",
+      "name": "Structured Output Parser1"
+    },
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "fc7ed2b2-94cc-49f6-a395-80e5ac2f7af0",
+        "responseMode": "responseNode",
+        "options": {
+          "allowedOrigins": "*"
+        }
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        -1340,
+        120
+      ],
+      "id": "f8ee06bc-acc1-41b1-afc6-e61b0c4efce2",
+      "name": "[N2] Webhook",
+      "webhookId": "fc7ed2b2-94cc-49f6-a395-80e5ac2f7af0"
+    },
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "6579e183-6db8-4b9b-91dc-a506e337f94b",
+        "responseMode": "responseNode",
+        "options": {
+          "allowedOrigins": "*"
+        }
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        -1340,
+        -300
+      ],
+      "id": "7503e03f-a492-4901-99b9-43b3bd9aa08a",
+      "name": "[N1] Webhook",
+      "webhookId": "6579e183-6db8-4b9b-91dc-a506e337f94b"
+    },
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "da88bea9-6f63-4bc2-973c-b68d499e3625",
+        "responseMode": "responseNode",
+        "options": {
+          "allowedOrigins": "*"
+        }
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        -1340,
+        540
+      ],
+      "id": "5730fd04-9ffe-4854-81f1-2de8ce72c7e3",
+      "name": "[N3] Webhook",
+      "webhookId": "da88bea9-6f63-4bc2-973c-b68d499e3625"
+    },
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "ba2f2bca-8d4b-4d9d-b7b2-8216fe2cffcb",
+        "responseMode": "responseNode",
+        "options": {
+          "allowedOrigins": "*"
+        }
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        -1340,
+        1180
+      ],
+      "id": "535274e1-1dd3-4352-ae8e-076117f36998",
+      "name": "[N4] Webhook",
+      "webhookId": "ba2f2bca-8d4b-4d9d-b7b2-8216fe2cffcb"
+    },
+    {
+      "parameters": {
+        "jsCode": "const data = {\n  question: $input.first().json,\n  user_answer: $('Transcribe Audio (REPLICATE API)').first().json.output.text\n}\n\nreturn data"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        0,
+        120
+      ],
+      "id": "1b897a8c-7530-4304-919b-a430c3d55e81",
+      "name": "Craft Input Data"
+    },
+    {
+      "parameters": {
+        "operation": "get",
+        "tableId": "questions",
+        "filters": {
+          "conditions": [
+            {
+              "keyName": "id",
+              "keyValue": "={{ $('[N2] Webhook').item.json.body.question_id }}"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [
+        -200,
+        120
+      ],
+      "id": "2c292834-7365-4d79-94e2-5d3b06a2cce2",
+      "name": "Get Question Data",
+      "credentials": {
+        "supabaseApi": {
+          "id": "6rCvzKWRmCqAynOD",
+          "name": "Supabase account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "=https://[PROJECT_ID].supabase.co/storage/v1/object/files/{{ `${Math.floor(Math.random() * 99999)}-${$binary.data.fileName}` }}",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "supabaseApi",
+        "sendBody": true,
+        "contentType": "multipart-form-data",
+        "bodyParameters": {
+          "parameters": [
+            {
+              "parameterType": "formBinaryData",
+              "name": "file",
+              "inputDataFieldName": "data"
+            }
+          ]
+        },
+        "options": {
+          "response": {
+            "response": {
+              "fullResponse": true
+            }
+          }
+        }
+      },
+      "id": "2aa1b08d-59b7-4743-a4a3-709c18ad1e47",
+      "name": "Upload Audio File",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [
+        -780,
+        120
+      ],
+      "credentials": {
+        "supabaseApi": {
+          "id": "6rCvzKWRmCqAynOD",
+          "name": "Supabase account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const data = {\n  transcription: $input.first().json.user_answer,\n  answer_id: $input.first().json.id\n}\n\nreturn data"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        700,
+        120
+      ],
+      "id": "8ce552e3-8c84-4b74-bb52-14e18da2ffff",
+      "name": "Craft Response 2"
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify($json) }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.3,
+      "position": [
+        920,
+        120
+      ],
+      "id": "d50261c9-1fd4-4a2b-b2b9-c26ee6220609",
+      "name": "Respond to Webhook 2"
+    },
+    {
+      "parameters": {
+        "operation": "getAll",
+        "tableId": "questions",
+        "returnAll": true,
+        "filters": {
+          "conditions": [
+            {
+              "keyName": "exam_id",
+              "condition": "eq",
+              "keyValue": "={{ $json.body.exam_id }}"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [
+        -1160,
+        -300
+      ],
+      "id": "e436189b-a8c2-495a-ae54-87da87aab34b",
+      "name": "Get Questions",
+      "credentials": {
+        "supabaseApi": {
+          "id": "6rCvzKWRmCqAynOD",
+          "name": "Supabase account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "getAll",
+        "tableId": "answers",
+        "filters": {
+          "conditions": [
+            {
+              "keyName": "question_id",
+              "condition": "eq",
+              "keyValue": "={{ $json.id }}"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [
+        -1020,
+        -300
+      ],
+      "id": "37d7ebfd-c169-4fc1-873c-8ee09d974075",
+      "name": "Get Answers",
+      "credentials": {
+        "supabaseApi": {
+          "id": "6rCvzKWRmCqAynOD",
+          "name": "Supabase account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const data = {\n  exam: {\n    id: $input.first().json.id,\n    question_count: $input.first().json.question_count,\n    title: $input.first().json.title\n  },\n  questions: $('Aggregate 3').first().json.data,\n  answers: $('Aggregate 2').first().json.data\n}\n\nreturn data"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -140,
+        -300
+      ],
+      "id": "88035079-39ae-492d-9c52-f731f7cf522b",
+      "name": "Craft LLM Input Data"
+    },
+    {
+      "parameters": {
+        "aggregate": "aggregateAllItemData",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.aggregate",
+      "typeVersion": 1,
+      "position": [
+        -880,
+        -300
+      ],
+      "id": "9552da9f-d64b-4056-958c-cd0e20fe4bcf",
+      "name": "Aggregate 2"
+    },
+    {
+      "parameters": {
+        "operation": "getAll",
+        "tableId": "questions",
+        "filters": {
+          "conditions": [
+            {
+              "keyName": "exam_id",
+              "condition": "eq",
+              "keyValue": "={{ $('[N1] Webhook').item.json.body.exam_id }}"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [
+        -720,
+        -300
+      ],
+      "id": "9b51a0c7-a3f9-4389-bde1-b27559eae26c",
+      "name": "Get Questions 2",
+      "credentials": {
+        "supabaseApi": {
+          "id": "6rCvzKWRmCqAynOD",
+          "name": "Supabase account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "aggregate": "aggregateAllItemData",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.aggregate",
+      "typeVersion": 1,
+      "position": [
+        -580,
+        -300
+      ],
+      "id": "983f882d-d006-42c4-8209-d61858c9158d",
+      "name": "Aggregate 3"
+    },
+    {
+      "parameters": {
+        "operation": "get",
+        "tableId": "exams",
+        "filters": {
+          "conditions": [
+            {
+              "keyName": "id",
+              "keyValue": "={{ $('[N1] Webhook').item.json.body.exam_id }}"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [
+        -420,
+        -300
+      ],
+      "id": "af2f4344-1d03-438f-97ca-d79ad72984a1",
+      "name": "Supabase",
+      "credentials": {
+        "supabaseApi": {
+          "id": "6rCvzKWRmCqAynOD",
+          "name": "Supabase account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=### INPUT DATA\n{{ JSON.stringify($json) }}",
+        "hasOutputParser": true,
+        "messages": {
+          "messageValues": [
+            {
+              "message": "You are an expert educational evaluator tasked with analyzing a student's exam performance. Your role is to: 1. Calculate the overall score and percentage 2. Identify patterns in the student's performance 3. Provide constructive feedback and recommendations  Analyze the exam data provided and generate a comprehensive evaluation that includes: - Overall score and percentage - Key strengths demonstrated in the answers - Specific areas where improvement is needed - Actionable study recommendations - A detailed overall feedback that synthesizes the performance  Guidelines for feedback: - Be specific and evidence-based - Focus on both content mastery and test-taking skills - Provide actionable recommendations - Maintain a constructive and encouraging tone - Consider the difficulty level of questions when evaluating performance "
+            }
+          ]
+        },
+        "batching": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.chainLlm",
+      "typeVersion": 1.7,
+      "position": [
+        -20,
+        -300
+      ],
+      "id": "5573a85c-084c-4227-9247-6a34bbc10740",
+      "name": "LLM Chain (Exam Evaluator)",
+      "retryOnFail": true
+    },
+    {
+      "parameters": {
+        "schemaType": "manual",
+        "inputSchema": "{\n  \"$schema\": \"http://json-schema.org/draft-07/schema#\",\n  \"type\": \"object\",\n  \"required\": [\"overall_score\", \"percentage_score\", \"feedback\"],\n  \"properties\": {\n    \"overall_score\": {\n      \"type\": \"number\",\n      \"description\": \"The total points earned by the student\",\n      \"minimum\": 0\n    },\n    \"percentage_score\": {\n      \"type\": \"number\",\n      \"description\": \"The score as a percentage (0-100)\",\n      \"minimum\": 0,\n      \"maximum\": 100\n    },\n    \"feedback\": {\n      \"type\": \"object\",\n      \"required\": [\"strengths\", \"areas_for_improvement\", \"study_recommendations\", \"overall_feedback\"],\n      \"properties\": {\n        \"strengths\": {\n          \"type\": \"array\",\n          \"description\": \"List of specific strengths demonstrated in the exam\",\n          \"items\": {\n            \"type\": \"string\"\n          },\n          \"minItems\": 1\n        },\n        \"areas_for_improvement\": {\n          \"type\": \"array\",\n          \"description\": \"List of specific areas where improvement is needed\",\n          \"items\": {\n            \"type\": \"string\"\n          },\n          \"minItems\": 1\n        },\n        \"study_recommendations\": {\n          \"type\": \"array\",\n          \"description\": \"List of actionable study recommendations\",\n          \"items\": {\n            \"type\": \"string\"\n          },\n          \"minItems\": 1\n        },\n        \"overall_feedback\": {\n          \"type\": \"string\",\n          \"description\": \"Comprehensive feedback summary of the exam performance\",\n          \"minLength\": 100\n        }\n      }\n    }\n  }\n}"
+      },
+      "type": "@n8n/n8n-nodes-langchain.outputParserStructured",
+      "typeVersion": 1.2,
+      "position": [
+        160,
+        -160
+      ],
+      "id": "623660f2-735b-44b5-ab49-e9c9f6d75613",
+      "name": "Structured Output Parser2"
+    },
+    {
+      "parameters": {
+        "model": {
+          "__rl": true,
+          "mode": "list",
+          "value": "claude-3-7-sonnet-20250219",
+          "cachedResultName": "Claude 3.7 Sonnet"
+        },
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatAnthropic",
+      "typeVersion": 1.3,
+      "position": [
+        -20,
+        -160
+      ],
+      "id": "2858b363-7fa8-4342-bf1e-df70b27b2289",
+      "name": "Anthropic Chat Model2",
+      "credentials": {
+        "anthropicApi": {
+          "id": "9c9yxx7Njl7hn93m",
+          "name": "Anthropic account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "tableId": "exam_feedback",
+        "fieldsUi": {
+          "fieldValues": [
+            {
+              "fieldId": "exam_id",
+              "fieldValue": "={{ $('[N1] Webhook').item.json.body.exam_id }}"
+            },
+            {
+              "fieldId": "overall_feedback",
+              "fieldValue": "={{ $json.output.feedback.overall_feedback }}"
+            },
+            {
+              "fieldId": "strengths",
+              "fieldValue": "={{ $json.output.feedback.strengths }}"
+            },
+            {
+              "fieldId": "areas_for_improvement",
+              "fieldValue": "={{ $json.output.feedback.areas_for_improvement }}"
+            },
+            {
+              "fieldId": "study_recommendations",
+              "fieldValue": "={{ $json.output.feedback.study_recommendations }}"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [
+        320,
+        -300
+      ],
+      "id": "4ea59d0f-9e89-4ac6-9f51-cab94ca3ac96",
+      "name": "Upload Exam Result",
+      "credentials": {
+        "supabaseApi": {
+          "id": "6rCvzKWRmCqAynOD",
+          "name": "Supabase account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "tableId": "exams",
+        "filters": {
+          "conditions": [
+            {
+              "keyName": "id",
+              "condition": "eq",
+              "keyValue": "={{ $('[N1] Webhook').item.json.body.exam_id }}"
+            }
+          ]
+        },
+        "fieldsUi": {
+          "fieldValues": [
+            {
+              "fieldId": "status",
+              "fieldValue": "completed"
+            },
+            {
+              "fieldId": "total_score",
+              "fieldValue": "={{ $('Aggregate 2').item.json.data.map(item => item['score']).reduce((partialSum, a) => partialSum+a, 0) }}"
+            },
+            {
+              "fieldId": "completed_at",
+              "fieldValue": "={{ $now.toISO() }}"
+            },
+            {
+              "fieldId": "max_score",
+              "fieldValue": "={{ $('Aggregate 3').item.json.data.map(item => item['points']).reduce((partialSum, a) => partialSum+a, 0) }}"
+            },
+            {
+              "fieldId": "percentage_score",
+              "fieldValue": "={{ ($('Aggregate 2').item.json.data.map(item => item['score']).reduce((partialSum, a) => partialSum+a, 0) / $('Aggregate 3').item.json.data.map(item => item['points']).reduce((partialSum, a) => partialSum+a, 0)) * 100 }}"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [
+        500,
+        -300
+      ],
+      "id": "dab5243f-add0-446d-bc0a-9ec764ab4ba2",
+      "name": "Update Exam",
+      "credentials": {
+        "supabaseApi": {
+          "id": "6rCvzKWRmCqAynOD",
+          "name": "Supabase account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const data = {\n  overall_score: $input.first().json.total_score,\n  percentage_score: $input.first().json.percentage_score,\n  feedback: {\n    strengths: $('Upload Exam Result').first().json.strengths,\n    areas_for_improvement: $('Upload Exam Result').first().json.areas_for_improvement,\n    study_recommendations: $('Upload Exam Result').first().json.study_recommendations,\n    overall_feedback: $('Upload Exam Result').first().json.overall_feedback,\n  }\n}\n\nreturn data"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        660,
+        -300
+      ],
+      "id": "d5f687a1-48be-4f2f-81f9-3d93f68477e6",
+      "name": "Craft Response 3"
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify($json) }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.3,
+      "position": [
+        840,
+        -300
+      ],
+      "id": "934383c9-0d47-4197-a720-3a7d23171e00",
+      "name": "Respond to Webhook 3"
+    },
+    {
+      "parameters": {
+        "content": "## /process-media",
+        "height": 220,
+        "width": 260
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        -1440,
+        1120
+      ],
+      "typeVersion": 1,
+      "id": "eabe02a7-74a6-48b4-8648-5885141f0e52",
+      "name": "Sticky Note"
+    },
+    {
+      "parameters": {
+        "content": "## /create-exam",
+        "height": 220,
+        "width": 260
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        -1440,
+        480
+      ],
+      "typeVersion": 1,
+      "id": "01a5defe-7604-4fe9-af82-aa0800025af7",
+      "name": "Sticky Note1"
+    },
+    {
+      "parameters": {
+        "content": "## /transcribe",
+        "height": 220,
+        "width": 260
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        -1440,
+        60
+      ],
+      "typeVersion": 1,
+      "id": "887e8e3d-a026-4219-8f5f-d62066907cd7",
+      "name": "Sticky Note2"
+    },
+    {
+      "parameters": {
+        "content": "## /evaluate-exam",
+        "height": 220
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        -1440,
+        -360
+      ],
+      "typeVersion": 1,
+      "id": "92fc0aaa-a986-4d46-b3c7-801d05576c47",
+      "name": "Sticky Note3"
+    },
+    {
+      "parameters": {
+        "content": "## Get Answers",
+        "height": 220,
+        "width": 280,
+        "color": 4
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        -1180,
+        -360
+      ],
+      "typeVersion": 1,
+      "id": "3c7a3f81-fce7-4658-ac79-1bcff93c5863",
+      "name": "Sticky Note4"
+    },
+    {
+      "parameters": {
+        "content": "## Get Questions + Exam Data",
+        "height": 220,
+        "width": 460,
+        "color": 6
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        -760,
+        -360
+      ],
+      "typeVersion": 1,
+      "id": "95485e3e-a631-41e9-93be-ffcf1db75648",
+      "name": "Sticky Note5"
+    },
+    {
+      "parameters": {
+        "content": "## Evaluate the Exam Using AI",
+        "height": 360,
+        "width": 460,
+        "color": 3
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        -180,
+        -380
+      ],
+      "typeVersion": 1,
+      "id": "bcfdce2d-6002-4f12-b2eb-147a32786cb1",
+      "name": "Sticky Note6"
+    },
+    {
+      "parameters": {
+        "content": "## Upload Exam Results and Update Exam Data",
+        "height": 240,
+        "width": 480,
+        "color": 5
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        300,
+        -380
+      ],
+      "typeVersion": 1,
+      "id": "6c1cc213-6b76-4988-9632-7feb36254f63",
+      "name": "Sticky Note7"
+    },
+    {
+      "parameters": {
+        "content": "## Convert Base64 Audio Data to File",
+        "height": 240,
+        "width": 520,
+        "color": 5
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        -1160,
+        40
+      ],
+      "typeVersion": 1,
+      "id": "6798d163-92d2-4b46-b48f-22fa8173f51f",
+      "name": "Sticky Note8"
+    },
+    {
+      "parameters": {
+        "content": "## Gnerates Transcript",
+        "height": 240,
+        "width": 260,
+        "color": 2
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        -480,
+        60
+      ],
+      "typeVersion": 1,
+      "id": "99ed6f22-ff1e-4eec-adfd-c6a4f7422e08",
+      "name": "Sticky Note9"
+    },
+    {
+      "parameters": {
+        "content": "## Evaluate User Answer with AI",
+        "height": 380,
+        "width": 500,
+        "color": 6
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        -40,
+        20
+      ],
+      "typeVersion": 1,
+      "id": "455973d8-a947-42b7-8463-0131a6bdd674",
+      "name": "Sticky Note10"
+    },
+    {
+      "parameters": {
+        "content": "## Upload Answer Data",
+        "height": 280,
+        "width": 360,
+        "color": 4
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        500,
+        20
+      ],
+      "typeVersion": 1,
+      "id": "04249005-7fdf-4887-b513-a997a8fe2958",
+      "name": "Sticky Note11"
+    },
+    {
+      "parameters": {
+        "content": "## Extract Data from PDF or Images",
+        "height": 440,
+        "width": 600,
+        "color": 4
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        -780,
+        880
+      ],
+      "typeVersion": 1,
+      "id": "f8f44439-bed4-454b-b9da-da3d934981e8",
+      "name": "Sticky Note12"
+    },
+    {
+      "parameters": {
+        "content": "## Upload Files To Storage",
+        "height": 220,
+        "width": 460,
+        "color": 3
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        -940,
+        1380
+      ],
+      "typeVersion": 1,
+      "id": "fd864b94-ecd8-4796-a3b4-4ab6d124d813",
+      "name": "Sticky Note13"
+    },
+    {
+      "parameters": {
+        "content": "## Update DB Data",
+        "height": 240,
+        "width": 500,
+        "color": 3
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        140,
+        1100
+      ],
+      "typeVersion": 1,
+      "id": "08c2c03a-fc5a-4b2d-b1d7-ddbffaefd61f",
+      "name": "Sticky Note14"
+    },
+    {
+      "parameters": {
+        "content": "## Create New Exam",
+        "height": 240,
+        "width": 500,
+        "color": 3
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        -1160,
+        480
+      ],
+      "typeVersion": 1,
+      "id": "23fc30b9-ef98-426d-9149-3018b32610a6",
+      "name": "Sticky Note15"
+    },
+    {
+      "parameters": {
+        "content": "## Generates Questions with AI",
+        "height": 340,
+        "width": 520,
+        "color": 6
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        -640,
+        460
+      ],
+      "typeVersion": 1,
+      "id": "e4ac7cde-4341-4af9-ad2f-e873c1ea33b2",
+      "name": "Sticky Note16"
+    },
+    {
+      "parameters": {
+        "content": "## Insert Exam Data in DB",
+        "height": 260,
+        "width": 440,
+        "color": 5
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        -80,
+        460
+      ],
+      "typeVersion": 1,
+      "id": "0b96b59b-a6c4-4a8b-8752-98e540ba5a30",
+      "name": "Sticky Note17"
+    },
+    {
+      "parameters": {
+        "content": "## FULLY INTEGRATED BACKEND ⚙️\n\n**Endpoints**:\n- `/evaluate-exam`\n- `/transcribe`\n- `/create-exam`\n- `process-media`\n\n\n**NOTE**: Remember to update endpoints URLs in your frontend code.",
+        "height": 240,
+        "width": 520,
+        "color": 6
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        -2020,
+        -380
+      ],
+      "typeVersion": 1,
+      "id": "583a30f8-996d-4830-bf3a-8d6ba71c532d",
+      "name": "Sticky Note18"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Upload object": {
+      "main": [
+        [
+          {
+            "node": "Generate presigned URL",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Convert to File": {
+      "main": [
+        [
+          {
+            "node": "Upload object",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code": {
+      "main": [
+        [
+          {
+            "node": "Convert to File",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Split Out": {
+      "main": [
+        [
+          {
+            "node": "Code",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Switch1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Generate presigned URL": {
+      "main": [
+        [
+          {
+            "node": "Aggregate File Urls",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Aggregate File Urls": {
+      "main": [
+        [
+          {
+            "node": "Merge",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "Aggregate Content Data": {
+      "main": [
+        [
+          {
+            "node": "Merge",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Merge": {
+      "main": [
+        [
+          {
+            "node": "Aggregate",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Aggregate": {
+      "main": [
+        [
+          {
+            "node": "Supabase1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Craft Response": {
+      "main": [
+        [
+          {
+            "node": "Respond to Webhook",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Anthropic Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "LLM Chain (Questions Generation)",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Structured Output Parser": {
+      "ai_outputParser": [
+        [
+          {
+            "node": "LLM Chain (Questions Generation)",
+            "type": "ai_outputParser",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Notes Data": {
+      "main": [
+        [
+          {
+            "node": "LLM Chain (Questions Generation)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Switch1": {
+      "main": [
+        [
+          {
+            "node": "GEMINI API HTTP Request (IMAGE)1",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [],
+        [
+          {
+            "node": "GEMINI API HTTP Request (PDF)1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "GEMINI API HTTP Request (PDF)1": {
+      "main": [
+        [
+          {
+            "node": "Aggregate Content Data",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "GEMINI API HTTP Request (IMAGE)1": {
+      "main": [
+        [
+          {
+            "node": "Aggregate Content Data",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Supabase1": {
+      "main": [
+        [
+          {
+            "node": "Craft Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Split Questions": {
+      "main": [
+        [
+          {
+            "node": "Insert Question",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Create New Exam": {
+      "main": [
+        [
+          {
+            "node": "Get Notes Data",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Insert Question": {
+      "main": [
+        [
+          {
+            "node": "Aggregate Questions",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Aggregate Questions": {
+      "main": [
+        [
+          {
+            "node": "Format Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Format Response": {
+      "main": [
+        [
+          {
+            "node": "Send Response Data",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extract Base64 String": {
+      "main": [
+        [
+          {
+            "node": "Create Audio FIle",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Create Audio FIle": {
+      "main": [
+        [
+          {
+            "node": "Upload Audio File",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Generate presigned URL 2": {
+      "main": [
+        [
+          {
+            "node": "Transcribe Audio (REPLICATE API)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Transcribe Audio (REPLICATE API)": {
+      "main": [
+        [
+          {
+            "node": "Get Question Data",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Insert Answer": {
+      "main": [
+        [
+          {
+            "node": "Craft Response 2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "LLM Chain (Questions Generation)": {
+      "main": [
+        [
+          {
+            "node": "Split Questions",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Anthropic Chat Model1": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "LLM Chain (Answer Scoring)",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Structured Output Parser1": {
+      "ai_outputParser": [
+        [
+          {
+            "node": "LLM Chain (Answer Scoring)",
+            "type": "ai_outputParser",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "[N2] Webhook": {
+      "main": [
+        [
+          {
+            "node": "Extract Base64 String",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "[N3] Webhook": {
+      "main": [
+        [
+          {
+            "node": "Create New Exam",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "[N4] Webhook": {
+      "main": [
+        [
+          {
+            "node": "Split Out",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Craft Input Data": {
+      "main": [
+        [
+          {
+            "node": "LLM Chain (Answer Scoring)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Question Data": {
+      "main": [
+        [
+          {
+            "node": "Craft Input Data",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Upload Audio File": {
+      "main": [
+        [
+          {
+            "node": "Generate presigned URL 2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "LLM Chain (Answer Scoring)": {
+      "main": [
+        [
+          {
+            "node": "Insert Answer",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Craft Response 2": {
+      "main": [
+        [
+          {
+            "node": "Respond to Webhook 2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "[N1] Webhook": {
+      "main": [
+        [
+          {
+            "node": "Get Questions",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Questions": {
+      "main": [
+        [
+          {
+            "node": "Get Answers",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Answers": {
+      "main": [
+        [
+          {
+            "node": "Aggregate 2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Aggregate 2": {
+      "main": [
+        [
+          {
+            "node": "Get Questions 2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Questions 2": {
+      "main": [
+        [
+          {
+            "node": "Aggregate 3",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Aggregate 3": {
+      "main": [
+        [
+          {
+            "node": "Supabase",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Supabase": {
+      "main": [
+        [
+          {
+            "node": "Craft LLM Input Data",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Craft LLM Input Data": {
+      "main": [
+        [
+          {
+            "node": "LLM Chain (Exam Evaluator)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "LLM Chain (Exam Evaluator)": {
+      "main": [
+        [
+          {
+            "node": "Upload Exam Result",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Structured Output Parser2": {
+      "ai_outputParser": [
+        [
+          {
+            "node": "LLM Chain (Exam Evaluator)",
+            "type": "ai_outputParser",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Anthropic Chat Model2": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "LLM Chain (Exam Evaluator)",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Upload Exam Result": {
+      "main": [
+        [
+          {
+            "node": "Update Exam",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Update Exam": {
+      "main": [
+        [
+          {
+            "node": "Craft Response 3",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Craft Response 3": {
+      "main": [
+        [
+          {
+            "node": "Respond to Webhook 3",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "28d5b89a-f4c2-4e17-a3c9-4c9aa977c001",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "db3c2d3698a1d65c9632c318b0f8874c99c3c8ec38f9fa1684001dc1e7ae08d8"
+  },
+  "id": "LoyYZelhFKDI73Wf",
+  "tags": [
+    {
+      "createdAt": "2025-06-04T14:01:48.950Z",
+      "updatedAt": "2025-06-04T14:01:48.950Z",
+      "id": "LccvK9gra902cmIJ",
+      "name": "share"
+    }
+  ]
+}

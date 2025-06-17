@@ -1,0 +1,29 @@
+llm:
+  provider: Anthropic
+  model: claude-3-sonnet-20240229
+  temperature: 0.7
+  max_tokens: 4096
+  fallback:
+    enabled: true
+    chain:
+    - provider: Anthropic
+      model: claude-3-opus-20240229
+    - provider: Anthropic
+      model: claude-3-sonnet-20240229
+    - provider: Anthropic
+      model: claude-3-haiku-20240307
+    - provider: OpenAI
+      model: gpt-4
+    - provider: OpenAI
+      model: gpt-3.5-turbo
+  quota:
+    enabled: true
+    daily_limit: 10.0
+    track_by_team: true
+  retry:
+    enabled: true
+    max_attempts: 3
+    backoff_factor: 2
+  anthropic:
+    api_key_env: ANTHROPIC_API_KEY
+    base_url: null
