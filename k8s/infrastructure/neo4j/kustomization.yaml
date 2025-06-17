@@ -7,8 +7,10 @@ resources:
   - secret.yaml
   - configmap.yaml
   - persistent-volume-claim.yaml
+  - persistent-volume-claim-logs.yaml
   - deployment.yaml
   - service.yaml
+  - service-external.yaml
 
 # Add labels to all resources
 commonLabels:
