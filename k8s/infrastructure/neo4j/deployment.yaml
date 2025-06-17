@@ -18,6 +18,19 @@ spec:
         app: neo4j
         component: database
     spec:
+      initContainers:
+      - name: copy-config
+        image: busybox:1.36
+        command: ['sh', '-c']
+        args:
+          - |
+            cp /config-source/neo4j.conf /conf/neo4j.conf
+            echo "Configuration copied successfully"
+        volumeMounts:
+        - name: config
+          mountPath: /config-source
+        - name: conf-writable
+          mountPath: /conf
       containers:
       - name: neo4j
         image: neo4j:5.15-community
@@ -54,9 +67,8 @@ spec:
           mountPath: /data
         - name: logs
           mountPath: /logs
-        - name: config
-          mountPath: /var/lib/neo4j/conf/neo4j.conf
-          subPath: neo4j.conf
+        - name: conf-writable
+          mountPath: /var/lib/neo4j/conf
         resources:
           requests:
             memory: "2Gi"
@@ -90,3 +102,5 @@ spec:
       - name: config
         configMap:
           name: neo4j-config
+      - name: conf-writable
+        emptyDir: {}
