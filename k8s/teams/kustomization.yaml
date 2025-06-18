@@ -7,6 +7,5 @@ resources:
   - namespace.yaml
   - minimal-placeholder.yaml
 
-# Only include secrets if it exists
+# Secrets disabled until credential manager is set up
 # - secrets.yaml
-  - secrets.yaml
