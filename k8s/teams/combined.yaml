@@ -1,0 +1,25 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: elf-teams
+  labels:
+    app.kubernetes.io/name: elf-teams
+    app.kubernetes.io/part-of: elf-automations
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: teams-config
+  namespace: elf-teams
+  labels:
+    app: elf-teams
+    component: configuration
+data:
+  status: |
+    # ELF Teams - Minimal Configuration
+    # This is a placeholder for the teams namespace
+    # Teams will be deployed here as they are developed
+    mode: development
+    teams:
+      - n8n (workflow automation)
+      - neo4j (in elf-infrastructure namespace)
