@@ -7,6 +7,7 @@
 3. **Multi-document YAML**: Files with `---` separators caused issues with some tools
 4. **Template Variables**: Unresolved variables like `${OPENAI_API_KEY}` in secrets.yaml caused failures
 5. **Recursive Directory Scanning**: Can pick up unintended files or cause parsing errors
+6. **Shadow Applications**: Manually created ArgoCD apps during troubleshooting weren't cleaned up
 
 ## What Worked
 
@@ -98,3 +99,12 @@ For new services going forward:
 3. Test with manual sync
 4. Enable auto-sync only after verification
 5. Keep it simple - avoid Kustomize unless truly needed
+
+## Preventing Shadow State
+
+**Rule**: If it's not in `k8s/` folders, it shouldn't exist in the cluster!
+
+1. **Never manually create ArgoCD apps** without adding them to Git
+2. **Always clean up** troubleshooting attempts
+3. **Regular audits**: Run `kubectl get applications -n argocd` and compare with repo
+4. **Use the cleanup script** when needed: `scripts/cleanup-shadow-apps.sh`
