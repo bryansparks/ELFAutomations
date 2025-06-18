@@ -66,6 +66,8 @@ spec:
           value: "http://n8n.n8n.svc.cluster.local:5678/"
         - name: N8N_BASIC_AUTH_ACTIVE
           value: "true"
+        - name: N8N_SECURE_COOKIE
+          value: "false"
         envFrom:
         - secretRef:
             name: n8n-secrets
@@ -128,7 +130,7 @@ metadata:
     app: n8n
     test: gitops-auto-sync
 data:
-  timestamp: "2025-06-17 21:04:00"
+  timestamp: "2025-06-18 - Added N8N_SECURE_COOKIE=false"
   message: |
     This ConfigMap was automatically deployed by ArgoCD!
-    No manual intervention required - just git push!
+    Added N8N_SECURE_COOKIE=false to fix TLS warning for local development.
