@@ -118,3 +118,17 @@ spec:
     nodePort: 30678
   selector:
     app: n8n
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: n8n-auto-deploy-test
+  namespace: n8n
+  labels:
+    app: n8n
+    test: gitops-auto-sync
+data:
+  timestamp: "2025-06-17 21:04:00"
+  message: |
+    This ConfigMap was automatically deployed by ArgoCD!
+    No manual intervention required - just git push!
