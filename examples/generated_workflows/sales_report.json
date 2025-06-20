@@ -1,0 +1,140 @@
+{
+  "name": "Weekly Sales Report",
+  "nodes": [
+    {
+      "id": "schedule",
+      "name": "Weekly Schedule",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1,
+      "position": [
+        250,
+        300
+      ],
+      "parameters": {
+        "rule": {
+          "cronExpression": "0 9 * * 1"
+        }
+      }
+    },
+    {
+      "id": "fetch_metrics",
+      "name": "Fetch Metrics",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.3,
+      "position": [
+        450,
+        300
+      ],
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "\nSELECT \n    DATE_TRUNC('day', created_at) as date,\n    COUNT(*) as total_sales,\n    SUM(amount) as revenue,\n    AVG(amount) as avg_order_value\nFROM sales\nWHERE created_at >= NOW() - INTERVAL '7 days'\nGROUP BY DATE_TRUNC('day', created_at)\nORDER BY date DESC;\n"
+      }
+    },
+    {
+      "id": "generate_report",
+      "name": "Generate Report",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 1,
+      "position": [
+        650,
+        300
+      ],
+      "parameters": {
+        "jsCode": "\nconst metrics = $input.all();\nconst reportDate = new Date().toISOString().split('T')[0];\n\n// Calculate totals\nlet totalSales = 0;\nlet totalRevenue = 0;\n\nconst reportData = metrics.map(item => {\n    totalSales += item.json.total_sales;\n    totalRevenue += parseFloat(item.json.revenue);\n    return item.json;\n});\n\n// Generate HTML report\nconst htmlReport = `\n<h2>Weekly Sales Report - ${reportDate}</h2>\n<h3>Summary</h3>\n<ul>\n    <li>Total Sales: ${totalSales}</li>\n    <li>Total Revenue: $${totalRevenue.toFixed(2)}</li>\n    <li>Average Order Value: $${(totalRevenue / totalSales).toFixed(2)}</li>\n</ul>\n<h3>Daily Breakdown</h3>\n<table border=\"1\">\n    <tr><th>Date</th><th>Sales</th><th>Revenue</th><th>AOV</th></tr>\n    ${reportData.map(day => `\n        <tr>\n            <td>${day.date}</td>\n            <td>${day.total_sales}</td>\n            <td>$${parseFloat(day.revenue).toFixed(2)}</td>\n            <td>$${parseFloat(day.avg_order_value).toFixed(2)}</td>\n        </tr>\n    `).join('')}\n</table>\n`;\n\nreturn [{\n    json: {\n        reportDate,\n        totalSales,\n        totalRevenue,\n        htmlReport,\n        rawData: reportData\n    }\n}];\n"
+      }
+    },
+    {
+      "id": "send_email",
+      "name": "Email Report",
+      "type": "n8n-nodes-base.emailSend",
+      "typeVersion": 2.1,
+      "position": [
+        850,
+        200
+      ],
+      "parameters": {
+        "sendTo": "={{$vars.report_recipients}}",
+        "subject": "Weekly Sales Report - {{$json.reportDate}}",
+        "message": "={{$json.htmlReport}}",
+        "options": {
+          "allowUnauthorizedCerts": true
+        }
+      }
+    },
+    {
+      "id": "post_slack",
+      "name": "Post to Slack",
+      "type": "n8n-nodes-base.slack",
+      "typeVersion": 2.1,
+      "position": [
+        850,
+        400
+      ],
+      "parameters": {
+        "operation": "post",
+        "channel": "#sales-reports",
+        "text": "Weekly Sales Report Generated",
+        "otherOptions": {
+          "attachments": [
+            {
+              "color": "#36a64f",
+              "title": "Sales Performance",
+              "fields": [
+                {
+                  "title": "Total Sales",
+                  "value": "{{$json.totalSales}}",
+                  "short": true
+                },
+                {
+                  "title": "Total Revenue",
+                  "value": "${{$json.totalRevenue}}",
+                  "short": true
+                }
+              ]
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "connections": {
+    "Weekly Schedule": {
+      "main": [
+        [
+          {
+            "node": "Fetch Metrics",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fetch Metrics": {
+      "main": [
+        [
+          {
+            "node": "Generate Report",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Generate Report": {
+      "main": [
+        [
+          {
+            "node": "Email Report",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Post to Slack",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  }
+}

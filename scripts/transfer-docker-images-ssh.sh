@@ -11,6 +11,7 @@ REMOTE_DIR="~/projects/ELFAutomations"
 IMAGES_TO_TRANSFER=(
     "elf-automations/executive-team:latest"
     "elf-automations/general-team:latest"
+    "elf-automations/google-drive-watcher:latest"
 )
 
 echo "🚀 Docker Image Transfer via SSH"

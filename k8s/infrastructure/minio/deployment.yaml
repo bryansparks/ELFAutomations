@@ -1,0 +1,142 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: elf-storage
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: minio-pvc
+  namespace: elf-storage
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 20Gi
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: minio
+  namespace: elf-storage
+  labels:
+    app: minio
+    component: object-storage
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: minio
+  template:
+    metadata:
+      labels:
+        app: minio
+        component: object-storage
+    spec:
+      containers:
+      - name: minio
+        image: minio/minio:latest
+        args:
+        - server
+        - /data
+        - --console-address
+        - ":9001"
+        env:
+        - name: MINIO_ROOT_USER
+          valueFrom:
+            secretKeyRef:
+              name: minio-credentials
+              key: root-user
+        - name: MINIO_ROOT_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: minio-credentials
+              key: root-password
+        - name: MINIO_PROMETHEUS_AUTH_TYPE
+          value: "public"
+        ports:
+        - containerPort: 9000
+          name: api
+        - containerPort: 9001
+          name: console
+        volumeMounts:
+        - name: storage
+          mountPath: /data
+        resources:
+          requests:
+            memory: "512Mi"
+            cpu: "250m"
+          limits:
+            memory: "1Gi"
+            cpu: "1000m"
+        livenessProbe:
+          httpGet:
+            path: /minio/health/live
+            port: 9000
+          initialDelaySeconds: 30
+          periodSeconds: 30
+        readinessProbe:
+          httpGet:
+            path: /minio/health/ready
+            port: 9000
+          initialDelaySeconds: 10
+          periodSeconds: 10
+      volumes:
+      - name: storage
+        persistentVolumeClaim:
+          claimName: minio-pvc
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: minio
+  namespace: elf-storage
+  labels:
+    app: minio
+spec:
+  type: NodePort
+  ports:
+  - port: 9000
+    targetPort: 9000
+    nodePort: 30900
+    protocol: TCP
+    name: api
+  - port: 9001
+    targetPort: 9001
+    nodePort: 30901
+    protocol: TCP
+    name: console
+  selector:
+    app: minio
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: minio-credentials
+  namespace: elf-storage
+type: Opaque
+stringData:
+  root-user: "elfautomations"
+  root-password: "elfautomations2025secure"
+---
+# ConfigMap for MinIO client configuration
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: minio-config
+  namespace: elf-storage
+data:
+  config.json: |
+    {
+      "version": "10",
+      "aliases": {
+        "local": {
+          "url": "http://minio.elf-storage.svc.cluster.local:9000",
+          "accessKey": "elfautomations",
+          "secretKey": "elfautomations2025secure",
+          "api": "s3v4",
+          "path": "auto"
+        }
+      }
+    }

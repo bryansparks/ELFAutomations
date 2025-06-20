@@ -7,6 +7,7 @@ from pathlib import Path
 from typing import Any, Dict, Optional
 
 import yaml
+from supabase import create_client, Client
 
 
 def load_team_config(config_path: Path) -> Dict[str, Any]:
@@ -46,3 +47,16 @@ def get_env_var(
         raise ValueError(f"Required environment variable {name} is not set")
 
     return value
+
+
+def get_supabase_client() -> Client:
+    """
+    Get configured Supabase client
+    
+    Returns:
+        Supabase client instance
+    """
+    url = get_env_var("SUPABASE_URL", required=True)
+    key = get_env_var("SUPABASE_KEY", required=True)
+    
+    return create_client(url, key)

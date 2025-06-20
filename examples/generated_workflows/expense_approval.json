@@ -1,0 +1,277 @@
+{
+  "name": "Expense Approval Process",
+  "nodes": [
+    {
+      "id": "form",
+      "name": "Approval Request Form",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1,
+      "position": [
+        250,
+        300
+      ],
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "expense-approval-process",
+        "responseMode": "responseNode"
+      }
+    },
+    {
+      "id": "create_ticket",
+      "name": "Create Approval Ticket",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.3,
+      "position": [
+        450,
+        300
+      ],
+      "parameters": {
+        "operation": "insert",
+        "table": "approval_tickets",
+        "columns": "requester,type,amount,description,status,created_at",
+        "columnData": {
+          "requester": "={{$json.requester}}",
+          "type": "={{$json.type}}",
+          "amount": "={{$json.amount}}",
+          "description": "={{$json.description}}",
+          "status": "pending",
+          "created_at": "={{new Date().toISOString()}}"
+        }
+      }
+    },
+    {
+      "id": "check_amount",
+      "name": "Check Approval Level",
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 1,
+      "position": [
+        650,
+        300
+      ],
+      "parameters": {
+        "dataType": "number",
+        "value1": "={{$json.amount}}",
+        "rules": {
+          "rules": [
+            {
+              "operation": "smaller",
+              "value2": 1000,
+              "output": 0
+            },
+            {
+              "operation": "smaller",
+              "value2": 10000,
+              "output": 1
+            }
+          ]
+        },
+        "fallbackOutput": 2
+      }
+    },
+    {
+      "id": "notify_manager",
+      "name": "Notify Manager",
+      "type": "n8n-nodes-base.slack",
+      "typeVersion": 2.1,
+      "position": [
+        850,
+        200
+      ],
+      "parameters": {
+        "operation": "post",
+        "channel": "#approvals-level1",
+        "text": "New approval request from {{$json.requester}} for ${{$json.amount}}",
+        "otherOptions": {}
+      }
+    },
+    {
+      "id": "notify_director",
+      "name": "Notify Director",
+      "type": "n8n-nodes-base.slack",
+      "typeVersion": 2.1,
+      "position": [
+        850,
+        300
+      ],
+      "parameters": {
+        "operation": "post",
+        "channel": "#approvals-level2",
+        "text": "Approval escalation: {{$json.requester}} requesting ${{$json.amount}}",
+        "otherOptions": {}
+      }
+    },
+    {
+      "id": "notify_executive",
+      "name": "Notify Executive",
+      "type": "n8n-nodes-base.slack",
+      "typeVersion": 2.1,
+      "position": [
+        850,
+        400
+      ],
+      "parameters": {
+        "operation": "post",
+        "channel": "#approvals-executive",
+        "text": "Executive approval needed: {{$json.requester}} requesting ${{$json.amount}}",
+        "otherOptions": {}
+      }
+    },
+    {
+      "id": "wait",
+      "name": "Wait for Decision",
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1,
+      "position": [
+        1050,
+        300
+      ],
+      "webhookId": "approval-decision",
+      "parameters": {
+        "resume": "webhook",
+        "options": {
+          "webhookSuffix": "/decision/{{$json.ticket_id}}"
+        }
+      }
+    },
+    {
+      "id": "update_status",
+      "name": "Update Ticket Status",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.3,
+      "position": [
+        1250,
+        300
+      ],
+      "parameters": {
+        "operation": "update",
+        "table": "approval_tickets",
+        "updateKey": "ticket_id",
+        "columnData": {
+          "status": "={{$json.decision}}",
+          "approved_by": "={{$json.approver}}",
+          "approved_at": "={{new Date().toISOString()}}"
+        }
+      }
+    },
+    {
+      "id": "notify_requester",
+      "name": "Notify Requester",
+      "type": "n8n-nodes-base.emailSend",
+      "typeVersion": 2.1,
+      "position": [
+        1450,
+        300
+      ],
+      "parameters": {
+        "sendTo": "={{$json.requester_email}}",
+        "subject": "Approval Request {{$json.decision}}",
+        "message": "Your approval request has been {{$json.decision}}.",
+        "options": {}
+      }
+    }
+  ],
+  "connections": {
+    "Approval Request Form": {
+      "main": [
+        [
+          {
+            "node": "Create Approval Ticket",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Create Approval Ticket": {
+      "main": [
+        [
+          {
+            "node": "Check Approval Level",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Check Approval Level": {
+      "main": [
+        [
+          {
+            "node": "Notify Manager",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Notify Director",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Notify Executive",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Notify Manager": {
+      "main": [
+        [
+          {
+            "node": "Wait for Decision",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Notify Director": {
+      "main": [
+        [
+          {
+            "node": "Wait for Decision",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Notify Executive": {
+      "main": [
+        [
+          {
+            "node": "Wait for Decision",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Wait for Decision": {
+      "main": [
+        [
+          {
+            "node": "Update Ticket Status",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Update Ticket Status": {
+      "main": [
+        [
+          {
+            "node": "Notify Requester",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  }
+}

@@ -1,0 +1,206 @@
+{
+  "name": "Customer Onboarding",
+  "nodes": [
+    {
+      "id": "webhook",
+      "name": "CRM Update Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1,
+      "position": [
+        250,
+        300
+      ],
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "customer-onboarding",
+        "responseMode": "responseNode",
+        "options": {
+          "rawBody": false
+        }
+      }
+    },
+    {
+      "id": "validate",
+      "name": "Validate Data",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
+      "position": [
+        450,
+        300
+      ],
+      "parameters": {
+        "conditions": {
+          "string": [
+            {
+              "value1": "={{$json.customer_id}}",
+              "operation": "isNotEmpty"
+            },
+            {
+              "value1": "={{$json.email}}",
+              "operation": "regex",
+              "value2": "^[^@]+@[^@]+\\.[^@]+$"
+            }
+          ]
+        },
+        "combineOperation": "all"
+      }
+    },
+    {
+      "id": "fetch_existing",
+      "name": "Check Existing Record",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.3,
+      "position": [
+        650,
+        200
+      ],
+      "parameters": {
+        "operation": "select",
+        "table": "customers",
+        "limit": 1,
+        "where": {
+          "customer_id": "={{$json.customer_id}}"
+        }
+      }
+    },
+    {
+      "id": "merge",
+      "name": "Merge Data",
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 2,
+      "position": [
+        850,
+        300
+      ],
+      "parameters": {
+        "mode": "combine",
+        "combinationMode": "multiplex"
+      }
+    },
+    {
+      "id": "update_target",
+      "name": "Update Target CRM",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [
+        1050,
+        300
+      ],
+      "parameters": {
+        "method": "PUT",
+        "url": "={{$vars.target_crm_url}}/api/customers/{{$json.customer_id}}",
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "data",
+              "value": "={{$json}}"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "respond",
+      "name": "Send Response",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [
+        1250,
+        300
+      ],
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": {
+          "success": true,
+          "message": "CRM sync completed",
+          "customer_id": "={{$json.customer_id}}"
+        }
+      }
+    },
+    {
+      "id": "error_response",
+      "name": "Error Response",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [
+        650,
+        500
+      ],
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": {
+          "success": false,
+          "error": "Invalid data format"
+        },
+        "options": {
+          "responseCode": 400
+        }
+      }
+    }
+  ],
+  "connections": {
+    "CRM Update Webhook": {
+      "main": [
+        [
+          {
+            "node": "Validate Data",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Validate Data": {
+      "main": [
+        [
+          {
+            "node": "Check Existing Record",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Error Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Check Existing Record": {
+      "main": [
+        [
+          {
+            "node": "Merge Data",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Merge Data": {
+      "main": [
+        [
+          {
+            "node": "Update Target CRM",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Update Target CRM": {
+      "main": [
+        [
+          {
+            "node": "Send Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  }
+}

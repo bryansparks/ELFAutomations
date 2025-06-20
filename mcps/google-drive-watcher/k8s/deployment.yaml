@@ -1,0 +1,89 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: google-drive-watcher
+  namespace: elf-mcps
+  labels:
+    app: google-drive-watcher
+    type: mcp
+    component: document-ingestion
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: google-drive-watcher
+  template:
+    metadata:
+      labels:
+        app: google-drive-watcher
+        type: mcp
+        component: document-ingestion
+    spec:
+      containers:
+      - name: google-drive-watcher
+        image: elf-automations/google-drive-watcher:latest
+        imagePullPolicy: Never
+        ports:
+        - containerPort: 50051
+          name: grpc
+        env:
+        - name: GOOGLE_CLIENT_ID
+          valueFrom:
+            secretKeyRef:
+              name: google-oauth-credentials
+              key: client_id
+        - name: GOOGLE_CLIENT_SECRET
+          valueFrom:
+            secretKeyRef:
+              name: google-oauth-credentials
+              key: client_secret
+        - name: GOOGLE_REDIRECT_URI
+          value: "http://localhost:8080/oauth2callback"
+        - name: SUPABASE_URL
+          valueFrom:
+            secretKeyRef:
+              name: supabase-credentials
+              key: url
+        - name: SUPABASE_KEY
+          valueFrom:
+            secretKeyRef:
+              name: supabase-credentials
+              key: service_key
+        volumeMounts:
+        - name: google-tokens
+          mountPath: /app/.google-tokens.json
+          subPath: tokens.json
+        - name: agentgateway-config
+          mountPath: /app/agentgateway-config.json
+          subPath: agentgateway-config.json
+        resources:
+          requests:
+            memory: "256Mi"
+            cpu: "100m"
+          limits:
+            memory: "512Mi"
+            cpu: "500m"
+        livenessProbe:
+          exec:
+            command:
+            - /bin/sh
+            - -c
+            - "pgrep -f 'node.*server.js' > /dev/null"
+          initialDelaySeconds: 30
+          periodSeconds: 30
+        readinessProbe:
+          exec:
+            command:
+            - /bin/sh
+            - -c
+            - "test -f /app/.google-tokens.json || exit 0"
+          initialDelaySeconds: 10
+          periodSeconds: 10
+      volumes:
+      - name: google-tokens
+        secret:
+          secretName: google-drive-tokens
+          optional: true
+      - name: agentgateway-config
+        configMap:
+          name: google-drive-watcher-config
