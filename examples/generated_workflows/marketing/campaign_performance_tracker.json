@@ -1,0 +1,170 @@
+{
+  "name": "Campaign Performance Tracker",
+  "nodes": [
+    {
+      "id": "trigger",
+      "name": "Daily Schedule",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1,
+      "position": [250, 300],
+      "parameters": {
+        "rule": {"interval": [{"field": "days", "intervalValue": 1}], "atHour": 9, "atMinute": 0}
+      }
+    },
+    {
+      "id": "get_campaigns",
+      "name": "Get Active Campaigns",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2,
+      "position": [450, 300],
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SELECT * FROM marketing_campaigns WHERE status = 'active' AND end_date >= CURRENT_DATE",
+        "options": {}
+      }
+    },
+    {
+      "id": "fetch_analytics",
+      "name": "Fetch Analytics Data",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [650, 300],
+      "parameters": {
+        "method": "POST",
+        "url": "https://analytics.api.com/campaigns/metrics",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "oAuth2Api",
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "campaign_ids",
+              "value": "={{$json.campaign_ids}}"
+            },
+            {
+              "name": "metrics",
+              "value": "impressions,clicks,conversions,spend,roi"
+            },
+            {
+              "name": "date_range",
+              "value": "yesterday"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "calculate_performance",
+      "name": "Calculate Performance Metrics",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [850, 300],
+      "parameters": {
+        "functionCode": "const campaigns = $input.all();\n\nreturn campaigns.map((campaign) => {\n  const metrics = campaign.json;\n  \n  // Calculate derived metrics\n  const ctr = metrics.clicks / metrics.impressions * 100;\n  const conversionRate = metrics.conversions / metrics.clicks * 100;\n  const cpc = metrics.spend / metrics.clicks;\n  const cpa = metrics.spend / metrics.conversions;\n  const roi = ((metrics.revenue - metrics.spend) / metrics.spend) * 100;\n  \n  // Determine performance status\n  let performanceStatus = 'normal';\n  if (roi < 0) performanceStatus = 'underperforming';\n  else if (roi > 200) performanceStatus = 'overperforming';\n  \n  return {\n    json: {\n      ...metrics,\n      ctr: ctr.toFixed(2),\n      conversionRate: conversionRate.toFixed(2),\n      cpc: cpc.toFixed(2),\n      cpa: cpa.toFixed(2),\n      roi: roi.toFixed(2),\n      performanceStatus,\n      reportDate: new Date().toISOString()\n    }\n  };\n});"
+      }
+    },
+    {
+      "id": "store_metrics",
+      "name": "Store Performance Metrics",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2,
+      "position": [1050, 300],
+      "parameters": {
+        "operation": "insert",
+        "table": "campaign_performance",
+        "columns": "campaign_id,date,impressions,clicks,conversions,spend,revenue,ctr,conversion_rate,cpc,cpa,roi,performance_status",
+        "options": {}
+      }
+    },
+    {
+      "id": "filter_alerts",
+      "name": "Filter for Alerts",
+      "type": "n8n-nodes-base.filter",
+      "typeVersion": 1,
+      "position": [1250, 200],
+      "parameters": {
+        "conditions": {
+          "string": [
+            {
+              "value1": "={{$json.performanceStatus}}",
+              "operation": "notEqual",
+              "value2": "normal"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "generate_report",
+      "name": "Generate Report",
+      "type": "n8n-nodes-base.htmlTemplate",
+      "typeVersion": 1,
+      "position": [1250, 400],
+      "parameters": {
+        "html": "<html>\n<head>\n  <style>\n    body { font-family: Arial, sans-serif; }\n    table { border-collapse: collapse; width: 100%; }\n    th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }\n    th { background-color: #f2f2f2; }\n    .underperforming { color: red; }\n    .overperforming { color: green; }\n  </style>\n</head>\n<body>\n  <h2>Daily Campaign Performance Report</h2>\n  <p>Date: {{$today}}</p>\n  \n  <table>\n    <tr>\n      <th>Campaign</th>\n      <th>Impressions</th>\n      <th>Clicks</th>\n      <th>CTR</th>\n      <th>Conversions</th>\n      <th>ROI</th>\n      <th>Status</th>\n    </tr>\n    {{#each items}}\n    <tr>\n      <td>{{json.campaign_name}}</td>\n      <td>{{json.impressions}}</td>\n      <td>{{json.clicks}}</td>\n      <td>{{json.ctr}}%</td>\n      <td>{{json.conversions}}</td>\n      <td>{{json.roi}}%</td>\n      <td class=\"{{json.performanceStatus}}\">{{json.performanceStatus}}</td>\n    </tr>\n    {{/each}}\n  </table>\n</body>\n</html>"
+      }
+    },
+    {
+      "id": "send_alert",
+      "name": "Send Alert",
+      "type": "n8n-nodes-base.slack",
+      "typeVersion": 2,
+      "position": [1450, 200],
+      "parameters": {
+        "channel": "#marketing-alerts",
+        "text": "⚠️ Campaign Alert: {{$json.campaign_name}} is {{$json.performanceStatus}}\n\nROI: {{$json.roi}}%\nSpend: ${{$json.spend}}\nConversions: {{$json.conversions}}\n\nPlease review and take action.",
+        "authentication": "oAuth2"
+      }
+    },
+    {
+      "id": "send_report",
+      "name": "Send Daily Report",
+      "type": "n8n-nodes-base.emailSend",
+      "typeVersion": 2,
+      "position": [1450, 400],
+      "parameters": {
+        "fromEmail": "marketing-automation@company.com",
+        "toEmail": "marketing-team@company.com",
+        "subject": "Daily Campaign Performance Report - {{$today}}",
+        "emailType": "html",
+        "htmlBody": "={{$json.html}}",
+        "options": {}
+      }
+    }
+  ],
+  "connections": {
+    "Daily Schedule": {
+      "main": [[{"node": "Get Active Campaigns", "type": "main", "index": 0}]]
+    },
+    "Get Active Campaigns": {
+      "main": [[{"node": "Fetch Analytics Data", "type": "main", "index": 0}]]
+    },
+    "Fetch Analytics Data": {
+      "main": [[{"node": "Calculate Performance Metrics", "type": "main", "index": 0}]]
+    },
+    "Calculate Performance Metrics": {
+      "main": [[{"node": "Store Performance Metrics", "type": "main", "index": 0}]]
+    },
+    "Store Performance Metrics": {
+      "main": [
+        [
+          {"node": "Filter for Alerts", "type": "main", "index": 0},
+          {"node": "Generate Report", "type": "main", "index": 0}
+        ]
+      ]
+    },
+    "Filter for Alerts": {
+      "main": [[{"node": "Send Alert", "type": "main", "index": 0}]]
+    },
+    "Generate Report": {
+      "main": [[{"node": "Send Daily Report", "type": "main", "index": 0}]]
+    }
+  },
+  "active": false,
+  "settings": {
+    "saveDataSuccessExecution": "all",
+    "saveManualExecutions": true,
+    "saveExecutionProgress": true
+  },
+  "tags": ["marketing", "automation", "analytics", "reporting"]
+}

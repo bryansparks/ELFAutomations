@@ -1,0 +1,284 @@
+{
+  "name": "Deal Pipeline Automation",
+  "nodes": [
+    {
+      "id": "trigger",
+      "name": "Deal Stage Change",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1,
+      "position": [250, 300],
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "deal-stage-change",
+        "responseMode": "lastNode",
+        "options": {}
+      }
+    },
+    {
+      "id": "get_deal_details",
+      "name": "Get Deal Details",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2,
+      "position": [450, 300],
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SELECT d.*, c.name as customer_name, c.email as customer_email, u.name as owner_name, u.email as owner_email \nFROM deals d \nJOIN customers c ON d.customer_id = c.id \nJOIN users u ON d.owner_id = u.id \nWHERE d.id = '{{$json.dealId}}'",
+        "options": {}
+      }
+    },
+    {
+      "id": "route_by_stage",
+      "name": "Route by Stage",
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 1,
+      "position": [650, 300],
+      "parameters": {
+        "dataType": "string",
+        "value1": "={{$json.new_stage}}",
+        "rules": {
+          "rules": [
+            {
+              "value2": "qualification",
+              "output": 0
+            },
+            {
+              "value2": "proposal",
+              "output": 1
+            },
+            {
+              "value2": "negotiation",
+              "output": 2
+            },
+            {
+              "value2": "closed_won",
+              "output": 3
+            },
+            {
+              "value2": "closed_lost",
+              "output": 4
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "qualification_tasks",
+      "name": "Create Qualification Tasks",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2,
+      "position": [850, 100],
+      "parameters": {
+        "operation": "insert",
+        "table": "tasks",
+        "columns": "deal_id,assignee_id,title,description,due_date,priority",
+        "additionalFields": {
+          "values": [
+            {
+              "deal_id": "={{$json.dealId}}",
+              "assignee_id": "={{$json.owner_id}}",
+              "title": "Schedule discovery call",
+              "description": "Schedule initial discovery call with {{$json.customer_name}}",
+              "due_date": "={{$now.plus(2, 'days').toISO()}}",
+              "priority": "high"
+            },
+            {
+              "deal_id": "={{$json.dealId}}",
+              "assignee_id": "={{$json.owner_id}}",
+              "title": "Research customer needs",
+              "description": "Research {{$json.customer_name}} business needs and pain points",
+              "due_date": "={{$now.plus(1, 'days').toISO()}}",
+              "priority": "medium"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "proposal_automation",
+      "name": "Generate Proposal",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [850, 200],
+      "parameters": {
+        "functionCode": "const deal = $input.first().json;\n\n// Generate proposal based on deal value and products\nconst proposalData = {\n  dealId: deal.dealId,\n  customerId: deal.customer_id,\n  customerName: deal.customer_name,\n  dealValue: deal.value,\n  products: deal.products || [],\n  validUntil: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),\n  terms: {\n    payment: 'Net 30',\n    warranty: '12 months',\n    support: 'Premium support included'\n  },\n  createdAt: new Date().toISOString()\n};\n\n// Calculate discount based on deal size\nif (deal.value > 100000) {\n  proposalData.discount = 0.15;\n  proposalData.discountReason = 'Volume discount';\n} else if (deal.value > 50000) {\n  proposalData.discount = 0.10;\n  proposalData.discountReason = 'Bulk purchase discount';\n} else {\n  proposalData.discount = 0.05;\n  proposalData.discountReason = 'Standard discount';\n}\n\nproposalData.finalValue = deal.value * (1 - proposalData.discount);\n\nreturn {\n  json: proposalData\n};"
+      }
+    },
+    {
+      "id": "send_proposal",
+      "name": "Send Proposal Email",
+      "type": "n8n-nodes-base.emailSend",
+      "typeVersion": 2,
+      "position": [1050, 200],
+      "parameters": {
+        "fromEmail": "sales@company.com",
+        "toEmail": "={{$json.customer_email}}",
+        "ccEmail": "={{$json.owner_email}}",
+        "subject": "Proposal for {{$json.customerName}} - Deal #{{$json.dealId}}",
+        "emailType": "html",
+        "htmlBody": "<h2>Business Proposal</h2>\n<p>Dear {{$json.customerName}},</p>\n<p>Thank you for your interest in our solutions. Please find below our proposal for your consideration:</p>\n\n<h3>Proposal Details</h3>\n<ul>\n  <li><strong>Proposal ID:</strong> {{$json.dealId}}</li>\n  <li><strong>Total Value:</strong> ${{$json.dealValue}}</li>\n  <li><strong>Discount:</strong> {{$json.discount * 100}}% ({{$json.discountReason}})</li>\n  <li><strong>Final Price:</strong> ${{$json.finalValue}}</li>\n  <li><strong>Valid Until:</strong> {{$json.validUntil}}</li>\n</ul>\n\n<h3>Terms & Conditions</h3>\n<ul>\n  <li>Payment Terms: {{$json.terms.payment}}</li>\n  <li>Warranty: {{$json.terms.warranty}}</li>\n  <li>Support: {{$json.terms.support}}</li>\n</ul>\n\n<p>Please let us know if you have any questions or would like to discuss this proposal further.</p>\n\n<p>Best regards,<br>{{$json.owner_name}}</p>",
+        "attachments": "proposals/{{$json.dealId}}_proposal.pdf"
+      }
+    },
+    {
+      "id": "negotiation_alert",
+      "name": "Alert Sales Manager",
+      "type": "n8n-nodes-base.slack",
+      "typeVersion": 2,
+      "position": [850, 300],
+      "parameters": {
+        "channel": "#sales-managers",
+        "text": "💼 Deal moved to Negotiation stage!\n\nDeal: {{$json.deal_name}}\nCustomer: {{$json.customer_name}}\nValue: ${{$json.value}}\nOwner: {{$json.owner_name}}\n\nThis deal requires manager attention for final negotiations.",
+        "authentication": "oAuth2"
+      }
+    },
+    {
+      "id": "closed_won_process",
+      "name": "Process Won Deal",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [850, 400],
+      "parameters": {
+        "functionCode": "const deal = $input.first().json;\n\n// Create implementation tasks\nconst tasks = [\n  {\n    type: 'contract',\n    title: 'Generate and send contract',\n    assignee: 'legal_team',\n    due_days: 1\n  },\n  {\n    type: 'onboarding',\n    title: 'Schedule customer onboarding',\n    assignee: 'customer_success',\n    due_days: 3\n  },\n  {\n    type: 'billing',\n    title: 'Setup billing and invoicing',\n    assignee: 'finance_team',\n    due_days: 2\n  },\n  {\n    type: 'kickoff',\n    title: 'Schedule project kickoff meeting',\n    assignee: deal.owner_id,\n    due_days: 5\n  }\n];\n\nreturn tasks.map(task => ({\n  json: {\n    deal_id: deal.dealId,\n    customer_name: deal.customer_name,\n    deal_value: deal.value,\n    task_type: task.type,\n    task_title: task.title,\n    assignee: task.assignee,\n    due_date: new Date(Date.now() + task.due_days * 24 * 60 * 60 * 1000).toISOString(),\n    created_at: new Date().toISOString()\n  }\n}));"
+      }
+    },
+    {
+      "id": "create_won_tasks",
+      "name": "Create Implementation Tasks",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2,
+      "position": [1050, 400],
+      "parameters": {
+        "operation": "insert",
+        "table": "implementation_tasks",
+        "columns": "deal_id,task_type,title,assignee,due_date,status",
+        "options": {}
+      }
+    },
+    {
+      "id": "celebrate_win",
+      "name": "Celebrate Win",
+      "type": "n8n-nodes-base.slack",
+      "typeVersion": 2,
+      "position": [1250, 400],
+      "parameters": {
+        "channel": "#sales-wins",
+        "text": "🎉 NEW WIN! 🎉\n\n{{$json.owner_name}} just closed {{$json.customer_name}}!\n\nDeal Value: ${{$json.value}}\nProducts: {{$json.products}}\n\nCongratulations! 🍾",
+        "authentication": "oAuth2"
+      }
+    },
+    {
+      "id": "lost_analysis",
+      "name": "Analyze Lost Deal",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [850, 500],
+      "parameters": {
+        "functionCode": "const deal = $input.first().json;\n\n// Analyze lost reason and create follow-up\nconst lostReasons = {\n  'price': {\n    category: 'Pricing',\n    action: 'Review pricing strategy',\n    followUp: 6\n  },\n  'competitor': {\n    category: 'Lost to Competition',\n    action: 'Competitive analysis needed',\n    followUp: 3\n  },\n  'timing': {\n    category: 'Bad Timing',\n    action: 'Nurture for future',\n    followUp: 12\n  },\n  'feature': {\n    category: 'Missing Features',\n    action: 'Product feedback to team',\n    followUp: 9\n  },\n  'no_response': {\n    category: 'No Response',\n    action: 'Re-engage campaign',\n    followUp: 1\n  }\n};\n\nconst reason = deal.lost_reason || 'no_response';\nconst analysis = lostReasons[reason] || lostReasons['no_response'];\n\nreturn {\n  json: {\n    ...deal,\n    lostCategory: analysis.category,\n    recommendedAction: analysis.action,\n    followUpMonths: analysis.followUp,\n    followUpDate: new Date(Date.now() + analysis.followUp * 30 * 24 * 60 * 60 * 1000).toISOString(),\n    analyzedAt: new Date().toISOString()\n  }\n};"
+      }
+    },
+    {
+      "id": "record_lost_reason",
+      "name": "Record Lost Analysis",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2,
+      "position": [1050, 500],
+      "parameters": {
+        "operation": "insert",
+        "table": "lost_deal_analysis",
+        "columns": "deal_id,lost_reason,lost_category,recommended_action,follow_up_date",
+        "options": {}
+      }
+    },
+    {
+      "id": "update_deal_stage",
+      "name": "Update Deal Stage",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2,
+      "position": [1250, 300],
+      "parameters": {
+        "operation": "update",
+        "table": "deals",
+        "updateKey": "id={{$json.dealId}}",
+        "columns": "stage,stage_changed_at,updated_at",
+        "additionalFields": {
+          "stage": "={{$json.new_stage}}",
+          "stage_changed_at": "={{$now.toISO()}}",
+          "updated_at": "={{$now.toISO()}}"
+        }
+      }
+    },
+    {
+      "id": "log_activity",
+      "name": "Log Stage Change",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2,
+      "position": [1450, 300],
+      "parameters": {
+        "operation": "insert",
+        "table": "deal_activities",
+        "columns": "deal_id,activity_type,description,created_by,created_at",
+        "additionalFields": {
+          "deal_id": "={{$json.dealId}}",
+          "activity_type": "stage_change",
+          "description": "Deal moved from {{$json.old_stage}} to {{$json.new_stage}}",
+          "created_by": "={{$json.changed_by}}",
+          "created_at": "={{$now.toISO()}}"
+        }
+      }
+    }
+  ],
+  "connections": {
+    "Deal Stage Change": {
+      "main": [[{"node": "Get Deal Details", "type": "main", "index": 0}]]
+    },
+    "Get Deal Details": {
+      "main": [[{"node": "Route by Stage", "type": "main", "index": 0}]]
+    },
+    "Route by Stage": {
+      "main": [
+        [{"node": "Create Qualification Tasks", "type": "main", "index": 0}],
+        [{"node": "Generate Proposal", "type": "main", "index": 0}],
+        [{"node": "Alert Sales Manager", "type": "main", "index": 0}],
+        [{"node": "Process Won Deal", "type": "main", "index": 0}],
+        [{"node": "Analyze Lost Deal", "type": "main", "index": 0}]
+      ]
+    },
+    "Create Qualification Tasks": {
+      "main": [[{"node": "Update Deal Stage", "type": "main", "index": 0}]]
+    },
+    "Generate Proposal": {
+      "main": [[{"node": "Send Proposal Email", "type": "main", "index": 0}]]
+    },
+    "Send Proposal Email": {
+      "main": [[{"node": "Update Deal Stage", "type": "main", "index": 0}]]
+    },
+    "Alert Sales Manager": {
+      "main": [[{"node": "Update Deal Stage", "type": "main", "index": 0}]]
+    },
+    "Process Won Deal": {
+      "main": [[{"node": "Create Implementation Tasks", "type": "main", "index": 0}]]
+    },
+    "Create Implementation Tasks": {
+      "main": [[{"node": "Celebrate Win", "type": "main", "index": 0}]]
+    },
+    "Celebrate Win": {
+      "main": [[{"node": "Update Deal Stage", "type": "main", "index": 0}]]
+    },
+    "Analyze Lost Deal": {
+      "main": [[{"node": "Record Lost Analysis", "type": "main", "index": 0}]]
+    },
+    "Record Lost Analysis": {
+      "main": [[{"node": "Update Deal Stage", "type": "main", "index": 0}]]
+    },
+    "Update Deal Stage": {
+      "main": [[{"node": "Log Stage Change", "type": "main", "index": 0}]]
+    }
+  },
+  "active": false,
+  "settings": {
+    "saveDataSuccessExecution": "all",
+    "saveManualExecutions": true,
+    "saveExecutionProgress": true
+  },
+  "tags": ["sales", "automation", "crm", "pipeline"]
+}

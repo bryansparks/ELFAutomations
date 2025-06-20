@@ -1,0 +1,217 @@
+{
+  "name": "Lead Scoring Automation",
+  "nodes": [
+    {
+      "id": "trigger",
+      "name": "New Lead Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1,
+      "position": [250, 300],
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "new-lead",
+        "responseMode": "responseNode",
+        "options": {}
+      }
+    },
+    {
+      "id": "validate_lead",
+      "name": "Validate Lead Data",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [450, 300],
+      "parameters": {
+        "functionCode": "const lead = $input.first().json;\n\n// Validate required fields\nconst requiredFields = ['email', 'firstName', 'lastName', 'company'];\nconst missingFields = requiredFields.filter(field => !lead[field]);\n\nif (missingFields.length > 0) {\n  throw new Error(`Missing required fields: ${missingFields.join(', ')}`);\n}\n\n// Validate email format\nconst emailRegex = /^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$/;\nif (!emailRegex.test(lead.email)) {\n  throw new Error('Invalid email format');\n}\n\nreturn {\n  json: {\n    ...lead,\n    validatedAt: new Date().toISOString()\n  }\n};"
+      }
+    },
+    {
+      "id": "enrich_data",
+      "name": "Enrich Lead Data",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [650, 300],
+      "parameters": {
+        "method": "GET",
+        "url": "https://api.clearbit.com/v2/combined/find",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "bearerAuth",
+        "qs": {
+          "parameters": [
+            {
+              "name": "email",
+              "value": "={{$json.email}}"
+            }
+          ]
+        },
+        "options": {
+          "timeout": 10000
+        }
+      }
+    },
+    {
+      "id": "calculate_score",
+      "name": "Calculate Lead Score",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [850, 300],
+      "parameters": {
+        "functionCode": "const lead = $input.first().json;\nlet score = 0;\nconst scoreDetails = [];\n\n// Demographic scoring\nif (lead.company?.employeeCount) {\n  if (lead.company.employeeCount > 1000) {\n    score += 20;\n    scoreDetails.push('Enterprise company (+20)');\n  } else if (lead.company.employeeCount > 100) {\n    score += 15;\n    scoreDetails.push('Mid-market company (+15)');\n  } else {\n    score += 5;\n    scoreDetails.push('Small business (+5)');\n  }\n}\n\n// Title/role scoring\nconst title = (lead.jobTitle || '').toLowerCase();\nif (title.includes('ceo') || title.includes('founder')) {\n  score += 25;\n  scoreDetails.push('C-level executive (+25)');\n} else if (title.includes('director') || title.includes('vp')) {\n  score += 20;\n  scoreDetails.push('Director/VP level (+20)');\n} else if (title.includes('manager')) {\n  score += 15;\n  scoreDetails.push('Manager level (+15)');\n}\n\n// Industry scoring\nconst targetIndustries = ['technology', 'finance', 'healthcare', 'saas'];\nif (lead.company?.industry && targetIndustries.includes(lead.company.industry.toLowerCase())) {\n  score += 15;\n  scoreDetails.push(`Target industry: ${lead.company.industry} (+15)`);\n}\n\n// Behavioral scoring\nif (lead.pageViews > 10) {\n  score += 10;\n  scoreDetails.push('High engagement (+10)');\n}\nif (lead.downloadedContent) {\n  score += 15;\n  scoreDetails.push('Downloaded content (+15)');\n}\nif (lead.attendedWebinar) {\n  score += 20;\n  scoreDetails.push('Attended webinar (+20)');\n}\n\n// Determine lead grade\nlet grade;\nif (score >= 80) grade = 'A';\nelse if (score >= 60) grade = 'B';\nelse if (score >= 40) grade = 'C';\nelse if (score >= 20) grade = 'D';\nelse grade = 'F';\n\nreturn {\n  json: {\n    ...lead,\n    leadScore: score,\n    leadGrade: grade,\n    scoreDetails,\n    scoredAt: new Date().toISOString()\n  }\n};"
+      }
+    },
+    {
+      "id": "store_lead",
+      "name": "Store Lead in CRM",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2,
+      "position": [1050, 300],
+      "parameters": {
+        "operation": "insert",
+        "table": "leads",
+        "columns": "email,first_name,last_name,company,job_title,lead_score,lead_grade,enriched_data,created_at",
+        "options": {}
+      }
+    },
+    {
+      "id": "route_by_score",
+      "name": "Route by Score",
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 1,
+      "position": [1250, 300],
+      "parameters": {
+        "dataType": "string",
+        "value1": "={{$json.leadGrade}}",
+        "rules": {
+          "rules": [
+            {
+              "value2": "A",
+              "output": 0
+            },
+            {
+              "value2": "B",
+              "output": 1
+            }
+          ]
+        },
+        "fallbackOutput": 2
+      }
+    },
+    {
+      "id": "assign_hot_lead",
+      "name": "Assign to Sales",
+      "type": "n8n-nodes-base.slack",
+      "typeVersion": 2,
+      "position": [1450, 200],
+      "parameters": {
+        "channel": "#sales-hot-leads",
+        "text": "🔥 HOT LEAD ALERT!\n\nName: {{$json.firstName}} {{$json.lastName}}\nCompany: {{$json.company}}\nTitle: {{$json.jobTitle}}\nEmail: {{$json.email}}\nScore: {{$json.leadScore}} (Grade: {{$json.leadGrade}})\n\nScoring details:\n{{$json.scoreDetails.join('\\n')}}\n\nAssign immediately!",
+        "authentication": "oAuth2"
+      }
+    },
+    {
+      "id": "add_to_nurture",
+      "name": "Add to Nurture Campaign",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [1450, 300],
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.mailchimp.com/3.0/lists/{{list_id}}/members",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "bearerAuth",
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "email_address",
+              "value": "={{$json.email}}"
+            },
+            {
+              "name": "status",
+              "value": "subscribed"
+            },
+            {
+              "name": "merge_fields",
+              "value": "={{$json}}"
+            },
+            {
+              "name": "tags",
+              "value": ["nurture-campaign", "b-lead"]
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "add_to_database",
+      "name": "Add to Lead Database",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2,
+      "position": [1450, 400],
+      "parameters": {
+        "operation": "insert",
+        "table": "low_priority_leads",
+        "columns": "email,first_name,last_name,company,lead_score,lead_grade",
+        "options": {}
+      }
+    },
+    {
+      "id": "respond",
+      "name": "Send Response",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [1650, 300],
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={\n  \"success\": true,\n  \"leadId\": \"{{$json.id}}\",\n  \"leadScore\": {{$json.leadScore}},\n  \"leadGrade\": \"{{$json.leadGrade}}\",\n  \"message\": \"Lead processed successfully\"\n}",
+        "responseHeaders": {
+          "entries": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "connections": {
+    "New Lead Webhook": {
+      "main": [[{"node": "Validate Lead Data", "type": "main", "index": 0}]]
+    },
+    "Validate Lead Data": {
+      "main": [[{"node": "Enrich Lead Data", "type": "main", "index": 0}]]
+    },
+    "Enrich Lead Data": {
+      "main": [[{"node": "Calculate Lead Score", "type": "main", "index": 0}]]
+    },
+    "Calculate Lead Score": {
+      "main": [[{"node": "Store Lead in CRM", "type": "main", "index": 0}]]
+    },
+    "Store Lead in CRM": {
+      "main": [[{"node": "Route by Score", "type": "main", "index": 0}]]
+    },
+    "Route by Score": {
+      "main": [
+        [{"node": "Assign to Sales", "type": "main", "index": 0}],
+        [{"node": "Add to Nurture Campaign", "type": "main", "index": 0}],
+        [{"node": "Add to Lead Database", "type": "main", "index": 0}]
+      ]
+    },
+    "Assign to Sales": {
+      "main": [[{"node": "Send Response", "type": "main", "index": 0}]]
+    },
+    "Add to Nurture Campaign": {
+      "main": [[{"node": "Send Response", "type": "main", "index": 0}]]
+    },
+    "Add to Lead Database": {
+      "main": [[{"node": "Send Response", "type": "main", "index": 0}]]
+    }
+  },
+  "active": false,
+  "settings": {
+    "saveDataSuccessExecution": "all",
+    "saveManualExecutions": true,
+    "saveExecutionProgress": true
+  },
+  "tags": ["marketing", "automation", "lead-scoring", "crm"]
+}

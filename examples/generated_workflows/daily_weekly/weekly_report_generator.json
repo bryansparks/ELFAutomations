@@ -1,0 +1,245 @@
+{
+  "name": "Weekly Report Generator",
+  "nodes": [
+    {
+      "id": "trigger",
+      "name": "Weekly Schedule",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1,
+      "position": [250, 300],
+      "parameters": {
+        "rule": {
+          "interval": [{"field": "weeks", "intervalValue": 1}],
+          "atHour": 14,
+          "atMinute": 0,
+          "onWeekday": 5
+        }
+      }
+    },
+    {
+      "id": "get_kpis",
+      "name": "Get Weekly KPIs",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2,
+      "position": [450, 200],
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "WITH date_range AS (\n  SELECT \n    DATE_TRUNC('week', CURRENT_DATE) as week_start,\n    DATE_TRUNC('week', CURRENT_DATE) + INTERVAL '6 days' as week_end\n)\nSELECT \n  'revenue' as metric,\n  SUM(amount) as value,\n  COUNT(*) as count\nFROM transactions\nWHERE created_at BETWEEN (SELECT week_start FROM date_range) AND (SELECT week_end FROM date_range)\nAND type = 'revenue'\nUNION ALL\nSELECT \n  'new_customers' as metric,\n  COUNT(*) as value,\n  COUNT(*) as count\nFROM customers\nWHERE created_at BETWEEN (SELECT week_start FROM date_range) AND (SELECT week_end FROM date_range)\nUNION ALL\nSELECT \n  'support_tickets' as metric,\n  COUNT(*) as value,\n  AVG(resolution_time_hours) as count\nFROM support_tickets\nWHERE created_at BETWEEN (SELECT week_start FROM date_range) AND (SELECT week_end FROM date_range)",
+        "options": {}
+      }
+    },
+    {
+      "id": "get_project_status",
+      "name": "Get Project Updates",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2,
+      "position": [450, 300],
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SELECT \n  p.name as project_name,\n  p.status,\n  p.progress_percentage,\n  p.due_date,\n  pm.name as project_manager,\n  COUNT(DISTINCT t.id) as total_tasks,\n  COUNT(DISTINCT CASE WHEN t.status = 'completed' THEN t.id END) as completed_tasks,\n  STRING_AGG(DISTINCT CASE WHEN t.status = 'blocked' THEN t.title END, ', ') as blocked_tasks\nFROM projects p\nJOIN users pm ON p.manager_id = pm.id\nLEFT JOIN tasks t ON p.id = t.project_id\nWHERE p.status IN ('active', 'at_risk')\nGROUP BY p.id, p.name, p.status, p.progress_percentage, p.due_date, pm.name\nORDER BY p.due_date",
+        "options": {}
+      }
+    },
+    {
+      "id": "get_team_metrics",
+      "name": "Get Team Performance",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2,
+      "position": [450, 400],
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SELECT \n  t.name as team_name,\n  COUNT(DISTINCT tm.user_id) as team_size,\n  COUNT(DISTINCT ta.task_id) as tasks_completed,\n  AVG(ta.completion_time_hours) as avg_completion_time,\n  COUNT(DISTINCT CASE WHEN sr.created_at > CURRENT_DATE - 7 THEN sr.user_id END) as standup_participation\nFROM teams t\nJOIN team_members tm ON t.id = tm.team_id\nLEFT JOIN task_assignments ta ON tm.user_id = ta.user_id \n  AND ta.completed_at BETWEEN DATE_TRUNC('week', CURRENT_DATE) AND CURRENT_DATE\nLEFT JOIN standup_responses sr ON tm.user_id = sr.user_id\n  AND sr.created_at BETWEEN DATE_TRUNC('week', CURRENT_DATE) AND CURRENT_DATE\nGROUP BY t.id, t.name\nORDER BY t.name",
+        "options": {}
+      }
+    },
+    {
+      "id": "calculate_trends",
+      "name": "Calculate Week-over-Week",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [650, 300],
+      "parameters": {
+        "functionCode": "const kpis = $input.all()[0].json;\nconst projects = $input.all()[1].json;\nconst teams = $input.all()[2].json;\n\n// Process KPIs with trends (mock previous week data)\nconst processedKPIs = {};\nkpis.forEach(kpi => {\n  const previousValue = kpi.value * (0.8 + Math.random() * 0.4); // Mock previous week\n  const change = ((kpi.value - previousValue) / previousValue * 100).toFixed(1);\n  \n  processedKPIs[kpi.metric] = {\n    current: kpi.value,\n    previous: previousValue,\n    change: change,\n    trend: change > 0 ? 'up' : 'down',\n    formatted: kpi.metric === 'revenue' ? `$${kpi.value.toLocaleString()}` : kpi.value.toLocaleString()\n  };\n});\n\n// Process project health\nconst projectHealth = {\n  onTrack: 0,\n  atRisk: 0,\n  blocked: 0,\n  upcoming: []\n};\n\nprojects.forEach(project => {\n  if (project.status === 'active' && project.progress_percentage >= 70) {\n    projectHealth.onTrack++;\n  } else if (project.status === 'at_risk') {\n    projectHealth.atRisk++;\n  }\n  \n  if (project.blocked_tasks) {\n    projectHealth.blocked++;\n  }\n  \n  // Check if due within 2 weeks\n  const dueDate = new Date(project.due_date);\n  const twoWeeksFromNow = new Date();\n  twoWeeksFromNow.setDate(twoWeeksFromNow.getDate() + 14);\n  \n  if (dueDate <= twoWeeksFromNow) {\n    projectHealth.upcoming.push({\n      name: project.project_name,\n      dueDate: project.due_date,\n      progress: project.progress_percentage\n    });\n  }\n});\n\n// Process team performance\nconst teamPerformance = teams.map(team => {\n  const participationRate = (team.standup_participation / team.team_size * 100).toFixed(0);\n  const productivity = (team.tasks_completed / team.team_size).toFixed(1);\n  \n  return {\n    name: team.team_name,\n    size: team.team_size,\n    tasksCompleted: team.tasks_completed,\n    avgCompletionTime: team.avg_completion_time ? team.avg_completion_time.toFixed(1) : 'N/A',\n    participationRate: participationRate,\n    productivity: productivity,\n    rating: participationRate > 80 && productivity > 5 ? 'Excellent' : \n            participationRate > 60 && productivity > 3 ? 'Good' : 'Needs Improvement'\n  };\n});\n\nreturn {\n  json: {\n    weekEnding: new Date().toISOString(),\n    kpis: processedKPIs,\n    projectHealth: projectHealth,\n    projects: projects,\n    teamPerformance: teamPerformance,\n    generated: new Date().toISOString()\n  }\n};"
+      }
+    },
+    {
+      "id": "generate_insights",
+      "name": "Generate AI Insights",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [850, 300],
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.openai.com/v1/chat/completions",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "bearerAuth",
+        "sendBody": true,
+        "contentType": "json",
+        "body": "={\n  \"model\": \"gpt-4\",\n  \"messages\": [\n    {\n      \"role\": \"system\",\n      \"content\": \"You are a business analyst creating executive insights from weekly data. Be concise and actionable.\"\n    },\n    {\n      \"role\": \"user\",\n      \"content\": \"Based on this week's data, provide 3-5 key insights and recommendations:\\n\\nKPIs: {{JSON.stringify($json.kpis)}}\\nProject Status: {{JSON.stringify($json.projectHealth)}}\\nTeam Performance: {{JSON.stringify($json.teamPerformance)}}\"\n    }\n  ],\n  \"temperature\": 0.7,\n  \"max_tokens\": 500\n}"
+      }
+    },
+    {
+      "id": "create_report_html",
+      "name": "Create Report HTML",
+      "type": "n8n-nodes-base.htmlTemplate",
+      "typeVersion": 1,
+      "position": [1050, 300],
+      "parameters": {
+        "html": "<!DOCTYPE html>\n<html>\n<head>\n  <style>\n    body { font-family: Arial, sans-serif; color: #333; line-height: 1.6; }\n    .container { max-width: 800px; margin: 0 auto; padding: 20px; }\n    h1, h2, h3 { color: #2c3e50; }\n    .metric-card { background: #f8f9fa; padding: 15px; margin: 10px 0; border-radius: 8px; }\n    .metric-value { font-size: 24px; font-weight: bold; }\n    .trend-up { color: #27ae60; }\n    .trend-down { color: #e74c3c; }\n    table { width: 100%; border-collapse: collapse; margin: 20px 0; }\n    th, td { border: 1px solid #ddd; padding: 12px; text-align: left; }\n    th { background-color: #34495e; color: white; }\n    .status-active { color: #27ae60; }\n    .status-at_risk { color: #f39c12; }\n    .rating-excellent { color: #27ae60; font-weight: bold; }\n    .rating-good { color: #3498db; }\n    .rating-needs { color: #e74c3c; }\n  </style>\n</head>\n<body>\n  <div class=\"container\">\n    <h1>Weekly Business Report</h1>\n    <p>Week Ending: {{$json.weekEnding}}</p>\n    \n    <h2>Key Performance Indicators</h2>\n    <div class=\"metric-card\">\n      <h3>Revenue</h3>\n      <div class=\"metric-value\">{{$json.kpis.revenue.formatted}}</div>\n      <div class=\"{{$json.kpis.revenue.trend}}-trend\">{{$json.kpis.revenue.change}}% vs last week</div>\n    </div>\n    \n    <div class=\"metric-card\">\n      <h3>New Customers</h3>\n      <div class=\"metric-value\">{{$json.kpis.new_customers.current}}</div>\n      <div class=\"{{$json.kpis.new_customers.trend}}-trend\">{{$json.kpis.new_customers.change}}% vs last week</div>\n    </div>\n    \n    <h2>Project Health</h2>\n    <table>\n      <tr>\n        <th>Status</th>\n        <th>Count</th>\n      </tr>\n      <tr>\n        <td>On Track</td>\n        <td>{{$json.projectHealth.onTrack}}</td>\n      </tr>\n      <tr>\n        <td>At Risk</td>\n        <td>{{$json.projectHealth.atRisk}}</td>\n      </tr>\n      <tr>\n        <td>Blocked</td>\n        <td>{{$json.projectHealth.blocked}}</td>\n      </tr>\n    </table>\n    \n    <h2>Team Performance</h2>\n    <table>\n      <tr>\n        <th>Team</th>\n        <th>Tasks Completed</th>\n        <th>Avg Time (hrs)</th>\n        <th>Participation</th>\n        <th>Rating</th>\n      </tr>\n      {{#each $json.teamPerformance}}\n      <tr>\n        <td>{{name}}</td>\n        <td>{{tasksCompleted}}</td>\n        <td>{{avgCompletionTime}}</td>\n        <td>{{participationRate}}%</td>\n        <td class=\"rating-{{rating}}\">{{rating}}</td>\n      </tr>\n      {{/each}}\n    </table>\n    \n    <h2>Executive Insights</h2>\n    <div style=\"background: #ecf0f1; padding: 15px; border-radius: 8px;\">\n      {{$json.insights}}\n    </div>\n  </div>\n</body>\n</html>"
+      }
+    },
+    {
+      "id": "convert_to_pdf",
+      "name": "Convert to PDF",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [1250, 300],
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.pdfshift.io/v3/convert/pdf",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "basicAuth",
+        "sendBody": true,
+        "contentType": "json",
+        "body": "={\n  \"source\": \"{{$json.html}}\",\n  \"landscape\": false,\n  \"format\": \"A4\",\n  \"margin\": \"2cm\"\n}",
+        "options": {
+          "response": {
+            "response": {
+              "responseFormat": "file"
+            }
+          }
+        }
+      }
+    },
+    {
+      "id": "store_report",
+      "name": "Store Report Record",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2,
+      "position": [1450, 300],
+      "parameters": {
+        "operation": "insert",
+        "table": "weekly_reports",
+        "columns": "week_ending,report_data,pdf_url,created_at",
+        "additionalFields": {
+          "week_ending": "={{$json.weekEnding}}",
+          "report_data": "={{JSON.stringify($json)}}",
+          "pdf_url": "reports/weekly/{{$json.weekEnding}}.pdf",
+          "created_at": "={{$now.toISO()}}"
+        }
+      }
+    },
+    {
+      "id": "send_to_executives",
+      "name": "Send to Executives",
+      "type": "n8n-nodes-base.emailSend",
+      "typeVersion": 2,
+      "position": [1650, 200],
+      "parameters": {
+        "fromEmail": "reports@company.com",
+        "toEmail": "executives@company.com",
+        "ccEmail": "board@company.com",
+        "subject": "Weekly Business Report - Week Ending {{$json.weekEnding}}",
+        "emailType": "html",
+        "htmlBody": "<p>Dear Leadership Team,</p>\n\n<p>Please find attached the weekly business report for the week ending {{$json.weekEnding}}.</p>\n\n<h3>Highlights:</h3>\n<ul>\n  <li>Revenue: {{$json.kpis.revenue.formatted}} ({{$json.kpis.revenue.change}}% change)</li>\n  <li>New Customers: {{$json.kpis.new_customers.current}}</li>\n  <li>Projects On Track: {{$json.projectHealth.onTrack}}</li>\n  <li>Projects At Risk: {{$json.projectHealth.atRisk}}</li>\n</ul>\n\n<p>The full report is attached as a PDF. Key insights and recommendations are included in the report.</p>\n\n<p>Best regards,<br>\nBusiness Intelligence Team</p>",
+        "attachments": "={{$binary.data}}",
+        "options": {}
+      }
+    },
+    {
+      "id": "post_to_slack",
+      "name": "Post Summary to Slack",
+      "type": "n8n-nodes-base.slack",
+      "typeVersion": 2,
+      "position": [1650, 400],
+      "parameters": {
+        "channel": "#company-updates",
+        "text": "📊 *Weekly Business Report Available*\n\nWeek Ending: {{$json.weekEnding}}\n\n*Key Metrics:*\n• Revenue: {{$json.kpis.revenue.formatted}} ({{$json.kpis.revenue.change}}%)\n• New Customers: {{$json.kpis.new_customers.current}}\n• Support Tickets: {{$json.kpis.support_tickets.current}}\n\n*Project Status:*\n• ✅ On Track: {{$json.projectHealth.onTrack}}\n• ⚠️ At Risk: {{$json.projectHealth.atRisk}}\n• 🚫 Blocked: {{$json.projectHealth.blocked}}\n\n_Full report sent to executives_",
+        "authentication": "oAuth2",
+        "otherOptions": {
+          "mrkdwn": true
+        }
+      }
+    },
+    {
+      "id": "create_tasks",
+      "name": "Create Follow-up Tasks",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [1850, 300],
+      "parameters": {
+        "functionCode": "const report = $input.first().json;\nconst tasks = [];\n\n// Create tasks for at-risk projects\nif (report.projectHealth.atRisk > 0) {\n  tasks.push({\n    title: 'Review at-risk projects',\n    description: `${report.projectHealth.atRisk} projects are marked as at-risk. Schedule review meetings with project managers.`,\n    assignee: 'pmo@company.com',\n    priority: 'high',\n    due_date: new Date(Date.now() + 2 * 24 * 60 * 60 * 1000).toISOString()\n  });\n}\n\n// Create tasks for blocked items\nif (report.projectHealth.blocked > 0) {\n  tasks.push({\n    title: 'Resolve project blockers',\n    description: `${report.projectHealth.blocked} projects have blocking issues. Coordinate with teams to resolve.`,\n    assignee: 'operations@company.com',\n    priority: 'urgent',\n    due_date: new Date(Date.now() + 1 * 24 * 60 * 60 * 1000).toISOString()\n  });\n}\n\n// Create tasks for underperforming teams\nreport.teamPerformance.forEach(team => {\n  if (team.rating === 'Needs Improvement') {\n    tasks.push({\n      title: `Team performance review: ${team.name}`,\n      description: `${team.name} team showing low performance metrics. Schedule 1:1 with team lead.`,\n      assignee: 'hr@company.com',\n      priority: 'medium',\n      due_date: new Date(Date.now() + 3 * 24 * 60 * 60 * 1000).toISOString()\n    });\n  }\n});\n\nreturn tasks.map(task => ({ json: task }));"
+      }
+    },
+    {
+      "id": "create_jira_tasks",
+      "name": "Create JIRA Tasks",
+      "type": "n8n-nodes-base.jira",
+      "typeVersion": 1,
+      "position": [2050, 300],
+      "parameters": {
+        "operation": "create",
+        "project": "OPS",
+        "issueType": "Task",
+        "summary": "={{$json.title}}",
+        "description": "={{$json.description}}",
+        "priority": "={{$json.priority}}",
+        "additionalFields": {
+          "duedate": "={{$json.due_date}}",
+          "assignee": "={{$json.assignee}}"
+        }
+      }
+    }
+  ],
+  "connections": {
+    "Weekly Schedule": {
+      "main": [
+        [
+          {"node": "Get Weekly KPIs", "type": "main", "index": 0},
+          {"node": "Get Project Updates", "type": "main", "index": 0},
+          {"node": "Get Team Performance", "type": "main", "index": 0}
+        ]
+      ]
+    },
+    "Get Weekly KPIs": {
+      "main": [[{"node": "Calculate Week-over-Week", "type": "main", "index": 0}]]
+    },
+    "Get Project Updates": {
+      "main": [[{"node": "Calculate Week-over-Week", "type": "main", "index": 1}]]
+    },
+    "Get Team Performance": {
+      "main": [[{"node": "Calculate Week-over-Week", "type": "main", "index": 2}]]
+    },
+    "Calculate Week-over-Week": {
+      "main": [[{"node": "Generate AI Insights", "type": "main", "index": 0}]]
+    },
+    "Generate AI Insights": {
+      "main": [[{"node": "Create Report HTML", "type": "main", "index": 0}]]
+    },
+    "Create Report HTML": {
+      "main": [[{"node": "Convert to PDF", "type": "main", "index": 0}]]
+    },
+    "Convert to PDF": {
+      "main": [[{"node": "Store Report Record", "type": "main", "index": 0}]]
+    },
+    "Store Report Record": {
+      "main": [
+        [
+          {"node": "Send to Executives", "type": "main", "index": 0},
+          {"node": "Post Summary to Slack", "type": "main", "index": 0},
+          {"node": "Create Follow-up Tasks", "type": "main", "index": 0}
+        ]
+      ]
+    },
+    "Create Follow-up Tasks": {
+      "main": [[{"node": "Create JIRA Tasks", "type": "main", "index": 0}]]
+    }
+  },
+  "active": false,
+  "settings": {
+    "saveDataSuccessExecution": "all",
+    "saveManualExecutions": true,
+    "saveExecutionProgress": true
+  },
+  "tags": ["weekly", "reporting", "automation", "executive"]
+}

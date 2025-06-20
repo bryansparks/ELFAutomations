@@ -1,0 +1,107 @@
+{
+  "name": "Social Media Monitor",
+  "nodes": [
+    {
+      "id": "trigger",
+      "name": "Schedule Trigger",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1,
+      "position": [250, 300],
+      "parameters": {
+        "rule": {"interval": [{"field": "minutes", "intervalValue": 15}]}
+      }
+    },
+    {
+      "id": "fetch_mentions",
+      "name": "Fetch Social Mentions",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [450, 300],
+      "parameters": {
+        "method": "GET",
+        "url": "https://api.socialmedia.com/mentions",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "oAuth2Api",
+        "options": {}
+      }
+    },
+    {
+      "id": "analyze_sentiment",
+      "name": "Analyze Sentiment",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [650, 300],
+      "parameters": {
+        "functionCode": "// Analyze sentiment of mentions\nconst items = $input.all();\n\nreturn items.map((item) => {\n  const text = item.json.text || '';\n  // Simple sentiment analysis (replace with actual API call)\n  const negativePhrases = ['bad', 'terrible', 'awful', 'hate', 'worst'];\n  const positivePhrases = ['good', 'great', 'love', 'excellent', 'best'];\n  \n  let sentiment = 'neutral';\n  let score = 0;\n  \n  negativePhrases.forEach(phrase => {\n    if (text.toLowerCase().includes(phrase)) {\n      sentiment = 'negative';\n      score = -1;\n    }\n  });\n  \n  positivePhrases.forEach(phrase => {\n    if (text.toLowerCase().includes(phrase) && sentiment !== 'negative') {\n      sentiment = 'positive';\n      score = 1;\n    }\n  });\n  \n  return {\n    json: {\n      ...item.json,\n      sentiment,\n      sentimentScore: score,\n      analyzedAt: new Date().toISOString()\n    }\n  };\n});"
+      }
+    },
+    {
+      "id": "store_database",
+      "name": "Store in Database",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2,
+      "position": [850, 300],
+      "parameters": {
+        "operation": "insert",
+        "table": "social_mentions",
+        "columns": "platform,author,text,sentiment,sentiment_score,analyzed_at",
+        "options": {}
+      }
+    },
+    {
+      "id": "filter_negative",
+      "name": "Filter Negative",
+      "type": "n8n-nodes-base.filter",
+      "typeVersion": 1,
+      "position": [1050, 300],
+      "parameters": {
+        "conditions": {
+          "string": [
+            {
+              "value1": "={{$json.sentiment}}",
+              "operation": "equals",
+              "value2": "negative"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "notify_slack",
+      "name": "Notify Slack",
+      "type": "n8n-nodes-base.slack",
+      "typeVersion": 2,
+      "position": [1250, 300],
+      "parameters": {
+        "channel": "#marketing-alerts",
+        "text": "🚨 Negative mention detected!\n\nPlatform: {{$json.platform}}\nAuthor: {{$json.author}}\nText: {{$json.text}}\nTime: {{$json.analyzedAt}}",
+        "authentication": "oAuth2",
+        "options": {}
+      }
+    }
+  ],
+  "connections": {
+    "Schedule Trigger": {
+      "main": [[{"node": "Fetch Social Mentions", "type": "main", "index": 0}]]
+    },
+    "Fetch Social Mentions": {
+      "main": [[{"node": "Analyze Sentiment", "type": "main", "index": 0}]]
+    },
+    "Analyze Sentiment": {
+      "main": [[{"node": "Store in Database", "type": "main", "index": 0}]]
+    },
+    "Store in Database": {
+      "main": [[{"node": "Filter Negative", "type": "main", "index": 0}]]
+    },
+    "Filter Negative": {
+      "main": [[{"node": "Notify Slack", "type": "main", "index": 0}]]
+    }
+  },
+  "active": false,
+  "settings": {
+    "saveDataSuccessExecution": "all",
+    "saveManualExecutions": true,
+    "saveExecutionProgress": true
+  },
+  "tags": ["marketing", "automation", "social-media", "monitoring"]
+}

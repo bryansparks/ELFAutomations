@@ -1,0 +1,205 @@
+{
+  "name": "Daily Standup Automation",
+  "nodes": [
+    {
+      "id": "trigger",
+      "name": "Daily Trigger",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1,
+      "position": [250, 300],
+      "parameters": {
+        "rule": {
+          "interval": [{"field": "days", "intervalValue": 1}],
+          "atHour": 8,
+          "atMinute": 45,
+          "onWeekdays": [1, 2, 3, 4, 5]
+        }
+      }
+    },
+    {
+      "id": "get_team_members",
+      "name": "Get Team Members",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2,
+      "position": [450, 300],
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SELECT u.id, u.name, u.email, u.slack_id, t.name as team_name \nFROM users u \nJOIN team_members tm ON u.id = tm.user_id \nJOIN teams t ON tm.team_id = t.id \nWHERE t.standup_enabled = true AND u.is_active = true \nORDER BY t.name, u.name",
+        "options": {}
+      }
+    },
+    {
+      "id": "send_reminder",
+      "name": "Send Standup Reminder",
+      "type": "n8n-nodes-base.slack",
+      "typeVersion": 2,
+      "position": [650, 300],
+      "parameters": {
+        "channel": "={{$json.slack_id}}",
+        "text": "Good morning {{$json.name}}! 🌅\n\nIt's time for your daily standup. Please share:\n\n1️⃣ What did you accomplish yesterday?\n2️⃣ What are you working on today?\n3️⃣ Any blockers or help needed?\n\nPlease submit your update in the next 15 minutes.\n\n<https://standup.company.com/submit|Submit Standup Update>",
+        "authentication": "oAuth2"
+      }
+    },
+    {
+      "id": "wait_for_responses",
+      "name": "Wait 15 Minutes",
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1,
+      "position": [850, 300],
+      "parameters": {
+        "amount": 15,
+        "unit": "minutes"
+      }
+    },
+    {
+      "id": "collect_responses",
+      "name": "Collect Standup Responses",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2,
+      "position": [1050, 300],
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SELECT sr.*, u.name, u.slack_id, t.name as team_name, t.slack_channel \nFROM standup_responses sr \nJOIN users u ON sr.user_id = u.id \nJOIN teams t ON sr.team_id = t.id \nWHERE DATE(sr.created_at) = CURRENT_DATE \nORDER BY t.name, u.name",
+        "options": {}
+      }
+    },
+    {
+      "id": "identify_missing",
+      "name": "Identify Missing Updates",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2,
+      "position": [1250, 200],
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SELECT u.name, u.slack_id, t.name as team_name \nFROM users u \nJOIN team_members tm ON u.id = tm.user_id \nJOIN teams t ON tm.team_id = t.id \nWHERE t.standup_enabled = true \nAND u.is_active = true \nAND u.id NOT IN (\n  SELECT user_id FROM standup_responses \n  WHERE DATE(created_at) = CURRENT_DATE\n)",
+        "options": {}
+      }
+    },
+    {
+      "id": "format_summary",
+      "name": "Format Team Summaries",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [1250, 400],
+      "parameters": {
+        "functionCode": "const responses = $input.all();\nconst teamSummaries = {};\n\n// Group responses by team\nresponses.forEach(response => {\n  const team = response.json.team_name;\n  if (!teamSummaries[team]) {\n    teamSummaries[team] = {\n      teamName: team,\n      channel: response.json.slack_channel,\n      updates: [],\n      blockers: []\n    };\n  }\n  \n  teamSummaries[team].updates.push({\n    name: response.json.name,\n    yesterday: response.json.yesterday_work,\n    today: response.json.today_plan,\n    blockers: response.json.blockers\n  });\n  \n  if (response.json.blockers && response.json.blockers !== 'None') {\n    teamSummaries[team].blockers.push({\n      name: response.json.name,\n      blocker: response.json.blockers\n    });\n  }\n});\n\n// Format summaries\nreturn Object.values(teamSummaries).map(team => {\n  let summary = `📊 *${team.teamName} Daily Standup Summary*\\n`;\n  summary += `_${new Date().toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}_\\n\\n`;\n  \n  team.updates.forEach(update => {\n    summary += `*${update.name}*\\n`;\n    summary += `Yesterday: ${update.yesterday}\\n`;\n    summary += `Today: ${update.today}\\n`;\n    if (update.blockers && update.blockers !== 'None') {\n      summary += `🚧 Blockers: ${update.blockers}\\n`;\n    }\n    summary += `\\n`;\n  });\n  \n  if (team.blockers.length > 0) {\n    summary += `\\n⚠️ *Team Blockers:*\\n`;\n    team.blockers.forEach(b => {\n      summary += `• ${b.name}: ${b.blocker}\\n`;\n    });\n  }\n  \n  return {\n    json: {\n      teamName: team.teamName,\n      channel: team.channel,\n      summary: summary,\n      updateCount: team.updates.length,\n      blockerCount: team.blockers.length\n    }\n  };\n});"
+      }
+    },
+    {
+      "id": "send_followup",
+      "name": "Send Follow-up to Missing",
+      "type": "n8n-nodes-base.slack",
+      "typeVersion": 2,
+      "position": [1450, 200],
+      "parameters": {
+        "channel": "={{$json.slack_id}}",
+        "text": "Hi {{$json.name}} 👋\n\nWe noticed you haven't submitted your standup update yet. Please take a moment to share your update:\n\n<https://standup.company.com/submit|Submit Standup Update>\n\nIf you're unable to attend standup today, please let your team lead know.",
+        "authentication": "oAuth2"
+      }
+    },
+    {
+      "id": "post_summary",
+      "name": "Post Team Summary",
+      "type": "n8n-nodes-base.slack",
+      "typeVersion": 2,
+      "position": [1450, 400],
+      "parameters": {
+        "channel": "={{$json.channel}}",
+        "text": "={{$json.summary}}",
+        "authentication": "oAuth2",
+        "otherOptions": {
+          "mrkdwn": true
+        }
+      }
+    },
+    {
+      "id": "generate_insights",
+      "name": "Generate Daily Insights",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [1650, 300],
+      "parameters": {
+        "functionCode": "const summaries = $input.all();\nlet totalUpdates = 0;\nlet totalBlockers = 0;\nconst insights = [];\n\nsummaries.forEach(team => {\n  totalUpdates += team.json.updateCount;\n  totalBlockers += team.json.blockerCount;\n});\n\n// Calculate participation rate\nconst totalExpected = 25; // This should come from team member count\nconst participationRate = (totalUpdates / totalExpected * 100).toFixed(1);\n\n// Generate insights\nif (participationRate < 80) {\n  insights.push(`⚠️ Low participation rate: ${participationRate}%`);\n}\n\nif (totalBlockers > 5) {\n  insights.push(`🚧 High number of blockers: ${totalBlockers}`);\n}\n\nif (new Date().getDay() === 1) { // Monday\n  insights.push('📅 Start of the week - ensure weekly goals are clear');\n}\n\nif (new Date().getDay() === 5) { // Friday\n  insights.push('🎯 End of week - good time to review accomplishments');\n}\n\nreturn {\n  json: {\n    date: new Date().toISOString(),\n    totalTeams: summaries.length,\n    totalUpdates,\n    totalBlockers,\n    participationRate,\n    insights,\n    summaries: summaries.map(s => ({\n      team: s.json.teamName,\n      updates: s.json.updateCount,\n      blockers: s.json.blockerCount\n    }))\n  }\n};"
+      }
+    },
+    {
+      "id": "store_metrics",
+      "name": "Store Standup Metrics",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2,
+      "position": [1850, 300],
+      "parameters": {
+        "operation": "insert",
+        "table": "standup_metrics",
+        "columns": "date,total_teams,total_updates,total_blockers,participation_rate,insights",
+        "additionalFields": {
+          "date": "={{$json.date}}",
+          "total_teams": "={{$json.totalTeams}}",
+          "total_updates": "={{$json.totalUpdates}}",
+          "total_blockers": "={{$json.totalBlockers}}",
+          "participation_rate": "={{$json.participationRate}}",
+          "insights": "={{JSON.stringify($json.insights)}}"
+        }
+      }
+    },
+    {
+      "id": "send_manager_report",
+      "name": "Send Manager Report",
+      "type": "n8n-nodes-base.emailSend",
+      "typeVersion": 2,
+      "position": [2050, 300],
+      "parameters": {
+        "fromEmail": "standup-bot@company.com",
+        "toEmail": "managers@company.com",
+        "subject": "Daily Standup Report - {{$today}}",
+        "emailType": "html",
+        "htmlBody": "<h2>Daily Standup Report</h2>\n<p>Date: {{$json.date}}</p>\n\n<h3>Summary</h3>\n<ul>\n  <li>Total Teams: {{$json.totalTeams}}</li>\n  <li>Total Updates: {{$json.totalUpdates}}</li>\n  <li>Total Blockers: {{$json.totalBlockers}}</li>\n  <li>Participation Rate: {{$json.participationRate}}%</li>\n</ul>\n\n<h3>Insights</h3>\n<ul>\n{{#each json.insights}}\n  <li>{{this}}</li>\n{{/each}}\n</ul>\n\n<h3>Team Breakdown</h3>\n<table border=\"1\" cellpadding=\"5\">\n  <tr>\n    <th>Team</th>\n    <th>Updates</th>\n    <th>Blockers</th>\n  </tr>\n{{#each json.summaries}}\n  <tr>\n    <td>{{this.team}}</td>\n    <td>{{this.updates}}</td>\n    <td>{{this.blockers}}</td>\n  </tr>\n{{/each}}\n</table>",
+        "options": {}
+      }
+    }
+  ],
+  "connections": {
+    "Daily Trigger": {
+      "main": [[{"node": "Get Team Members", "type": "main", "index": 0}]]
+    },
+    "Get Team Members": {
+      "main": [[{"node": "Send Standup Reminder", "type": "main", "index": 0}]]
+    },
+    "Send Standup Reminder": {
+      "main": [[{"node": "Wait 15 Minutes", "type": "main", "index": 0}]]
+    },
+    "Wait 15 Minutes": {
+      "main": [[{"node": "Collect Standup Responses", "type": "main", "index": 0}]]
+    },
+    "Collect Standup Responses": {
+      "main": [
+        [
+          {"node": "Identify Missing Updates", "type": "main", "index": 0},
+          {"node": "Format Team Summaries", "type": "main", "index": 0}
+        ]
+      ]
+    },
+    "Identify Missing Updates": {
+      "main": [[{"node": "Send Follow-up to Missing", "type": "main", "index": 0}]]
+    },
+    "Format Team Summaries": {
+      "main": [[{"node": "Post Team Summary", "type": "main", "index": 0}]]
+    },
+    "Post Team Summary": {
+      "main": [[{"node": "Generate Daily Insights", "type": "main", "index": 0}]]
+    },
+    "Generate Daily Insights": {
+      "main": [[{"node": "Store Standup Metrics", "type": "main", "index": 0}]]
+    },
+    "Store Standup Metrics": {
+      "main": [[{"node": "Send Manager Report", "type": "main", "index": 0}]]
+    }
+  },
+  "active": false,
+  "settings": {
+    "saveDataSuccessExecution": "all",
+    "saveManualExecutions": true,
+    "saveExecutionProgress": true
+  },
+  "tags": ["daily", "automation", "standup", "team-management"]
+}

@@ -1,0 +1,275 @@
+{
+  "name": "Auto Response System",
+  "nodes": [
+    {
+      "id": "trigger",
+      "name": "Incoming Email",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1,
+      "position": [250, 300],
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "email-received",
+        "responseMode": "responseNode",
+        "options": {}
+      }
+    },
+    {
+      "id": "validate_email",
+      "name": "Validate Email Data",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [450, 300],
+      "parameters": {
+        "functionCode": "const email = $input.first().json;\n\n// Validate required fields\nif (!email.from || !email.subject) {\n  throw new Error('Missing required email fields');\n}\n\n// Clean and structure email data\nreturn {\n  json: {\n    messageId: email.messageId || `msg_${Date.now()}`,\n    from: email.from,\n    fromName: email.fromName || email.from.split('@')[0],\n    to: email.to,\n    subject: email.subject,\n    body: email.body || email.text || '',\n    html: email.html || '',\n    receivedAt: email.receivedAt || new Date().toISOString(),\n    replyTo: email.replyTo || email.from,\n    inReplyTo: email.inReplyTo || null,\n    references: email.references || [],\n    isReply: email.subject.toLowerCase().startsWith('re:'),\n    hasAttachments: email.attachments && email.attachments.length > 0\n  }\n};"
+      }
+    },
+    {
+      "id": "check_auto_response",
+      "name": "Check Auto-Response Rules",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2,
+      "position": [650, 300],
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SELECT \n  ar.*,\n  art.template_name,\n  art.template_body,\n  art.template_variables\nFROM auto_response_rules ar\nJOIN auto_response_templates art ON ar.template_id = art.id\nWHERE ar.is_active = true\n  AND (\n    ar.trigger_type = 'all' OR\n    (ar.trigger_type = 'keyword' AND '{{$json.subject}}' ILIKE '%' || ar.trigger_value || '%') OR\n    (ar.trigger_type = 'sender' AND '{{$json.from}}' = ar.trigger_value) OR\n    (ar.trigger_type = 'domain' AND '{{$json.from}}' LIKE '%@' || ar.trigger_value)\n  )\nORDER BY ar.priority DESC\nLIMIT 1",
+        "options": {}
+      }
+    },
+    {
+      "id": "check_recent_response",
+      "name": "Check Recent Responses",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2,
+      "position": [850, 200],
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SELECT COUNT(*) as recent_count\nFROM auto_response_log\nWHERE recipient_email = '{{$json.from}}'\n  AND sent_at > NOW() - INTERVAL '24 hours'",
+        "options": {}
+      }
+    },
+    {
+      "id": "decide_response",
+      "name": "Decide on Response",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [1050, 300],
+      "parameters": {
+        "functionCode": "const email = $input.all()[0].json;\nconst rule = $input.all()[1].json;\nconst recentCheck = $input.all()[2].json;\n\n// Check if we should send auto-response\nlet shouldRespond = false;\nlet responseReason = '';\n\n// No rule found\nif (!rule || !rule.template_body) {\n  return {\n    json: {\n      ...email,\n      shouldRespond: false,\n      responseReason: 'No matching auto-response rule found'\n    }\n  };\n}\n\n// Check if already responded recently\nif (recentCheck.recent_count > 0 && !rule.allow_multiple) {\n  return {\n    json: {\n      ...email,\n      shouldRespond: false,\n      responseReason: 'Already sent auto-response in last 24 hours'\n    }\n  };\n}\n\n// Check business hours if required\nif (rule.business_hours_only) {\n  const now = new Date();\n  const hour = now.getHours();\n  const day = now.getDay();\n  \n  if (day === 0 || day === 6 || hour < 9 || hour >= 17) {\n    return {\n      json: {\n        ...email,\n        shouldRespond: false,\n        responseReason: 'Outside business hours'\n      }\n    };\n  }\n}\n\n// Check blacklist\nconst blacklistedDomains = ['noreply', 'no-reply', 'donotreply', 'mailer-daemon'];\nif (blacklistedDomains.some(domain => email.from.toLowerCase().includes(domain))) {\n  return {\n    json: {\n      ...email,\n      shouldRespond: false,\n      responseReason: 'Sender is blacklisted'\n    }\n  };\n}\n\n// All checks passed\nreturn {\n  json: {\n    ...email,\n    shouldRespond: true,\n    responseReason: 'All conditions met',\n    ruleId: rule.id,\n    templateId: rule.template_id,\n    templateName: rule.template_name,\n    templateBody: rule.template_body,\n    templateVariables: rule.template_variables,\n    responseDelay: rule.response_delay || 0\n  }\n};"
+      }
+    },
+    {
+      "id": "route_decision",
+      "name": "Route by Decision",
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 1,
+      "position": [1250, 300],
+      "parameters": {
+        "dataType": "boolean",
+        "value1": "={{$json.shouldRespond}}",
+        "rules": {
+          "rules": [
+            {
+              "value2": true,
+              "output": 0
+            },
+            {
+              "value2": false,
+              "output": 1
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "wait_delay",
+      "name": "Wait Response Delay",
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1,
+      "position": [1450, 200],
+      "parameters": {
+        "amount": "={{$json.responseDelay}}",
+        "unit": "seconds"
+      }
+    },
+    {
+      "id": "generate_response",
+      "name": "Generate Response Content",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [1650, 200],
+      "parameters": {
+        "functionCode": "const data = $input.first().json;\n\n// Parse template variables\nlet variables = {};\ntry {\n  variables = JSON.parse(data.templateVariables || '{}');\n} catch (e) {\n  variables = {};\n}\n\n// Add dynamic variables\nvariables = {\n  ...variables,\n  recipientName: data.fromName,\n  recipientEmail: data.from,\n  originalSubject: data.subject,\n  currentDate: new Date().toLocaleDateString(),\n  currentTime: new Date().toLocaleTimeString(),\n  ticketNumber: `TKT-${Date.now()}`,\n  responseTime: '24-48 hours'\n};\n\n// Replace variables in template\nlet responseBody = data.templateBody;\nlet responseSubject = `Re: ${data.subject}`;\n\n// Replace all variables\nObject.keys(variables).forEach(key => {\n  const regex = new RegExp(`{{${key}}}`, 'g');\n  responseBody = responseBody.replace(regex, variables[key]);\n});\n\n// Generate HTML version\nconst htmlBody = `\n<!DOCTYPE html>\n<html>\n<head>\n  <style>\n    body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }\n    .container { max-width: 600px; margin: 0 auto; padding: 20px; }\n    .header { border-bottom: 2px solid #007bff; padding-bottom: 10px; margin-bottom: 20px; }\n    .footer { margin-top: 30px; padding-top: 20px; border-top: 1px solid #ddd; font-size: 12px; color: #666; }\n    .original-message { background: #f5f5f5; padding: 15px; margin-top: 20px; border-left: 3px solid #007bff; }\n  </style>\n</head>\n<body>\n  <div class=\"container\">\n    <div class=\"content\">\n      ${responseBody.replace(/\\n/g, '<br>')}\n    </div>\n    \n    <div class=\"footer\">\n      <p>This is an automated response. A team member will review your message and provide a detailed response within ${variables.responseTime}.</p>\n      <p>Reference: ${variables.ticketNumber}</p>\n    </div>\n    \n    <div class=\"original-message\">\n      <p><strong>Original Message:</strong></p>\n      <p><strong>From:</strong> ${data.from}<br>\n      <strong>Date:</strong> ${new Date(data.receivedAt).toLocaleString()}<br>\n      <strong>Subject:</strong> ${data.subject}</p>\n    </div>\n  </div>\n</body>\n</html>\n`;\n\nreturn {\n  json: {\n    ...data,\n    responseSubject,\n    responseBody,\n    responseHtml: htmlBody,\n    responseVariables: variables\n  }\n};"
+      }
+    },
+    {
+      "id": "send_response",
+      "name": "Send Auto Response",
+      "type": "n8n-nodes-base.emailSend",
+      "typeVersion": 2,
+      "position": [1850, 200],
+      "parameters": {
+        "fromEmail": "support@company.com",
+        "toEmail": "={{$json.replyTo}}",
+        "subject": "={{$json.responseSubject}}",
+        "emailType": "html",
+        "htmlBody": "={{$json.responseHtml}}",
+        "options": {
+          "replyTo": "support@company.com",
+          "allowUnauthorizedCerts": false
+        },
+        "additionalFields": {
+          "inReplyTo": "={{$json.messageId}}",
+          "references": "={{$json.references.concat($json.messageId).join(' ')}}"
+        }
+      }
+    },
+    {
+      "id": "log_response",
+      "name": "Log Auto Response",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2,
+      "position": [2050, 200],
+      "parameters": {
+        "operation": "insert",
+        "table": "auto_response_log",
+        "columns": "original_message_id,recipient_email,rule_id,template_id,response_subject,sent_at,status",
+        "additionalFields": {
+          "original_message_id": "={{$json.messageId}}",
+          "recipient_email": "={{$json.from}}",
+          "rule_id": "={{$json.ruleId}}",
+          "template_id": "={{$json.templateId}}",
+          "response_subject": "={{$json.responseSubject}}",
+          "sent_at": "={{$now.toISO()}}",
+          "status": "sent"
+        }
+      }
+    },
+    {
+      "id": "log_no_response",
+      "name": "Log No Response",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2,
+      "position": [1450, 400],
+      "parameters": {
+        "operation": "insert",
+        "table": "auto_response_log",
+        "columns": "original_message_id,recipient_email,status,status_reason,created_at",
+        "additionalFields": {
+          "original_message_id": "={{$json.messageId}}",
+          "recipient_email": "={{$json.from}}",
+          "status": "skipped",
+          "status_reason": "={{$json.responseReason}}",
+          "created_at": "={{$now.toISO()}}"
+        }
+      }
+    },
+    {
+      "id": "create_ticket",
+      "name": "Create Support Ticket",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2,
+      "position": [1650, 400],
+      "parameters": {
+        "operation": "insert",
+        "table": "support_tickets",
+        "columns": "ticket_number,email_message_id,customer_email,subject,description,status,priority,created_at",
+        "additionalFields": {
+          "ticket_number": "TKT-{{Date.now()}}",
+          "email_message_id": "={{$json.messageId}}",
+          "customer_email": "={{$json.from}}",
+          "subject": "={{$json.subject}}",
+          "description": "={{$json.body}}",
+          "status": "new",
+          "priority": "normal",
+          "created_at": "={{$now.toISO()}}"
+        }
+      }
+    },
+    {
+      "id": "webhook_response",
+      "name": "Send Webhook Response",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [2250, 300],
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={\n  \"success\": true,\n  \"messageId\": \"{{$json.messageId}}\",\n  \"autoResponseSent\": {{$json.shouldRespond || false}},\n  \"reason\": \"{{$json.responseReason || 'Processed successfully'}}\",\n  \"ticketCreated\": {{$json.ticket_number ? true : false}},\n  \"ticketNumber\": \"{{$json.ticket_number || ''}}\"\n}",
+        "responseHeaders": {
+          "entries": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "responseCode": 200
+      }
+    },
+    {
+      "id": "update_stats",
+      "name": "Update Response Stats",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [2050, 300],
+      "parameters": {
+        "functionCode": "// This would typically update various statistics\n// For now, we'll just pass through the data\nconst data = $input.first().json;\n\n// Calculate some basic stats\nconst stats = {\n  totalProcessed: 1,\n  autoResponseSent: data.shouldRespond ? 1 : 0,\n  ticketCreated: data.ticket_number ? 1 : 0,\n  processingTime: Date.now() - new Date(data.receivedAt).getTime(),\n  date: new Date().toISOString().split('T')[0]\n};\n\nreturn {\n  json: {\n    ...data,\n    stats\n  }\n};"
+      }
+    }
+  ],
+  "connections": {
+    "Incoming Email": {
+      "main": [[{"node": "Validate Email Data", "type": "main", "index": 0}]]
+    },
+    "Validate Email Data": {
+      "main": [[{"node": "Check Auto-Response Rules", "type": "main", "index": 0}]]
+    },
+    "Check Auto-Response Rules": {
+      "main": [[{"node": "Check Recent Responses", "type": "main", "index": 0}]]
+    },
+    "Check Recent Responses": {
+      "main": [[{"node": "Decide on Response", "type": "main", "index": 0}]]
+    },
+    "Decide on Response": {
+      "main": [[{"node": "Route by Decision", "type": "main", "index": 0}]]
+    },
+    "Route by Decision": {
+      "main": [
+        [{"node": "Wait Response Delay", "type": "main", "index": 0}],
+        [
+          {"node": "Log No Response", "type": "main", "index": 0},
+          {"node": "Create Support Ticket", "type": "main", "index": 0}
+        ]
+      ]
+    },
+    "Wait Response Delay": {
+      "main": [[{"node": "Generate Response Content", "type": "main", "index": 0}]]
+    },
+    "Generate Response Content": {
+      "main": [[{"node": "Send Auto Response", "type": "main", "index": 0}]]
+    },
+    "Send Auto Response": {
+      "main": [[{"node": "Log Auto Response", "type": "main", "index": 0}]]
+    },
+    "Log Auto Response": {
+      "main": [[{"node": "Update Response Stats", "type": "main", "index": 0}]]
+    },
+    "Log No Response": {
+      "main": [[{"node": "Update Response Stats", "type": "main", "index": 0}]]
+    },
+    "Create Support Ticket": {
+      "main": [[{"node": "Update Response Stats", "type": "main", "index": 0}]]
+    },
+    "Update Response Stats": {
+      "main": [[{"node": "Send Webhook Response", "type": "main", "index": 0}]]
+    }
+  },
+  "active": false,
+  "settings": {
+    "saveDataSuccessExecution": "all",
+    "saveManualExecutions": true,
+    "saveExecutionProgress": true,
+    "executionTimeout": 120
+  },
+  "tags": ["email", "automation", "auto-response", "customer-service"]
+}

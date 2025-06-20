@@ -1,0 +1,251 @@
+{
+  "name": "Quote Generation Workflow",
+  "nodes": [
+    {
+      "id": "trigger",
+      "name": "Quote Request",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1,
+      "position": [250, 300],
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "quote-request",
+        "responseMode": "responseNode",
+        "options": {}
+      }
+    },
+    {
+      "id": "validate_request",
+      "name": "Validate Request",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [450, 300],
+      "parameters": {
+        "functionCode": "const request = $input.first().json;\nconst errors = [];\n\n// Validate required fields\nif (!request.customerId) errors.push('Customer ID is required');\nif (!request.products || !Array.isArray(request.products) || request.products.length === 0) {\n  errors.push('At least one product is required');\n}\n\n// Validate product data\nif (request.products) {\n  request.products.forEach((product, index) => {\n    if (!product.id) errors.push(`Product ${index + 1}: ID is required`);\n    if (!product.quantity || product.quantity <= 0) errors.push(`Product ${index + 1}: Valid quantity is required`);\n  });\n}\n\nif (errors.length > 0) {\n  throw new Error(`Validation failed: ${errors.join(', ')}`);\n}\n\nreturn {\n  json: {\n    ...request,\n    requestId: `QUOTE-${Date.now()}`,\n    validatedAt: new Date().toISOString()\n  }\n};"
+      }
+    },
+    {
+      "id": "get_customer_info",
+      "name": "Get Customer Info",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2,
+      "position": [650, 200],
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SELECT c.*, cs.discount_rate, cs.payment_terms, cs.credit_limit \nFROM customers c \nLEFT JOIN customer_settings cs ON c.id = cs.customer_id \nWHERE c.id = '{{$json.customerId}}'",
+        "options": {}
+      }
+    },
+    {
+      "id": "get_product_pricing",
+      "name": "Get Product Pricing",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2,
+      "position": [650, 400],
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SELECT p.id, p.name, p.sku, p.base_price, p.cost, pc.category_name, \n       pt.tier_quantity, pt.tier_discount \nFROM products p \nLEFT JOIN product_categories pc ON p.category_id = pc.id \nLEFT JOIN pricing_tiers pt ON p.id = pt.product_id \nWHERE p.id IN ({{$json.products.map(p => \"'\" + p.id + \"'\").join(',')}})",
+        "options": {}
+      }
+    },
+    {
+      "id": "calculate_pricing",
+      "name": "Calculate Pricing",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [850, 300],
+      "parameters": {
+        "functionCode": "const request = $input.all()[0].json;\nconst customer = $input.all()[1].json;\nconst products = $input.all()[2].json;\n\nconst quoteItems = [];\nlet subtotal = 0;\nlet totalCost = 0;\n\n// Process each requested product\nrequest.products.forEach(requestedProduct => {\n  const productInfo = products.find(p => p.id === requestedProduct.id);\n  \n  if (productInfo) {\n    const quantity = requestedProduct.quantity;\n    let unitPrice = productInfo.base_price;\n    \n    // Apply volume discount if applicable\n    if (productInfo.tier_quantity && quantity >= productInfo.tier_quantity) {\n      unitPrice = unitPrice * (1 - productInfo.tier_discount);\n    }\n    \n    // Apply customer discount\n    const customerDiscount = customer.discount_rate || 0;\n    const finalUnitPrice = unitPrice * (1 - customerDiscount);\n    \n    const lineTotal = finalUnitPrice * quantity;\n    const lineCost = productInfo.cost * quantity;\n    \n    quoteItems.push({\n      productId: productInfo.id,\n      productName: productInfo.name,\n      sku: productInfo.sku,\n      quantity: quantity,\n      basePrice: productInfo.base_price,\n      unitPrice: finalUnitPrice,\n      discount: ((productInfo.base_price - finalUnitPrice) / productInfo.base_price * 100).toFixed(2),\n      lineTotal: lineTotal,\n      cost: lineCost,\n      margin: ((lineTotal - lineCost) / lineTotal * 100).toFixed(2)\n    });\n    \n    subtotal += lineTotal;\n    totalCost += lineCost;\n  }\n});\n\n// Calculate taxes and total\nconst taxRate = 0.08; // 8% tax\nconst tax = subtotal * taxRate;\nconst total = subtotal + tax;\nconst totalMargin = ((subtotal - totalCost) / subtotal * 100).toFixed(2);\n\n// Determine quote validity\nconst validityDays = customer.payment_terms === 'NET60' ? 45 : 30;\nconst expiryDate = new Date();\nexpiryDate.setDate(expiryDate.getDate() + validityDays);\n\nreturn {\n  json: {\n    quoteId: request.requestId,\n    customerId: customer.id,\n    customerName: customer.name,\n    customerEmail: customer.email,\n    customerDiscount: customer.discount_rate || 0,\n    paymentTerms: customer.payment_terms || 'NET30',\n    items: quoteItems,\n    subtotal: subtotal.toFixed(2),\n    tax: tax.toFixed(2),\n    total: total.toFixed(2),\n    totalCost: totalCost.toFixed(2),\n    totalMargin: totalMargin,\n    currency: 'USD',\n    validUntil: expiryDate.toISOString(),\n    createdAt: new Date().toISOString(),\n    status: 'draft'\n  }\n};"
+      }
+    },
+    {
+      "id": "check_approval",
+      "name": "Check Approval Required",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [1050, 300],
+      "parameters": {
+        "functionCode": "const quote = $input.first().json;\n\n// Determine if approval is required\nlet approvalRequired = false;\nlet approvalReasons = [];\n\n// Check total value\nif (parseFloat(quote.total) > 50000) {\n  approvalRequired = true;\n  approvalReasons.push(`High value quote: $${quote.total}`);\n}\n\n// Check margin\nif (parseFloat(quote.totalMargin) < 20) {\n  approvalRequired = true;\n  approvalReasons.push(`Low margin: ${quote.totalMargin}%`);\n}\n\n// Check discount\nif (quote.customerDiscount > 0.15) {\n  approvalRequired = true;\n  approvalReasons.push(`High discount: ${(quote.customerDiscount * 100).toFixed(0)}%`);\n}\n\nreturn {\n  json: {\n    ...quote,\n    approvalRequired,\n    approvalReasons,\n    status: approvalRequired ? 'pending_approval' : 'approved'\n  }\n};"
+      }
+    },
+    {
+      "id": "route_approval",
+      "name": "Route by Approval",
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 1,
+      "position": [1250, 300],
+      "parameters": {
+        "dataType": "boolean",
+        "value1": "={{$json.approvalRequired}}",
+        "rules": {
+          "rules": [
+            {
+              "value2": true,
+              "output": 0
+            },
+            {
+              "value2": false,
+              "output": 1
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "request_approval",
+      "name": "Request Approval",
+      "type": "n8n-nodes-base.slack",
+      "typeVersion": 2,
+      "position": [1450, 200],
+      "parameters": {
+        "channel": "#sales-approvals",
+        "text": "📋 Quote Approval Required\n\nQuote ID: {{$json.quoteId}}\nCustomer: {{$json.customerName}}\nTotal: ${{$json.total}}\n\nApproval needed for:\n{{$json.approvalReasons.join('\\n')}}\n\nPlease review: {{$json.approvalLink}}",
+        "authentication": "oAuth2"
+      }
+    },
+    {
+      "id": "generate_pdf",
+      "name": "Generate Quote PDF",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [1450, 400],
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.pdfgenerator.com/generate",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "bearerAuth",
+        "sendBody": true,
+        "contentType": "json",
+        "body": "={\n  \"template_id\": \"quote_template_v2\",\n  \"data\": {\n    \"quote\": {{JSON.stringify($json)}},\n    \"company\": {\n      \"name\": \"Your Company Inc.\",\n      \"address\": \"123 Business St, Suite 100\",\n      \"city\": \"San Francisco, CA 94105\",\n      \"phone\": \"+1 (555) 123-4567\",\n      \"email\": \"sales@company.com\",\n      \"website\": \"www.company.com\"\n    }\n  },\n  \"format\": \"pdf\",\n  \"output\": \"base64\"\n}"
+      }
+    },
+    {
+      "id": "store_quote",
+      "name": "Store Quote",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2,
+      "position": [1650, 300],
+      "parameters": {
+        "operation": "insert",
+        "table": "quotes",
+        "columns": "quote_id,customer_id,total,status,valid_until,quote_data,created_at",
+        "additionalFields": {
+          "quote_id": "={{$json.quoteId}}",
+          "customer_id": "={{$json.customerId}}",
+          "total": "={{$json.total}}",
+          "status": "={{$json.status}}",
+          "valid_until": "={{$json.validUntil}}",
+          "quote_data": "={{JSON.stringify($json)}}",
+          "created_at": "={{$json.createdAt}}"
+        }
+      }
+    },
+    {
+      "id": "send_quote",
+      "name": "Send Quote Email",
+      "type": "n8n-nodes-base.emailSend",
+      "typeVersion": 2,
+      "position": [1850, 300],
+      "parameters": {
+        "fromEmail": "sales@company.com",
+        "toEmail": "={{$json.customerEmail}}",
+        "subject": "Your Quote {{$json.quoteId}} from Your Company",
+        "emailType": "html",
+        "htmlBody": "<h2>Thank you for your interest!</h2>\n\n<p>Dear {{$json.customerName}},</p>\n\n<p>Please find attached your personalized quote {{$json.quoteId}}.</p>\n\n<h3>Quote Summary:</h3>\n<table style=\"border-collapse: collapse; width: 100%;\">\n  <tr>\n    <td style=\"padding: 8px; border: 1px solid #ddd;\"><strong>Quote Number:</strong></td>\n    <td style=\"padding: 8px; border: 1px solid #ddd;\">{{$json.quoteId}}</td>\n  </tr>\n  <tr>\n    <td style=\"padding: 8px; border: 1px solid #ddd;\"><strong>Total Amount:</strong></td>\n    <td style=\"padding: 8px; border: 1px solid #ddd;\">${{$json.total}} {{$json.currency}}</td>\n  </tr>\n  <tr>\n    <td style=\"padding: 8px; border: 1px solid #ddd;\"><strong>Valid Until:</strong></td>\n    <td style=\"padding: 8px; border: 1px solid #ddd;\">{{$json.validUntil}}</td>\n  </tr>\n  <tr>\n    <td style=\"padding: 8px; border: 1px solid #ddd;\"><strong>Payment Terms:</strong></td>\n    <td style=\"padding: 8px; border: 1px solid #ddd;\">{{$json.paymentTerms}}</td>\n  </tr>\n</table>\n\n<p>To accept this quote, please click the link below:</p>\n<p><a href=\"https://portal.company.com/accept-quote/{{$json.quoteId}}\">Accept Quote</a></p>\n\n<p>If you have any questions, please don't hesitate to contact us.</p>\n\n<p>Best regards,<br>\nYour Sales Team</p>",
+        "attachments": "={{$json.pdfData}}"
+      }
+    },
+    {
+      "id": "log_activity",
+      "name": "Log Quote Activity",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2,
+      "position": [2050, 300],
+      "parameters": {
+        "operation": "insert",
+        "table": "quote_activities",
+        "columns": "quote_id,activity_type,description,created_at",
+        "additionalFields": {
+          "quote_id": "={{$json.quoteId}}",
+          "activity_type": "quote_sent",
+          "description": "Quote sent to {{$json.customerEmail}}",
+          "created_at": "={{$now.toISO()}}"
+        }
+      }
+    },
+    {
+      "id": "respond_success",
+      "name": "Send Success Response",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [2250, 300],
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={\n  \"success\": true,\n  \"quoteId\": \"{{$json.quoteId}}\",\n  \"status\": \"{{$json.status}}\",\n  \"total\": \"{{$json.total}}\",\n  \"validUntil\": \"{{$json.validUntil}}\",\n  \"message\": \"Quote generated and sent successfully\"\n}",
+        "responseHeaders": {
+          "entries": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "responseCode": 200
+      }
+    }
+  ],
+  "connections": {
+    "Quote Request": {
+      "main": [[{"node": "Validate Request", "type": "main", "index": 0}]]
+    },
+    "Validate Request": {
+      "main": [
+        [
+          {"node": "Get Customer Info", "type": "main", "index": 0},
+          {"node": "Get Product Pricing", "type": "main", "index": 0}
+        ]
+      ]
+    },
+    "Get Customer Info": {
+      "main": [[{"node": "Calculate Pricing", "type": "main", "index": 0}]]
+    },
+    "Get Product Pricing": {
+      "main": [[{"node": "Calculate Pricing", "type": "main", "index": 1}]]
+    },
+    "Calculate Pricing": {
+      "main": [[{"node": "Check Approval Required", "type": "main", "index": 0}]]
+    },
+    "Check Approval Required": {
+      "main": [[{"node": "Route by Approval", "type": "main", "index": 0}]]
+    },
+    "Route by Approval": {
+      "main": [
+        [{"node": "Request Approval", "type": "main", "index": 0}],
+        [{"node": "Generate Quote PDF", "type": "main", "index": 0}]
+      ]
+    },
+    "Request Approval": {
+      "main": [[{"node": "Generate Quote PDF", "type": "main", "index": 0}]]
+    },
+    "Generate Quote PDF": {
+      "main": [[{"node": "Store Quote", "type": "main", "index": 0}]]
+    },
+    "Store Quote": {
+      "main": [[{"node": "Send Quote Email", "type": "main", "index": 0}]]
+    },
+    "Send Quote Email": {
+      "main": [[{"node": "Log Quote Activity", "type": "main", "index": 0}]]
+    },
+    "Log Quote Activity": {
+      "main": [[{"node": "Send Success Response", "type": "main", "index": 0}]]
+    }
+  },
+  "active": false,
+  "settings": {
+    "saveDataSuccessExecution": "all",
+    "saveManualExecutions": true,
+    "saveExecutionProgress": true,
+    "errorWorkflow": "error-handler"
+  },
+  "tags": ["sales", "automation", "quotes", "crm"]
+}
