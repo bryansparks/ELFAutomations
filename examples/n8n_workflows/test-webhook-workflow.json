@@ -1,0 +1,82 @@
+{
+  "name": "Test Webhook Workflow",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "test",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "webhook",
+      "name": "Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1,
+      "position": [250, 300],
+      "webhookId": "test"
+    },
+    {
+      "parameters": {
+        "values": {
+          "string": [
+            {
+              "name": "result",
+              "value": "=Workflow executed successfully at {{new Date().toISOString()}}"
+            },
+            {
+              "name": "input_message",
+              "value": "={{$json[\"message\"]}}"
+            },
+            {
+              "name": "processed_by",
+              "value": "n8n-test-workflow"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "set",
+      "name": "Process Data",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 2,
+      "position": [450, 300]
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "id": "respond",
+      "name": "Respond to Webhook",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [650, 300]
+    }
+  ],
+  "connections": {
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "Process Data",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Process Data": {
+      "main": [
+        [
+          {
+            "node": "Respond to Webhook",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {},
+  "tags": []
+}

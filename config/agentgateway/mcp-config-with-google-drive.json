@@ -1,0 +1,182 @@
+{
+  "type": "static",
+  "listeners": [
+    {
+      "name": "mcp-sse",
+      "protocol": "MCP",
+      "sse": {
+        "address": "[::]",
+        "port": 3000
+      }
+    },
+    {
+      "name": "admin",
+      "protocol": "HTTP",
+      "http": {
+        "address": "[::]",
+        "port": 8080
+      }
+    }
+  ],
+  "targets": {
+    "mcp": [
+      {
+        "name": "supabase",
+        "stdio": {
+          "cmd": "npx",
+          "args": ["-y", "@supabase/mcp-server-supabase@latest"],
+          "env": {
+            "SUPABASE_URL": "${SUPABASE_URL}",
+            "SUPABASE_ANON_KEY": "${SUPABASE_ANON_KEY}",
+            "SUPABASE_PERSONAL_ACCESS_TOKEN": "${SUPABASE_PERSONAL_ACCESS_TOKEN}"
+          }
+        },
+        "health_check": {
+          "enabled": true,
+          "interval": "30s",
+          "timeout": "5s"
+        }
+      },
+      {
+        "name": "team-registry",
+        "stdio": {
+          "cmd": "node",
+          "args": ["mcp/typescript/servers/team-registry/server.js"],
+          "env": {
+            "SUPABASE_URL": "${SUPABASE_URL}",
+            "SUPABASE_ANON_KEY": "${SUPABASE_ANON_KEY}"
+          },
+          "working_directory": "${PROJECT_ROOT}"
+        },
+        "health_check": {
+          "enabled": true,
+          "interval": "30s",
+          "timeout": "5s"
+        }
+      },
+      {
+        "name": "business-tools",
+        "stdio": {
+          "cmd": "node",
+          "args": ["mcp/typescript/servers/business-tools/server.js"],
+          "env": {
+            "SUPABASE_URL": "${SUPABASE_URL}",
+            "SUPABASE_ANON_KEY": "${SUPABASE_ANON_KEY}"
+          },
+          "working_directory": "${PROJECT_ROOT}"
+        },
+        "health_check": {
+          "enabled": true,
+          "interval": "30s",
+          "timeout": "5s"
+        }
+      },
+      {
+        "name": "memory-learning",
+        "stdio": {
+          "cmd": "node",
+          "args": ["mcp/typescript/servers/memory-learning/server.js"],
+          "env": {
+            "SUPABASE_URL": "${SUPABASE_URL}",
+            "SUPABASE_SERVICE_KEY": "${SUPABASE_SERVICE_KEY}",
+            "OPENAI_API_KEY": "${OPENAI_API_KEY}"
+          },
+          "working_directory": "${PROJECT_ROOT}"
+        },
+        "health_check": {
+          "enabled": true,
+          "interval": "30s",
+          "timeout": "5s"
+        }
+      },
+      {
+        "name": "project-management",
+        "stdio": {
+          "cmd": "node",
+          "args": ["mcp/typescript/servers/project-management/server.js"],
+          "env": {
+            "SUPABASE_URL": "${SUPABASE_URL}",
+            "SUPABASE_ANON_KEY": "${SUPABASE_ANON_KEY}"
+          },
+          "working_directory": "${PROJECT_ROOT}"
+        },
+        "health_check": {
+          "enabled": true,
+          "interval": "30s",
+          "timeout": "5s"
+        }
+      },
+      {
+        "name": "google-drive-watcher",
+        "stdio": {
+          "cmd": "node",
+          "args": ["mcps/google-drive-watcher/dist/server.js"],
+          "env": {
+            "GOOGLE_CLIENT_ID": "${GOOGLE_CLIENT_ID}",
+            "GOOGLE_CLIENT_SECRET": "${GOOGLE_CLIENT_SECRET}",
+            "GOOGLE_REDIRECT_URI": "${GOOGLE_REDIRECT_URI}",
+            "SUPABASE_URL": "${SUPABASE_URL}",
+            "SUPABASE_KEY": "${SUPABASE_KEY}"
+          },
+          "working_directory": "${PROJECT_ROOT}"
+        },
+        "health_check": {
+          "enabled": true,
+          "interval": "30s",
+          "timeout": "5s",
+          "tool": "list_watch_folders"
+        }
+      }
+    ]
+  },
+  "observability": {
+    "metrics": {
+      "prometheus": {
+        "enabled": true,
+        "port": 9090
+      }
+    },
+    "logging": {
+      "level": "info",
+      "format": "json"
+    },
+    "tracing": {
+      "enabled": true,
+      "jaeger": {
+        "endpoint": "http://jaeger:14268/api/traces"
+      }
+    }
+  },
+  "security": {
+    "authentication": {
+      "enabled": true,
+      "providers": ["bearer_token"]
+    },
+    "authorization": {
+      "enabled": true,
+      "rbac": {
+        "policies": [
+          {
+            "role": "team-member",
+            "resources": ["mcp:*"],
+            "actions": ["read", "execute"]
+          },
+          {
+            "role": "team-manager",
+            "resources": ["mcp:*"],
+            "actions": ["read", "execute", "configure"]
+          }
+        ]
+      }
+    }
+  },
+  "rate_limiting": {
+    "enabled": true,
+    "rules": [
+      {
+        "matcher": {"path": "/mcp/*"},
+        "rate": "100/min"
+      }
+    ]
+  }
+}
