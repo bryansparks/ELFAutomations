@@ -1,0 +1,306 @@
+{
+  "name": "Email Triage Automation",
+  "nodes": [
+    {
+      "id": "trigger",
+      "name": "Email Trigger",
+      "type": "n8n-nodes-base.emailReadImap",
+      "typeVersion": 2,
+      "position": [250, 300],
+      "parameters": {
+        "mailbox": "INBOX",
+        "format": "resolved",
+        "options": {
+          "allowUnauthorizedCerts": false,
+          "forceReconnect": 300
+        }
+      }
+    },
+    {
+      "id": "extract_metadata",
+      "name": "Extract Email Metadata",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [450, 300],
+      "parameters": {
+        "functionCode": "const emails = $input.all();\n\nreturn emails.map(item => {\n  const email = item.json;\n  \n  // Extract sender domain\n  const senderEmail = email.from?.value?.[0]?.address || '';\n  const senderDomain = senderEmail.split('@')[1] || 'unknown';\n  \n  // Extract key information\n  const subject = email.subject || '';\n  const body = email.text || email.html || '';\n  const hasAttachments = email.attachments && email.attachments.length > 0;\n  \n  // Simple keyword detection\n  const urgentKeywords = ['urgent', 'asap', 'immediate', 'critical', 'emergency'];\n  const isUrgent = urgentKeywords.some(keyword => \n    subject.toLowerCase().includes(keyword) || \n    body.toLowerCase().includes(keyword)\n  );\n  \n  // Detect email type\n  let emailType = 'general';\n  if (subject.toLowerCase().includes('invoice') || body.toLowerCase().includes('payment')) {\n    emailType = 'financial';\n  } else if (subject.toLowerCase().includes('support') || subject.toLowerCase().includes('help')) {\n    emailType = 'support';\n  } else if (subject.toLowerCase().includes('meeting') || subject.toLowerCase().includes('calendar')) {\n    emailType = 'meeting';\n  } else if (senderEmail.includes('noreply') || senderEmail.includes('no-reply')) {\n    emailType = 'automated';\n  }\n  \n  return {\n    json: {\n      messageId: email.messageId,\n      from: senderEmail,\n      fromName: email.from?.value?.[0]?.name || '',\n      fromDomain: senderDomain,\n      to: email.to?.value?.map(t => t.address).join(', ') || '',\n      subject: subject,\n      bodyPreview: body.substring(0, 200),\n      hasAttachments: hasAttachments,\n      attachmentCount: email.attachments?.length || 0,\n      isUrgent: isUrgent,\n      emailType: emailType,\n      receivedAt: email.date || new Date().toISOString(),\n      labels: [],\n      priority: isUrgent ? 'high' : 'normal'\n    }\n  };\n});"
+      }
+    },
+    {
+      "id": "check_sender",
+      "name": "Check Sender History",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2,
+      "position": [650, 300],
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SELECT \n  sender_email,\n  sender_category,\n  is_vip,\n  is_blocked,\n  auto_label,\n  auto_folder\nFROM email_senders\nWHERE sender_email = '{{$json.from}}'\nLIMIT 1",
+        "options": {
+          "queryBatching": "independently"
+        }
+      }
+    },
+    {
+      "id": "ai_categorization",
+      "name": "AI Email Analysis",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [850, 300],
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.openai.com/v1/chat/completions",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "bearerAuth",
+        "sendBody": true,
+        "contentType": "json",
+        "body": "={\n  \"model\": \"gpt-3.5-turbo\",\n  \"messages\": [\n    {\n      \"role\": \"system\",\n      \"content\": \"You are an email categorization assistant. Analyze emails and return JSON with: category (sales/support/marketing/internal/spam), priority (high/medium/low), suggested_action (respond/delegate/archive/delete), summary (one sentence), and requires_response (boolean).\"\n    },\n    {\n      \"role\": \"user\",\n      \"content\": \"Analyze this email:\\n\\nFrom: {{$json.from}}\\nSubject: {{$json.subject}}\\nBody: {{$json.bodyPreview}}\\n\\nReturn only valid JSON.\"\n    }\n  ],\n  \"temperature\": 0.3,\n  \"max_tokens\": 200\n}"
+      }
+    },
+    {
+      "id": "merge_analysis",
+      "name": "Merge Analysis Results",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [1050, 300],
+      "parameters": {
+        "functionCode": "const email = $input.all()[0].json;\nconst senderInfo = $input.all()[1].json;\nconst aiAnalysis = JSON.parse($input.all()[2].json.choices[0].message.content);\n\n// Merge all data\nconst enrichedEmail = {\n  ...email,\n  senderCategory: senderInfo.sender_category || 'unknown',\n  isVip: senderInfo.is_vip || false,\n  isBlocked: senderInfo.is_blocked || false,\n  aiCategory: aiAnalysis.category,\n  aiPriority: aiAnalysis.priority,\n  aiSuggestedAction: aiAnalysis.suggested_action,\n  aiSummary: aiAnalysis.summary,\n  requiresResponse: aiAnalysis.requires_response\n};\n\n// Determine final priority\nif (enrichedEmail.isVip) {\n  enrichedEmail.finalPriority = 'high';\n} else if (enrichedEmail.isBlocked) {\n  enrichedEmail.finalPriority = 'low';\n} else if (enrichedEmail.isUrgent || aiAnalysis.priority === 'high') {\n  enrichedEmail.finalPriority = 'high';\n} else {\n  enrichedEmail.finalPriority = aiAnalysis.priority;\n}\n\n// Determine routing\nif (enrichedEmail.isBlocked || aiAnalysis.category === 'spam') {\n  enrichedEmail.routing = 'spam';\n} else if (aiAnalysis.category === 'support' || enrichedEmail.emailType === 'support') {\n  enrichedEmail.routing = 'support';\n} else if (aiAnalysis.category === 'sales') {\n  enrichedEmail.routing = 'sales';\n} else if (enrichedEmail.finalPriority === 'high') {\n  enrichedEmail.routing = 'priority';\n} else {\n  enrichedEmail.routing = 'general';\n}\n\nreturn {\n  json: enrichedEmail\n};"
+      }
+    },
+    {
+      "id": "route_email",
+      "name": "Route by Category",
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 1,
+      "position": [1250, 300],
+      "parameters": {
+        "dataType": "string",
+        "value1": "={{$json.routing}}",
+        "rules": {
+          "rules": [
+            {
+              "value2": "spam",
+              "output": 0
+            },
+            {
+              "value2": "support",
+              "output": 1
+            },
+            {
+              "value2": "sales",
+              "output": 2
+            },
+            {
+              "value2": "priority",
+              "output": 3
+            }
+          ]
+        },
+        "fallbackOutput": 4
+      }
+    },
+    {
+      "id": "move_to_spam",
+      "name": "Move to Spam",
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2,
+      "position": [1450, 100],
+      "parameters": {
+        "operation": "addLabels",
+        "messageId": "={{$json.messageId}}",
+        "labelIds": ["SPAM"],
+        "options": {}
+      }
+    },
+    {
+      "id": "create_support_ticket",
+      "name": "Create Support Ticket",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [1450, 200],
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.helpdesk.com/tickets",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "bearerAuth",
+        "sendBody": true,
+        "contentType": "json",
+        "body": "={\n  \"subject\": \"{{$json.subject}}\",\n  \"description\": \"{{$json.bodyPreview}}\",\n  \"requester\": {\n    \"email\": \"{{$json.from}}\",\n    \"name\": \"{{$json.fromName}}\"\n  },\n  \"priority\": \"{{$json.finalPriority}}\",\n  \"tags\": [\"email-import\", \"{{$json.aiCategory}}\"],\n  \"custom_fields\": {\n    \"email_message_id\": \"{{$json.messageId}}\",\n    \"ai_summary\": \"{{$json.aiSummary}}\"\n  }\n}"
+      }
+    },
+    {
+      "id": "notify_support",
+      "name": "Notify Support Team",
+      "type": "n8n-nodes-base.slack",
+      "typeVersion": 2,
+      "position": [1650, 200],
+      "parameters": {
+        "channel": "#support-inbox",
+        "text": "🎫 New support ticket created from email\n\nFrom: {{$json.from}}\nSubject: {{$json.subject}}\nPriority: {{$json.finalPriority}}\nSummary: {{$json.aiSummary}}\n\nTicket: {{$json.ticketUrl}}",
+        "authentication": "oAuth2"
+      }
+    },
+    {
+      "id": "add_to_crm",
+      "name": "Add to CRM",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2,
+      "position": [1450, 300],
+      "parameters": {
+        "operation": "upsert",
+        "table": "crm_contacts",
+        "columns": "email,name,last_contact_date,last_subject,lead_score",
+        "updateKey": "email",
+        "additionalFields": {
+          "email": "={{$json.from}}",
+          "name": "={{$json.fromName}}",
+          "last_contact_date": "={{$json.receivedAt}}",
+          "last_subject": "={{$json.subject}}",
+          "lead_score": "={{$json.aiPriority === 'high' ? 10 : 5}}"
+        }
+      }
+    },
+    {
+      "id": "forward_to_sales",
+      "name": "Forward to Sales",
+      "type": "n8n-nodes-base.emailSend",
+      "typeVersion": 2,
+      "position": [1650, 300],
+      "parameters": {
+        "fromEmail": "email-automation@company.com",
+        "toEmail": "sales@company.com",
+        "subject": "[LEAD] {{$json.subject}}",
+        "emailType": "html",
+        "htmlBody": "<p><strong>New sales inquiry received</strong></p>\n\n<p><strong>From:</strong> {{$json.fromName}} &lt;{{$json.from}}&gt;<br>\n<strong>Original Subject:</strong> {{$json.subject}}<br>\n<strong>AI Summary:</strong> {{$json.aiSummary}}<br>\n<strong>Priority:</strong> {{$json.finalPriority}}</p>\n\n<hr>\n\n<p><strong>Original Message:</strong></p>\n<p>{{$json.bodyPreview}}</p>\n\n<p><em>This email was automatically categorized and forwarded by the email triage system.</em></p>",
+        "options": {}
+      }
+    },
+    {
+      "id": "alert_priority",
+      "name": "Alert Priority Email",
+      "type": "n8n-nodes-base.slack",
+      "typeVersion": 2,
+      "position": [1450, 400],
+      "parameters": {
+        "channel": "@ceo",
+        "text": "🚨 High Priority Email\n\nFrom: {{$json.fromName}} <{{$json.from}}>\nSubject: {{$json.subject}}\n\nAI Summary: {{$json.aiSummary}}\nSuggested Action: {{$json.aiSuggestedAction}}\n\nRequires Response: {{$json.requiresResponse ? 'Yes' : 'No'}}\n\n<https://mail.google.com/mail/u/0/#inbox/{{$json.messageId}}|View in Gmail>",
+        "authentication": "oAuth2",
+        "otherOptions": {
+          "mrkdwn": true
+        }
+      }
+    },
+    {
+      "id": "apply_labels",
+      "name": "Apply Gmail Labels",
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2,
+      "position": [1450, 500],
+      "parameters": {
+        "operation": "addLabels",
+        "messageId": "={{$json.messageId}}",
+        "labelIds": ["={{$json.aiCategory}}"],
+        "options": {}
+      }
+    },
+    {
+      "id": "log_processing",
+      "name": "Log Email Processing",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2,
+      "position": [1650, 400],
+      "parameters": {
+        "operation": "insert",
+        "table": "email_processing_log",
+        "columns": "message_id,sender,subject,category,priority,routing,ai_summary,processed_at",
+        "additionalFields": {
+          "message_id": "={{$json.messageId}}",
+          "sender": "={{$json.from}}",
+          "subject": "={{$json.subject}}",
+          "category": "={{$json.aiCategory}}",
+          "priority": "={{$json.finalPriority}}",
+          "routing": "={{$json.routing}}",
+          "ai_summary": "={{$json.aiSummary}}",
+          "processed_at": "={{$now.toISO()}}"
+        }
+      }
+    },
+    {
+      "id": "update_sender_info",
+      "name": "Update Sender Info",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2,
+      "position": [1850, 400],
+      "parameters": {
+        "operation": "upsert",
+        "table": "email_senders",
+        "columns": "sender_email,sender_name,last_seen,email_count,avg_priority",
+        "updateKey": "sender_email",
+        "additionalFields": {
+          "sender_email": "={{$json.from}}",
+          "sender_name": "={{$json.fromName}}",
+          "last_seen": "={{$json.receivedAt}}",
+          "email_count": "={{($json.email_count || 0) + 1}}",
+          "avg_priority": "={{$json.finalPriority}}"
+        }
+      }
+    }
+  ],
+  "connections": {
+    "Email Trigger": {
+      "main": [[{"node": "Extract Email Metadata", "type": "main", "index": 0}]]
+    },
+    "Extract Email Metadata": {
+      "main": [[{"node": "Check Sender History", "type": "main", "index": 0}]]
+    },
+    "Check Sender History": {
+      "main": [[{"node": "AI Email Analysis", "type": "main", "index": 0}]]
+    },
+    "AI Email Analysis": {
+      "main": [[{"node": "Merge Analysis Results", "type": "main", "index": 0}]]
+    },
+    "Merge Analysis Results": {
+      "main": [[{"node": "Route by Category", "type": "main", "index": 0}]]
+    },
+    "Route by Category": {
+      "main": [
+        [{"node": "Move to Spam", "type": "main", "index": 0}],
+        [{"node": "Create Support Ticket", "type": "main", "index": 0}],
+        [
+          {"node": "Add to CRM", "type": "main", "index": 0},
+          {"node": "Forward to Sales", "type": "main", "index": 0}
+        ],
+        [{"node": "Alert Priority Email", "type": "main", "index": 0}],
+        [{"node": "Apply Gmail Labels", "type": "main", "index": 0}]
+      ]
+    },
+    "Create Support Ticket": {
+      "main": [[{"node": "Notify Support Team", "type": "main", "index": 0}]]
+    },
+    "Alert Priority Email": {
+      "main": [[{"node": "Apply Gmail Labels", "type": "main", "index": 0}]]
+    },
+    "Apply Gmail Labels": {
+      "main": [[{"node": "Log Email Processing", "type": "main", "index": 0}]]
+    },
+    "Move to Spam": {
+      "main": [[{"node": "Log Email Processing", "type": "main", "index": 0}]]
+    },
+    "Forward to Sales": {
+      "main": [[{"node": "Log Email Processing", "type": "main", "index": 0}]]
+    },
+    "Notify Support Team": {
+      "main": [[{"node": "Log Email Processing", "type": "main", "index": 0}]]
+    },
+    "Log Email Processing": {
+      "main": [[{"node": "Update Sender Info", "type": "main", "index": 0}]]
+    }
+  },
+  "active": false,
+  "settings": {
+    "saveDataSuccessExecution": "all",
+    "saveManualExecutions": true,
+    "saveExecutionProgress": true,
+    "executionTimeout": 300
+  },
+  "tags": ["email", "automation", "triage", "ai"]
+}
