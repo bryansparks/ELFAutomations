@@ -285,77 +285,77 @@ class GoogleDriveWatcherServer {
         switch (name) {
           case "get_auth_url":
             return await this.getAuthUrl();
-          
+
           case "authenticate":
             if (!args || typeof args !== 'object' || !('authCode' in args)) {
               throw new Error("authCode is required");
             }
             return await this.authenticate(args.authCode as string);
-          
+
           case "add_watch_folder":
             if (!args || typeof args !== 'object' || !('folderId' in args) || !('tenantName' in args)) {
               throw new Error("folderId and tenantName are required");
             }
             return await this.addWatchFolder(args.folderId as string, args.tenantName as string);
-          
+
           case "remove_watch_folder":
             if (!args || typeof args !== 'object' || !('folderId' in args)) {
               throw new Error("folderId is required");
             }
             return await this.removeWatchFolder(args.folderId as string);
-          
+
           case "list_watch_folders":
             return await this.listWatchFolders();
-          
+
           case "list_documents":
             if (!args || typeof args !== 'object' || !('folderId' in args)) {
               throw new Error("folderId is required");
             }
             return await this.listDocuments(
-              args.folderId as string, 
-              args.pageSize as number | undefined, 
+              args.folderId as string,
+              args.pageSize as number | undefined,
               args.pageToken as string | undefined
             );
-          
+
           case "get_document_metadata":
             if (!args || typeof args !== 'object' || !('fileId' in args)) {
               throw new Error("fileId is required");
             }
             return await this.getDocumentMetadata(args.fileId as string);
-          
+
           case "download_document":
             if (!args || typeof args !== 'object' || !('fileId' in args) || !('outputPath' in args)) {
               throw new Error("fileId and outputPath are required");
             }
             return await this.downloadDocument(args.fileId as string, args.outputPath as string);
-          
+
           case "queue_document":
             if (!args || typeof args !== 'object' || !('fileId' in args) || !('tenantName' in args)) {
               throw new Error("fileId and tenantName are required");
             }
             return await this.queueDocument(
-              args.fileId as string, 
-              args.tenantName as string, 
+              args.fileId as string,
+              args.tenantName as string,
               args.priority as number | undefined
             );
-          
+
           case "start_monitoring":
             return await this.startMonitoring(
-              args && typeof args === 'object' && 'intervalSeconds' in args 
-                ? args.intervalSeconds as number 
+              args && typeof args === 'object' && 'intervalSeconds' in args
+                ? args.intervalSeconds as number
                 : undefined
             );
-          
+
           case "stop_monitoring":
             return await this.stopMonitoring();
-          
+
           case "process_changes":
             return await this.processChanges(
-              args && typeof args === 'object' && 'folderId' in args 
-                ? args.folderId as string 
+              args && typeof args === 'object' && 'folderId' in args
+                ? args.folderId as string
                 : undefined
             );
-          
+
           default:
             throw new McpError(
               ErrorCode.MethodNotFound,
@@ -393,14 +393,14 @@ class GoogleDriveWatcherServer {
   private async authenticate(authCode: string) {
     const { tokens } = await this.oauth2Client.getToken(authCode);
     this.oauth2Client.setCredentials(tokens);
-    
+
     // Save tokens for future use
     const tokenPath = path.join(__dirname, '../.google-tokens.json');
     fs.writeFileSync(tokenPath, JSON.stringify(tokens));
-    
+
     // Initialize Drive API
     this.drive = google.drive({ version: 'v3', auth: this.oauth2Client });
-    
+
     return {
       content: [
         {
@@ -457,7 +457,7 @@ class GoogleDriveWatcherServer {
     }
 
     this.watchFolders.delete(folderId);
-    
+
     // Remove from Supabase
     await this.supabase
       .from('rag_watch_folders')
@@ -610,7 +610,7 @@ class GoogleDriveWatcherServer {
       .single();
 
     let documentId;
-    
+
     if (existingDoc) {
       documentId = existingDoc.id;
       // Update document status
@@ -635,7 +635,7 @@ class GoogleDriveWatcherServer {
         })
         .select('id')
         .single();
-      
+
       documentId = newDoc.id;
     }
 
@@ -691,10 +691,10 @@ class GoogleDriveWatcherServer {
     }
 
     this.isMonitoring = true;
-    
+
     // Run initial check
     await this.processChanges();
-    
+
     // Set up interval
     this.monitoringInterval = setInterval(async () => {
       try {
@@ -727,7 +727,7 @@ class GoogleDriveWatcherServer {
     }
 
     this.isMonitoring = false;
-    
+
     if (this.monitoringInterval) {
       clearInterval(this.monitoringInterval);
       this.monitoringInterval = null;
@@ -748,7 +748,7 @@ class GoogleDriveWatcherServer {
       throw new Error("Not authenticated. Please run 'authenticate' first.");
     }
 
-    const foldersToCheck = specificFolderId 
+    const foldersToCheck = specificFolderId
       ? [this.watchFolders.get(specificFolderId)].filter(Boolean)
       : Array.from(this.watchFolders.values());
 
@@ -764,7 +764,7 @@ class GoogleDriveWatcherServer {
         });
 
         const newFiles = response.data.files || [];
-        
+
         // Queue new files for processing
         for (const file of newFiles) {
           if (file.mimeType !== 'application/vnd.google-apps.folder') {

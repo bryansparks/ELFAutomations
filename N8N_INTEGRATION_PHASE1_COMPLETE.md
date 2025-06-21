@@ -69,7 +69,7 @@ async def my_team_automation():
             data={"input": "value"},
             team_name="my-team"
         )
-        
+
         # Use the results
         print(result.output_data)
 ```

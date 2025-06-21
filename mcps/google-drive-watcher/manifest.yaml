@@ -14,7 +14,7 @@ spec:
   description: "Monitor Google Drive folders and queue documents for RAG processing"
   version: "1.0.0"
   protocol: stdio
-  
+
   # Runtime configuration
   runtime:
     type: node
@@ -22,7 +22,7 @@ spec:
     args:
       - dist/server.js
     workingDirectory: /app
-    
+
   # Environment requirements
   environment:
     required:
@@ -32,86 +32,86 @@ spec:
       - SUPABASE_KEY
     optional:
       - GOOGLE_REDIRECT_URI
-      
+
   # Tools exposed by this MCP
   tools:
     - name: authenticate
       category: authentication
       description: "Set up Google OAuth authentication"
-      
+
     - name: get_auth_url
       category: authentication
       description: "Get Google OAuth authentication URL"
-      
+
     - name: add_watch_folder
       category: folder-management
       description: "Add a folder to monitor for changes"
-      
+
     - name: remove_watch_folder
       category: folder-management
       description: "Stop monitoring a folder"
-      
+
     - name: list_watch_folders
       category: folder-management
       description: "List all monitored folders"
-      
+
     - name: list_documents
       category: document-operations
       description: "List documents in a folder"
-      
+
     - name: get_document_metadata
       category: document-operations
       description: "Get detailed metadata for a document"
-      
+
     - name: download_document
       category: document-operations
       description: "Download a document from Google Drive"
-      
+
     - name: queue_document
       category: rag-integration
       description: "Queue a document for RAG processing"
-      
+
     - name: start_monitoring
       category: monitoring
       description: "Start monitoring folders for changes"
-      
+
     - name: stop_monitoring
       category: monitoring
       description: "Stop monitoring folders"
-      
+
     - name: process_changes
       category: monitoring
       description: "Manually check for and process folder changes"
-      
+
   # Tool categories
   categories:
     authentication:
       displayName: "Authentication"
       description: "Google OAuth authentication management"
-      
+
     folder-management:
       displayName: "Folder Management"
       description: "Manage monitored Google Drive folders"
-      
+
     document-operations:
       displayName: "Document Operations"
       description: "Operations on Google Drive documents"
-      
+
     rag-integration:
       displayName: "RAG Integration"
       description: "Integration with RAG processing pipeline"
-      
+
     monitoring:
       displayName: "Monitoring"
       description: "Document monitoring and change detection"
-      
+
   # Health check configuration
   healthCheck:
     enabled: true
     interval: 30s
     timeout: 5s
     tool: list_watch_folders
-    
+
   # Rate limiting
   rateLimiting:
     enabled: true
@@ -120,17 +120,17 @@ spec:
         rate: "10/hour"
       - category: document-operations
         rate: "100/minute"
-        
+
   # Integration with other services
   integrations:
     - name: supabase
       type: database
       description: "Store document metadata and processing queue"
-      
+
     - name: google-drive
       type: external-api
       description: "Google Drive API for document access"
-      
+
   # Deployment configuration
   deployment:
     replicas: 1

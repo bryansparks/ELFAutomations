@@ -16,7 +16,7 @@
    - Credentials: admin / elf-n8n-2024
 
 2. Import the test workflow:
-   - Click "Import from File" 
+   - Click "Import from File"
    - Select `/examples/n8n_workflows/test-webhook-workflow.json`
    - Or create manually:
      - Add Webhook node (path: `/test`)

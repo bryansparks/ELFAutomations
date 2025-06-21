@@ -59,23 +59,23 @@ echo
 if [[ $REPLY =~ ^[Yy]$ ]]; then
     echo "Creating namespace..."
     kubectl create namespace elf-mcps 2>/dev/null || true
-    
+
     echo "Creating secrets..."
     kubectl create secret generic google-oauth-credentials \
         --from-literal=client_id=$GOOGLE_CLIENT_ID \
         --from-literal=client_secret=$GOOGLE_CLIENT_SECRET \
         -n elf-mcps \
         --dry-run=client -o yaml | kubectl apply -f -
-    
+
     kubectl create secret generic supabase-credentials \
         --from-literal=url=$SUPABASE_URL \
         --from-literal=service_key=$SUPABASE_KEY \
         -n elf-mcps \
         --dry-run=client -o yaml | kubectl apply -f -
-    
+
     echo "Deploying MCP..."
     kubectl apply -f k8s/deployment.yaml
-    
+
     echo ""
     echo "✅ Deployed to Kubernetes!"
     echo ""
