@@ -61,7 +61,7 @@ CREATE TRIGGER update_n8n_workflows_updated_at BEFORE UPDATE
 
 -- Views for analytics
 CREATE VIEW workflow_execution_stats AS
-SELECT 
+SELECT
     w.id,
     w.name,
     w.owner_team,
@@ -78,7 +78,7 @@ GROUP BY w.id, w.name, w.owner_team, w.category;
 
 -- View for recent executions
 CREATE VIEW recent_workflow_executions AS
-SELECT 
+SELECT
     e.*,
     w.name as workflow_name,
     w.owner_team,
@@ -98,8 +98,8 @@ RETURNS TABLE(
 ) AS $$
 BEGIN
     RETURN QUERY
-    SELECT 
-        CASE 
+    SELECT
+        CASE
             WHEN COUNT(*) = 0 THEN 0
             ELSE ROUND(COUNT(CASE WHEN e.status = 'success' THEN 1 END)::NUMERIC / COUNT(*)::NUMERIC * 100, 2)
         END as success_rate,

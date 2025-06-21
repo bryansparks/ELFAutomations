@@ -11,10 +11,10 @@ graph TD
     A[ELF Team] -->|N8N Client SDK| B[Workflow Registry]
     B -->|Webhook/API| C[N8N Engine]
     C -->|Results| A
-    
+
     D[Workflow Factory] -->|Generate| C
     D -->|Register| B
-    
+
     E[Monitoring] -->|Track| B
 ```
 
@@ -41,10 +41,10 @@ async def execute_automation():
 async with N8NClient() as client:
     # List all active workflows
     workflows = await client.list_workflows()
-    
+
     # Filter by team
     team_workflows = await client.list_workflows(owner_team="marketing-team")
-    
+
     # Filter by category
     pipelines = await client.list_workflows(category=WorkflowCategory.DATA_PIPELINE)
 ```
@@ -55,7 +55,7 @@ async with N8NClient() as client:
 async with N8NClient() as client:
     # Get recent executions
     history = await client.get_execution_history(limit=10)
-    
+
     # Get executions for specific workflow
     workflow_history = await client.get_execution_history(
         workflow_name="daily-report"

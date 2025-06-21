@@ -81,7 +81,7 @@ Using the MCP tools, add a folder to monitor:
 ```
 Google Drive
     ↓
-[Drive Watcher MCP] 
+[Drive Watcher MCP]
     ↓ (detects new files)
 [Supabase Queue]
     ↓

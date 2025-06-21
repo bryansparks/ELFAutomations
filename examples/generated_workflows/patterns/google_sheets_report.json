@@ -1,0 +1,237 @@
+{
+  "name": "Google Sheets Sales Report",
+  "nodes": [
+    {
+      "id": "schedule",
+      "name": "Weekly Schedule",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1,
+      "position": [250, 300],
+      "parameters": {
+        "rule": {
+          "interval": [{ "field": "weeks", "intervalValue": 1 }],
+          "weekday": [1],
+          "hour": 9,
+          "minute": 0
+        }
+      }
+    },
+    {
+      "id": "fetch_data",
+      "name": "Get Sales Data",
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [450, 300],
+      "parameters": {
+        "operation": "getAll",
+        "table": "sales_data",
+        "filterType": "manual",
+        "filters": {
+          "conditions": [
+            {
+              "field": "created_at",
+              "type": "dateTime",
+              "operation": "after",
+              "value": "={{$now.minus(7, 'days').toISO()}}"
+            }
+          ]
+        },
+        "options": {
+          "orderBy": {
+            "column": "created_at",
+            "direction": "DESC"
+          }
+        }
+      }
+    },
+    {
+      "id": "aggregate_data",
+      "name": "Calculate Metrics",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 1,
+      "position": [650, 300],
+      "parameters": {
+        "jsCode": "const sales = $input.all();\nconst startDate = new Date();\nstartDate.setDate(startDate.getDate() - 7);\n\n// Group by day\nconst dailyData = {};\nlet totalRevenue = 0;\nlet totalOrders = 0;\n\nfor (const sale of sales) {\n  const date = new Date(sale.json.created_at).toISOString().split('T')[0];\n  \n  if (!dailyData[date]) {\n    dailyData[date] = {\n      date,\n      orders: 0,\n      revenue: 0,\n      products: {}\n    };\n  }\n  \n  dailyData[date].orders++;\n  dailyData[date].revenue += sale.json.amount;\n  totalRevenue += sale.json.amount;\n  totalOrders++;\n  \n  // Track products\n  const product = sale.json.product_name;\n  dailyData[date].products[product] = (dailyData[date].products[product] || 0) + 1;\n}\n\n// Convert to array and calculate averages\nconst dailyArray = Object.values(dailyData).map(day => ({\n  ...day,\n  avgOrderValue: day.revenue / day.orders,\n  topProduct: Object.entries(day.products).sort((a, b) => b[1] - a[1])[0]?.[0] || 'N/A'\n}));\n\nreturn {\n  json: {\n    reportDate: new Date().toISOString(),\n    periodStart: startDate.toISOString(),\n    periodEnd: new Date().toISOString(),\n    totalOrders,\n    totalRevenue,\n    avgOrderValue: totalRevenue / totalOrders,\n    dailyData: dailyArray,\n    summary: {\n      bestDay: dailyArray.sort((a, b) => b.revenue - a.revenue)[0]?.date,\n      worstDay: dailyArray.sort((a, b) => a.revenue - b.revenue)[0]?.date\n    }\n  }\n};"
+      }
+    },
+    {
+      "id": "create_sheet",
+      "name": "Create Report Sheet",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4,
+      "position": [850, 300],
+      "parameters": {
+        "operation": "create",
+        "title": "Sales Report - {{$json.reportDate.split('T')[0]}}",
+        "sheetsUi": {
+          "values": [
+            {
+              "name": "Summary"
+            },
+            {
+              "name": "Daily Breakdown"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "write_summary",
+      "name": "Write Summary Data",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4,
+      "position": [1050, 200],
+      "parameters": {
+        "operation": "appendOrUpdate",
+        "documentId": "={{$node['Create Report Sheet'].json.spreadsheetId}}",
+        "sheetName": "Summary",
+        "dataMode": "autoMapInputData",
+        "data": {
+          "values": [
+            ["Weekly Sales Report", "={{$json.reportDate.split('T')[0]}}"],
+            [""],
+            ["Metric", "Value"],
+            ["Total Orders", "={{$json.totalOrders}}"],
+            ["Total Revenue", "${{$json.totalRevenue.toFixed(2)}}"],
+            ["Average Order Value", "${{$json.avgOrderValue.toFixed(2)}}"],
+            ["Best Day", "={{$json.summary.bestDay}}"],
+            ["Worst Day", "={{$json.summary.worstDay}}"]
+          ]
+        },
+        "options": {
+          "range": "A1:B8"
+        }
+      }
+    },
+    {
+      "id": "write_daily",
+      "name": "Write Daily Breakdown",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4,
+      "position": [1050, 400],
+      "parameters": {
+        "operation": "appendOrUpdate",
+        "documentId": "={{$node['Create Report Sheet'].json.spreadsheetId}}",
+        "sheetName": "Daily Breakdown",
+        "dataMode": "autoMapInputData",
+        "data": {
+          "values": [
+            ["Date", "Orders", "Revenue", "Avg Order Value", "Top Product"],
+            ...{{$json.dailyData.map(day => [
+              day.date,
+              day.orders,
+              `$${day.revenue.toFixed(2)}`,
+              `$${day.avgOrderValue.toFixed(2)}`,
+              day.topProduct
+            ])}}
+          ]
+        },
+        "options": {
+          "range": "A1:E{{$json.dailyData.length + 1}}"
+        }
+      }
+    },
+    {
+      "id": "generate_doc",
+      "name": "Create Google Doc Report",
+      "type": "n8n-nodes-base.googleDocs",
+      "typeVersion": 1,
+      "position": [1250, 300],
+      "parameters": {
+        "operation": "create",
+        "title": "Sales Report - Week of {{$json.periodStart.split('T')[0]}}",
+        "content": "# Weekly Sales Report\n\n**Report Date:** {{$json.reportDate.split('T')[0]}}\n**Period:** {{$json.periodStart.split('T')[0]}} to {{$json.periodEnd.split('T')[0]}}\n\n## Executive Summary\n\n- **Total Orders:** {{$json.totalOrders}}\n- **Total Revenue:** ${{$json.totalRevenue.toFixed(2)}}\n- **Average Order Value:** ${{$json.avgOrderValue.toFixed(2)}}\n\n## Performance Highlights\n\n- **Best Performing Day:** {{$json.summary.bestDay}}\n- **Lowest Performing Day:** {{$json.summary.worstDay}}\n\n## Daily Breakdown\n\nDetailed daily performance data is available in the accompanying Google Sheets report.\n\n## Recommendations\n\n1. Focus marketing efforts on days with lower performance\n2. Analyze top-performing products for inventory planning\n3. Review customer acquisition costs vs. average order value\n\n---\n*This report was automatically generated by the Sales Analytics System*"
+      }
+    },
+    {
+      "id": "send_email",
+      "name": "Email Report",
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2,
+      "position": [1450, 200],
+      "parameters": {
+        "operation": "send",
+        "to": "executives@company.com",
+        "subject": "Weekly Sales Report - {{$json.reportDate.split('T')[0]}}",
+        "message": "Please find attached the weekly sales report.\n\nKey Highlights:\n- Total Revenue: ${{$json.totalRevenue.toFixed(2)}}\n- Total Orders: {{$json.totalOrders}}\n- Average Order Value: ${{$json.avgOrderValue.toFixed(2)}}\n\nView the detailed report:\n- Google Sheets: {{$node['Create Report Sheet'].json.spreadsheetUrl}}\n- Google Docs: {{$node['Create Google Doc Report'].json.documentUrl}}\n\nBest regards,\nSales Analytics Team",
+        "options": {
+          "ccList": "sales-team@company.com"
+        }
+      }
+    },
+    {
+      "id": "notify_slack",
+      "name": "Slack Notification",
+      "type": "n8n-nodes-base.slack",
+      "typeVersion": 2.1,
+      "position": [1450, 400],
+      "parameters": {
+        "operation": "post",
+        "channel": "#sales-reports",
+        "text": "📊 Weekly Sales Report Generated",
+        "otherOptions": {
+          "attachments": [{
+            "color": "#36a64f",
+            "title": "Sales Performance - Week of {{$json.periodStart.split('T')[0]}}",
+            "fields": [
+              { "title": "Total Revenue", "value": "${{$json.totalRevenue.toFixed(2)}}", "short": true },
+              { "title": "Total Orders", "value": "{{$json.totalOrders}}", "short": true },
+              { "title": "Avg Order Value", "value": "${{$json.avgOrderValue.toFixed(2)}}", "short": true },
+              { "title": "Best Day", "value": "{{$json.summary.bestDay}}", "short": true }
+            ],
+            "actions": [
+              {
+                "type": "button",
+                "text": "View Spreadsheet",
+                "url": "{{$node['Create Report Sheet'].json.spreadsheetUrl}}"
+              },
+              {
+                "type": "button",
+                "text": "View Report Doc",
+                "url": "{{$node['Create Google Doc Report'].json.documentUrl}}"
+              }
+            ]
+          }]
+        }
+      }
+    }
+  ],
+  "connections": {
+    "Weekly Schedule": {
+      "main": [[{ "node": "Get Sales Data", "type": "main", "index": 0 }]]
+    },
+    "Get Sales Data": {
+      "main": [[{ "node": "Calculate Metrics", "type": "main", "index": 0 }]]
+    },
+    "Calculate Metrics": {
+      "main": [[{ "node": "Create Report Sheet", "type": "main", "index": 0 }]]
+    },
+    "Create Report Sheet": {
+      "main": [[
+        { "node": "Write Summary Data", "type": "main", "index": 0 },
+        { "node": "Write Daily Breakdown", "type": "main", "index": 0 }
+      ]]
+    },
+    "Write Summary Data": {
+      "main": [[{ "node": "Create Google Doc Report", "type": "main", "index": 0 }]]
+    },
+    "Write Daily Breakdown": {
+      "main": [[{ "node": "Create Google Doc Report", "type": "main", "index": 0 }]]
+    },
+    "Create Google Doc Report": {
+      "main": [[
+        { "node": "Email Report", "type": "main", "index": 0 },
+        { "node": "Slack Notification", "type": "main", "index": 0 }
+      ]]
+    }
+  },
+  "active": false,
+  "settings": {
+    "saveDataSuccessExecution": "all",
+    "saveManualExecutions": true,
+    "saveExecutionProgress": true,
+    "executionTimeout": 300,
+    "errorWorkflow": "error-handler"
+  },
+  "tags": ["reporting", "google-sheets", "google-docs", "gmail", "pattern:report_generation"]
+}

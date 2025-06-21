@@ -12,6 +12,7 @@ IMAGES_TO_TRANSFER=(
     "elf-automations/executive-team:latest"
     "elf-automations/general-team:latest"
     "elf-automations/google-drive-watcher:latest"
+    "elf-automations/rag-processor-team:latest"
 )
 
 echo "🚀 Docker Image Transfer via SSH"

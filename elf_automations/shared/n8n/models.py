@@ -3,35 +3,43 @@ N8N Integration Models
 """
 
 from dataclasses import dataclass
-from typing import Dict, Any, Optional, List
 from datetime import datetime
 from enum import Enum
+from typing import Any, Dict, List, Optional
+
 
 class WorkflowStatus(Enum):
     """Workflow execution status"""
+
     PENDING = "pending"
     RUNNING = "running"
     SUCCESS = "success"
     FAILED = "failed"
 
+
 class WorkflowTriggerType(Enum):
     """Types of workflow triggers"""
+
     WEBHOOK = "webhook"
     SCHEDULE = "schedule"
     MANUAL = "manual"
     EVENT = "event"
 
+
 class WorkflowCategory(Enum):
     """Categories of workflows"""
+
     DATA_PIPELINE = "data-pipeline"
     INTEGRATION = "integration"
     AUTOMATION = "automation"
     NOTIFICATION = "notification"
     APPROVAL = "approval"
 
+
 @dataclass
 class WorkflowSpec:
     """Specification for creating a new workflow"""
+
     name: str
     description: str
     category: WorkflowCategory
@@ -43,9 +51,11 @@ class WorkflowSpec:
     credentials: Optional[Dict[str, str]] = None
     settings: Optional[Dict[str, Any]] = None
 
+
 @dataclass
 class WorkflowExecution:
     """Represents a workflow execution"""
+
     id: str
     workflow_id: str
     workflow_name: str
@@ -56,22 +66,24 @@ class WorkflowExecution:
     input_data: Dict[str, Any]
     output_data: Optional[Dict[str, Any]]
     error_message: Optional[str]
-    
+
     @property
     def duration(self) -> Optional[float]:
         """Calculate execution duration in seconds"""
         if self.completed_at and self.started_at:
             return (self.completed_at - self.started_at).total_seconds()
         return None
-    
+
     @property
     def is_complete(self) -> bool:
         """Check if execution is complete"""
         return self.status in [WorkflowStatus.SUCCESS, WorkflowStatus.FAILED]
 
+
 @dataclass
 class WorkflowInfo:
     """Information about a registered workflow"""
+
     id: str
     name: str
     description: str

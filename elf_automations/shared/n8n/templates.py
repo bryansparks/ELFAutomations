@@ -4,13 +4,13 @@ N8N Workflow Templates
 Pre-built workflow patterns for common business operations.
 """
 
-from typing import Dict, Any, List
 from datetime import datetime
+from typing import Any, Dict, List
 
 
 class WorkflowTemplates:
     """Collection of workflow templates organized by category"""
-    
+
     @staticmethod
     def data_pipeline_etl() -> Dict[str, Any]:
         """Extract, Transform, Load data pipeline"""
@@ -27,9 +27,9 @@ class WorkflowTemplates:
                         "rule": {
                             "interval": [{"field": "days", "intervalValue": 1}],
                             "hour": 2,
-                            "minute": 0
+                            "minute": 0,
                         }
-                    }
+                    },
                 },
                 {
                     "id": "extract",
@@ -42,10 +42,8 @@ class WorkflowTemplates:
                         "url": "={{$vars.source_url}}",
                         "authentication": "genericCredentialType",
                         "genericAuthType": "httpHeaderAuth",
-                        "options": {
-                            "timeout": 30000
-                        }
-                    }
+                        "options": {"timeout": 30000},
+                    },
                 },
                 {
                     "id": "transform",
@@ -61,7 +59,7 @@ const transformedItems = [];
 
 for (const item of items) {
     const data = item.json;
-    
+
     // Example transformation
     transformedItems.push({
         json: {
@@ -75,7 +73,7 @@ for (const item of items) {
 
 return transformedItems;
 """
-                    }
+                    },
                 },
                 {
                     "id": "load",
@@ -87,8 +85,8 @@ return transformedItems;
                         "operation": "insert",
                         "table": "{{$vars.target_table}}",
                         "columns": "id,processed_at,transformed_value",
-                        "options": {}
-                    }
+                        "options": {},
+                    },
                 },
                 {
                     "id": "notify",
@@ -100,24 +98,34 @@ return transformedItems;
                         "sendTo": "={{$vars.notification_email}}",
                         "subject": "ETL Pipeline Completed",
                         "message": "Pipeline processed {{$node['Transform Data'].outputCount}} records successfully.",
-                        "options": {}
-                    }
-                }
+                        "options": {},
+                    },
+                },
             ],
             "connections": {
-                "Daily Schedule": {"main": [[{"node": "Extract Data", "type": "main", "index": 0}]]},
-                "Extract Data": {"main": [[{"node": "Transform Data", "type": "main", "index": 0}]]},
-                "Transform Data": {"main": [[{"node": "Load to Database", "type": "main", "index": 0}]]},
-                "Load to Database": {"main": [[{"node": "Notify Completion", "type": "main", "index": 0}]]}
+                "Daily Schedule": {
+                    "main": [[{"node": "Extract Data", "type": "main", "index": 0}]]
+                },
+                "Extract Data": {
+                    "main": [[{"node": "Transform Data", "type": "main", "index": 0}]]
+                },
+                "Transform Data": {
+                    "main": [[{"node": "Load to Database", "type": "main", "index": 0}]]
+                },
+                "Load to Database": {
+                    "main": [
+                        [{"node": "Notify Completion", "type": "main", "index": 0}]
+                    ]
+                },
             },
             "settings": {
                 "saveDataSuccessExecution": "all",
                 "saveManualExecutions": True,
                 "callerPolicy": "workflowsFromSameOwner",
-                "errorWorkflow": "error-handler"
-            }
+                "errorWorkflow": "error-handler",
+            },
         }
-    
+
     @staticmethod
     def crm_sync_integration() -> Dict[str, Any]:
         """Sync data between CRM systems"""
@@ -134,10 +142,8 @@ return transformedItems;
                         "httpMethod": "POST",
                         "path": "crm-sync",
                         "responseMode": "responseNode",
-                        "options": {
-                            "rawBody": False
-                        }
-                    }
+                        "options": {"rawBody": False},
+                    },
                 },
                 {
                     "id": "validate",
@@ -150,17 +156,17 @@ return transformedItems;
                             "string": [
                                 {
                                     "value1": "={{$json.customer_id}}",
-                                    "operation": "isNotEmpty"
+                                    "operation": "isNotEmpty",
                                 },
                                 {
                                     "value1": "={{$json.email}}",
                                     "operation": "regex",
-                                    "value2": "^[^@]+@[^@]+\\.[^@]+$"
-                                }
+                                    "value2": "^[^@]+@[^@]+\\.[^@]+$",
+                                },
                             ]
                         },
-                        "combineOperation": "all"
-                    }
+                        "combineOperation": "all",
+                    },
                 },
                 {
                     "id": "fetch_existing",
@@ -172,10 +178,8 @@ return transformedItems;
                         "operation": "select",
                         "table": "customers",
                         "limit": 1,
-                        "where": {
-                            "customer_id": "={{$json.customer_id}}"
-                        }
-                    }
+                        "where": {"customer_id": "={{$json.customer_id}}"},
+                    },
                 },
                 {
                     "id": "merge",
@@ -183,10 +187,7 @@ return transformedItems;
                     "type": "n8n-nodes-base.merge",
                     "typeVersion": 2,
                     "position": [850, 300],
-                    "parameters": {
-                        "mode": "combine",
-                        "combinationMode": "multiplex"
-                    }
+                    "parameters": {"mode": "combine", "combinationMode": "multiplex"},
                 },
                 {
                     "id": "update_target",
@@ -199,14 +200,9 @@ return transformedItems;
                         "url": "={{$vars.target_crm_url}}/api/customers/{{$json.customer_id}}",
                         "sendBody": True,
                         "bodyParameters": {
-                            "parameters": [
-                                {
-                                    "name": "data",
-                                    "value": "={{$json}}"
-                                }
-                            ]
-                        }
-                    }
+                            "parameters": [{"name": "data", "value": "={{$json}}"}]
+                        },
+                    },
                 },
                 {
                     "id": "respond",
@@ -219,9 +215,9 @@ return transformedItems;
                         "responseBody": {
                             "success": True,
                             "message": "CRM sync completed",
-                            "customer_id": "={{$json.customer_id}}"
-                        }
-                    }
+                            "customer_id": "={{$json.customer_id}}",
+                        },
+                    },
                 },
                 {
                     "id": "error_response",
@@ -233,28 +229,36 @@ return transformedItems;
                         "respondWith": "json",
                         "responseBody": {
                             "success": False,
-                            "error": "Invalid data format"
+                            "error": "Invalid data format",
                         },
-                        "options": {
-                            "responseCode": 400
-                        }
-                    }
-                }
+                        "options": {"responseCode": 400},
+                    },
+                },
             ],
             "connections": {
-                "CRM Update Webhook": {"main": [[{"node": "Validate Data", "type": "main", "index": 0}]]},
+                "CRM Update Webhook": {
+                    "main": [[{"node": "Validate Data", "type": "main", "index": 0}]]
+                },
                 "Validate Data": {
                     "main": [
                         [{"node": "Check Existing Record", "type": "main", "index": 0}],
-                        [{"node": "Error Response", "type": "main", "index": 0}]
+                        [{"node": "Error Response", "type": "main", "index": 0}],
                     ]
                 },
-                "Check Existing Record": {"main": [[{"node": "Merge Data", "type": "main", "index": 0}]]},
-                "Merge Data": {"main": [[{"node": "Update Target CRM", "type": "main", "index": 0}]]},
-                "Update Target CRM": {"main": [[{"node": "Send Response", "type": "main", "index": 0}]]}
-            }
+                "Check Existing Record": {
+                    "main": [[{"node": "Merge Data", "type": "main", "index": 0}]]
+                },
+                "Merge Data": {
+                    "main": [
+                        [{"node": "Update Target CRM", "type": "main", "index": 0}]
+                    ]
+                },
+                "Update Target CRM": {
+                    "main": [[{"node": "Send Response", "type": "main", "index": 0}]]
+                },
+            },
         }
-    
+
     @staticmethod
     def approval_workflow() -> Dict[str, Any]:
         """Multi-step approval process"""
@@ -270,8 +274,8 @@ return transformedItems;
                     "parameters": {
                         "httpMethod": "POST",
                         "path": "approval-request",
-                        "responseMode": "responseNode"
-                    }
+                        "responseMode": "responseNode",
+                    },
                 },
                 {
                     "id": "create_ticket",
@@ -289,9 +293,9 @@ return transformedItems;
                             "amount": "={{$json.amount}}",
                             "description": "={{$json.description}}",
                             "status": "pending",
-                            "created_at": "={{new Date().toISOString()}}"
-                        }
-                    }
+                            "created_at": "={{new Date().toISOString()}}",
+                        },
+                    },
                 },
                 {
                     "id": "check_amount",
@@ -304,20 +308,12 @@ return transformedItems;
                         "value1": "={{$json.amount}}",
                         "rules": {
                             "rules": [
-                                {
-                                    "operation": "smaller",
-                                    "value2": 1000,
-                                    "output": 0
-                                },
-                                {
-                                    "operation": "smaller",
-                                    "value2": 10000,
-                                    "output": 1
-                                }
+                                {"operation": "smaller", "value2": 1000, "output": 0},
+                                {"operation": "smaller", "value2": 10000, "output": 1},
                             ]
                         },
-                        "fallbackOutput": 2
-                    }
+                        "fallbackOutput": 2,
+                    },
                 },
                 {
                     "id": "notify_manager",
@@ -329,8 +325,8 @@ return transformedItems;
                         "operation": "post",
                         "channel": "#approvals-level1",
                         "text": "New approval request from {{$json.requester}} for ${{$json.amount}}",
-                        "otherOptions": {}
-                    }
+                        "otherOptions": {},
+                    },
                 },
                 {
                     "id": "notify_director",
@@ -342,8 +338,8 @@ return transformedItems;
                         "operation": "post",
                         "channel": "#approvals-level2",
                         "text": "Approval escalation: {{$json.requester}} requesting ${{$json.amount}}",
-                        "otherOptions": {}
-                    }
+                        "otherOptions": {},
+                    },
                 },
                 {
                     "id": "notify_executive",
@@ -355,8 +351,8 @@ return transformedItems;
                         "operation": "post",
                         "channel": "#approvals-executive",
                         "text": "Executive approval needed: {{$json.requester}} requesting ${{$json.amount}}",
-                        "otherOptions": {}
-                    }
+                        "otherOptions": {},
+                    },
                 },
                 {
                     "id": "wait",
@@ -367,10 +363,8 @@ return transformedItems;
                     "webhookId": "approval-decision",
                     "parameters": {
                         "resume": "webhook",
-                        "options": {
-                            "webhookSuffix": "/decision/{{$json.ticket_id}}"
-                        }
-                    }
+                        "options": {"webhookSuffix": "/decision/{{$json.ticket_id}}"},
+                    },
                 },
                 {
                     "id": "update_status",
@@ -385,9 +379,9 @@ return transformedItems;
                         "columnData": {
                             "status": "={{$json.decision}}",
                             "approved_by": "={{$json.approver}}",
-                            "approved_at": "={{new Date().toISOString()}}"
-                        }
-                    }
+                            "approved_at": "={{new Date().toISOString()}}",
+                        },
+                    },
                 },
                 {
                     "id": "notify_requester",
@@ -399,28 +393,54 @@ return transformedItems;
                         "sendTo": "={{$json.requester_email}}",
                         "subject": "Approval Request {{$json.decision}}",
                         "message": "Your approval request has been {{$json.decision}}.",
-                        "options": {}
-                    }
-                }
+                        "options": {},
+                    },
+                },
             ],
             "connections": {
-                "Approval Request Form": {"main": [[{"node": "Create Approval Ticket", "type": "main", "index": 0}]]},
-                "Create Approval Ticket": {"main": [[{"node": "Check Approval Level", "type": "main", "index": 0}]]},
+                "Approval Request Form": {
+                    "main": [
+                        [{"node": "Create Approval Ticket", "type": "main", "index": 0}]
+                    ]
+                },
+                "Create Approval Ticket": {
+                    "main": [
+                        [{"node": "Check Approval Level", "type": "main", "index": 0}]
+                    ]
+                },
                 "Check Approval Level": {
                     "main": [
                         [{"node": "Notify Manager", "type": "main", "index": 0}],
                         [{"node": "Notify Director", "type": "main", "index": 0}],
-                        [{"node": "Notify Executive", "type": "main", "index": 0}]
+                        [{"node": "Notify Executive", "type": "main", "index": 0}],
                     ]
                 },
-                "Notify Manager": {"main": [[{"node": "Wait for Decision", "type": "main", "index": 0}]]},
-                "Notify Director": {"main": [[{"node": "Wait for Decision", "type": "main", "index": 0}]]},
-                "Notify Executive": {"main": [[{"node": "Wait for Decision", "type": "main", "index": 0}]]},
-                "Wait for Decision": {"main": [[{"node": "Update Ticket Status", "type": "main", "index": 0}]]},
-                "Update Ticket Status": {"main": [[{"node": "Notify Requester", "type": "main", "index": 0}]]}
-            }
+                "Notify Manager": {
+                    "main": [
+                        [{"node": "Wait for Decision", "type": "main", "index": 0}]
+                    ]
+                },
+                "Notify Director": {
+                    "main": [
+                        [{"node": "Wait for Decision", "type": "main", "index": 0}]
+                    ]
+                },
+                "Notify Executive": {
+                    "main": [
+                        [{"node": "Wait for Decision", "type": "main", "index": 0}]
+                    ]
+                },
+                "Wait for Decision": {
+                    "main": [
+                        [{"node": "Update Ticket Status", "type": "main", "index": 0}]
+                    ]
+                },
+                "Update Ticket Status": {
+                    "main": [[{"node": "Notify Requester", "type": "main", "index": 0}]]
+                },
+            },
         }
-    
+
     @staticmethod
     def report_generator() -> Dict[str, Any]:
         """Scheduled report generation and distribution"""
@@ -438,9 +458,9 @@ return transformedItems;
                             "interval": [{"field": "weeks", "intervalValue": 1}],
                             "weekday": [1],  # Monday
                             "hour": 9,
-                            "minute": 0
+                            "minute": 0,
                         }
-                    }
+                    },
                 },
                 {
                     "id": "fetch_metrics",
@@ -451,7 +471,7 @@ return transformedItems;
                     "parameters": {
                         "operation": "executeQuery",
                         "query": """
-SELECT 
+SELECT
     DATE_TRUNC('day', created_at) as date,
     COUNT(*) as total_sales,
     SUM(amount) as revenue,
@@ -460,8 +480,8 @@ FROM sales
 WHERE created_at >= NOW() - INTERVAL '7 days'
 GROUP BY DATE_TRUNC('day', created_at)
 ORDER BY date DESC;
-"""
-                    }
+""",
+                    },
                 },
                 {
                     "id": "generate_report",
@@ -517,7 +537,7 @@ return [{
     }
 }];
 """
-                    }
+                    },
                 },
                 {
                     "id": "send_email",
@@ -529,10 +549,8 @@ return [{
                         "sendTo": "={{$vars.report_recipients}}",
                         "subject": "Weekly Sales Report - {{$json.reportDate}}",
                         "message": "={{$json.htmlReport}}",
-                        "options": {
-                            "allowUnauthorizedCerts": True
-                        }
-                    }
+                        "options": {"allowUnauthorizedCerts": True},
+                    },
                 },
                 {
                     "id": "post_slack",
@@ -553,63 +571,61 @@ return [{
                                         {
                                             "title": "Total Sales",
                                             "value": "{{$json.totalSales}}",
-                                            "short": True
+                                            "short": True,
                                         },
                                         {
                                             "title": "Total Revenue",
                                             "value": "${{$json.totalRevenue}}",
-                                            "short": True
-                                        }
-                                    ]
+                                            "short": True,
+                                        },
+                                    ],
                                 }
                             ]
-                        }
-                    }
-                }
+                        },
+                    },
+                },
             ],
             "connections": {
-                "Weekly Schedule": {"main": [[{"node": "Fetch Metrics", "type": "main", "index": 0}]]},
-                "Fetch Metrics": {"main": [[{"node": "Generate Report", "type": "main", "index": 0}]]},
+                "Weekly Schedule": {
+                    "main": [[{"node": "Fetch Metrics", "type": "main", "index": 0}]]
+                },
+                "Fetch Metrics": {
+                    "main": [[{"node": "Generate Report", "type": "main", "index": 0}]]
+                },
                 "Generate Report": {
-                    "main": [[
-                        {"node": "Email Report", "type": "main", "index": 0},
-                        {"node": "Post to Slack", "type": "main", "index": 0}
-                    ]]
-                }
-            }
+                    "main": [
+                        [
+                            {"node": "Email Report", "type": "main", "index": 0},
+                            {"node": "Post to Slack", "type": "main", "index": 0},
+                        ]
+                    ]
+                },
+            },
         }
 
 
 def get_template(category: str, template_name: str) -> Dict[str, Any]:
     """Get a specific template by category and name"""
-    
+
     templates = {
-        "data-pipeline": {
-            "etl": WorkflowTemplates.data_pipeline_etl()
-        },
-        "integration": {
-            "crm-sync": WorkflowTemplates.crm_sync_integration()
-        },
-        "approval": {
-            "multi-step": WorkflowTemplates.approval_workflow()
-        },
-        "automation": {
-            "report-generator": WorkflowTemplates.report_generator()
-        }
+        "data-pipeline": {"etl": WorkflowTemplates.data_pipeline_etl()},
+        "integration": {"crm-sync": WorkflowTemplates.crm_sync_integration()},
+        "approval": {"multi-step": WorkflowTemplates.approval_workflow()},
+        "automation": {"report-generator": WorkflowTemplates.report_generator()},
     }
-    
+
     if category in templates and template_name in templates[category]:
         return templates[category][template_name]
-    
+
     raise ValueError(f"Template '{template_name}' not found in category '{category}'")
 
 
 def list_templates() -> Dict[str, List[str]]:
     """List all available templates by category"""
-    
+
     return {
         "data-pipeline": ["etl"],
         "integration": ["crm-sync"],
         "approval": ["multi-step"],
-        "automation": ["report-generator"]
+        "automation": ["report-generator"],
     }
