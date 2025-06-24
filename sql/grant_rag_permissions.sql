@@ -29,14 +29,14 @@ ALTER DEFAULT PRIVILEGES IN SCHEMA rag
 -- ALTER DATABASE your_database_name SET search_path TO public, rag;
 
 -- Verify permissions were granted
-SELECT 
+SELECT
     schemaname,
     tablename,
     has_table_privilege('anon', schemaname||'.'||tablename, 'SELECT') as anon_select,
     has_table_privilege('anon', schemaname||'.'||tablename, 'INSERT') as anon_insert,
     has_table_privilege('authenticated', schemaname||'.'||tablename, 'SELECT') as auth_select,
     has_table_privilege('authenticated', schemaname||'.'||tablename, 'INSERT') as auth_insert
-FROM pg_tables 
+FROM pg_tables
 WHERE schemaname = 'rag'
 ORDER BY tablename;
 

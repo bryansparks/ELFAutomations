@@ -4,7 +4,7 @@
 
 When you run the setup script and try to create test tenants, you get:
 ```
-Failed to create elf_internal: {'code': '42501', 'details': None, 'hint': None, 
+Failed to create elf_internal: {'code': '42501', 'details': None, 'hint': None,
 'message': 'new row violates row-level security policy for table "rag_tenants"'}
 ```
 
@@ -105,8 +105,8 @@ The RAG system uses these RLS policies:
 
 ```bash
 # Check RLS status
-SELECT tablename, rowsecurity 
-FROM pg_tables 
+SELECT tablename, rowsecurity
+FROM pg_tables
 WHERE tablename LIKE 'rag_%';
 
 # Disable RLS on a specific table
@@ -131,7 +131,7 @@ If you still have issues after disabling RLS:
 
 3. **Test with direct SQL**:
    ```sql
-   INSERT INTO rag_tenants (name, display_name) 
+   INSERT INTO rag_tenants (name, display_name)
    VALUES ('test', 'Test Tenant');
    ```
 

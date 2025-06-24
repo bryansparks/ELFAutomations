@@ -19,7 +19,7 @@ First, run this SQL in your Supabase SQL Editor:
 -- Check if rag schema exists
 SELECT schema_name FROM information_schema.schemata WHERE schema_name = 'rag';
 
--- List tables in rag schema  
+-- List tables in rag schema
 SELECT table_name FROM information_schema.tables WHERE table_schema = 'rag';
 ```
 

@@ -15,8 +15,8 @@ ALTER TABLE rag_watch_folders ENABLE ROW LEVEL SECURITY;
 ALTER TABLE rag_oauth_events ENABLE ROW LEVEL SECURITY;
 
 -- Verify RLS is enabled
-SELECT tablename, rowsecurity 
-FROM pg_tables 
-WHERE schemaname = 'public' 
+SELECT tablename, rowsecurity
+FROM pg_tables
+WHERE schemaname = 'public'
 AND tablename LIKE 'rag_%'
 ORDER BY tablename;

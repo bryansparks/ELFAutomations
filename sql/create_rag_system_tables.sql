@@ -52,18 +52,18 @@ CREATE TABLE IF NOT EXISTS rag.documents (
     tenant_id UUID NOT NULL REFERENCES rag.tenants(id) ON DELETE CASCADE,
     workspace_id UUID REFERENCES rag.workspaces(id) ON DELETE CASCADE,
     document_type_id UUID REFERENCES rag.document_types(id),
-    
+
     -- Source information
     source_type TEXT NOT NULL DEFAULT 'google_drive', -- google_drive, s3, upload, etc
     source_id TEXT NOT NULL, -- Drive file ID, S3 key, etc
     source_path TEXT, -- Full path in source system
-    
+
     -- Document metadata
     filename TEXT NOT NULL,
     mime_type TEXT,
     size_bytes BIGINT,
     checksum TEXT, -- SHA-256 hash
-    
+
     -- Processing status
     status TEXT NOT NULL DEFAULT 'pending' CHECK (status IN (
         'pending', 'queued', 'processing', 'completed', 'failed', 'archived'
@@ -71,19 +71,19 @@ CREATE TABLE IF NOT EXISTS rag.documents (
     processing_started_at TIMESTAMPTZ,
     processing_completed_at TIMESTAMPTZ,
     processing_error JSONB,
-    
+
     -- Extracted metadata
     title TEXT,
     author TEXT,
     extracted_metadata JSONB DEFAULT '{}',
-    
+
     -- Storage locations
     storage_locations JSONB DEFAULT '{}', -- {minio: "path", drive: "id", etc}
-    
+
     -- Versioning
     version INTEGER DEFAULT 1,
     parent_document_id UUID REFERENCES rag.documents(id),
-    
+
     created_at TIMESTAMPTZ DEFAULT NOW(),
     updated_at TIMESTAMPTZ DEFAULT NOW()
 );
@@ -93,18 +93,18 @@ CREATE TABLE IF NOT EXISTS rag.document_chunks (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     document_id UUID NOT NULL REFERENCES rag.documents(id) ON DELETE CASCADE,
     tenant_id UUID NOT NULL REFERENCES rag.tenants(id) ON DELETE CASCADE,
-    
+
     chunk_index INTEGER NOT NULL,
     content TEXT NOT NULL,
     tokens INTEGER,
-    
+
     -- Vector storage reference
     vector_id TEXT, -- ID in Qdrant
     collection_name TEXT, -- Qdrant collection
-    
+
     -- Metadata for filtering
     metadata JSONB DEFAULT '{}',
-    
+
     created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
@@ -113,23 +113,23 @@ CREATE TABLE IF NOT EXISTS rag.processing_queue (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     tenant_id UUID NOT NULL REFERENCES rag.tenants(id) ON DELETE CASCADE,
     document_id UUID NOT NULL REFERENCES rag.documents(id) ON DELETE CASCADE,
-    
+
     priority INTEGER DEFAULT 5 CHECK (priority BETWEEN 1 AND 10),
     status TEXT NOT NULL DEFAULT 'pending' CHECK (status IN (
         'pending', 'processing', 'completed', 'failed', 'cancelled'
     )),
-    
+
     processor_type TEXT NOT NULL, -- Which processor to use
     processing_config JSONB DEFAULT '{}',
-    
+
     attempts INTEGER DEFAULT 0,
     max_attempts INTEGER DEFAULT 3,
     last_error TEXT,
-    
+
     scheduled_at TIMESTAMPTZ DEFAULT NOW(),
     started_at TIMESTAMPTZ,
     completed_at TIMESTAMPTZ,
-    
+
     created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
@@ -138,17 +138,17 @@ CREATE TABLE IF NOT EXISTS rag.entities (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     tenant_id UUID NOT NULL REFERENCES rag.tenants(id) ON DELETE CASCADE,
     document_id UUID NOT NULL REFERENCES rag.documents(id) ON DELETE CASCADE,
-    
+
     entity_type TEXT NOT NULL, -- person, organization, location, etc
     name TEXT NOT NULL,
     normalized_name TEXT, -- Standardized version
-    
+
     -- Graph storage reference
     neo4j_node_id TEXT,
-    
+
     confidence FLOAT CHECK (confidence BETWEEN 0 AND 1),
     metadata JSONB DEFAULT '{}',
-    
+
     created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
@@ -158,15 +158,15 @@ CREATE TABLE IF NOT EXISTS rag.relationships (
     tenant_id UUID NOT NULL REFERENCES rag.tenants(id) ON DELETE CASCADE,
     source_entity_id UUID NOT NULL REFERENCES rag.entities(id) ON DELETE CASCADE,
     target_entity_id UUID NOT NULL REFERENCES rag.entities(id) ON DELETE CASCADE,
-    
+
     relationship_type TEXT NOT NULL,
     properties JSONB DEFAULT '{}',
-    
+
     -- Graph storage reference
     neo4j_edge_id TEXT,
-    
+
     confidence FLOAT CHECK (confidence BETWEEN 0 AND 1),
-    
+
     created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
@@ -175,18 +175,18 @@ CREATE TABLE IF NOT EXISTS rag.search_queries (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     tenant_id UUID NOT NULL REFERENCES rag.tenants(id) ON DELETE CASCADE,
     workspace_id UUID REFERENCES rag.workspaces(id),
-    
+
     query_text TEXT NOT NULL,
     query_type TEXT DEFAULT 'hybrid', -- vector, graph, sql, hybrid
     query_config JSONB DEFAULT '{}',
-    
+
     result_count INTEGER,
     execution_time_ms INTEGER,
-    
+
     -- Caching
     cached_results JSONB,
     cache_expires_at TIMESTAMPTZ,
-    
+
     created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
@@ -194,17 +194,17 @@ CREATE TABLE IF NOT EXISTS rag.search_queries (
 CREATE TABLE IF NOT EXISTS rag.api_usage (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     tenant_id UUID NOT NULL REFERENCES rag.tenants(id) ON DELETE CASCADE,
-    
+
     endpoint TEXT NOT NULL,
     method TEXT NOT NULL,
     status_code INTEGER,
-    
+
     request_size_bytes INTEGER,
     response_size_bytes INTEGER,
     execution_time_ms INTEGER,
-    
+
     metadata JSONB DEFAULT '{}',
-    
+
     created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
@@ -344,7 +344,7 @@ CREATE TRIGGER update_documents_updated_at BEFORE UPDATE ON rag.documents
 
 -- Insert default document types
 INSERT INTO rag.document_types (name, display_name, processor_config, storage_strategy) VALUES
-('invoice', 'Invoice', 
+('invoice', 'Invoice',
     '{"processor": "InvoiceProcessor", "extract_line_items": true, "ocr_enabled": true}',
     '{"primary": "graph", "secondary": "sql", "embeddings": "minimal"}'
 ),
@@ -368,7 +368,7 @@ ON CONFLICT (name) DO NOTHING;
 
 -- Create internal ELF tenant
 INSERT INTO rag.tenants (name, display_name, settings) VALUES
-('elf_internal', 'ELF Automations Internal', 
+('elf_internal', 'ELF Automations Internal',
     '{"is_internal": true, "unlimited_quota": true}'
 )
 ON CONFLICT (name) DO NOTHING;
@@ -379,7 +379,7 @@ ON CONFLICT (name) DO NOTHING;
 
 -- Document processing status view
 CREATE OR REPLACE VIEW rag.document_status AS
-SELECT 
+SELECT
     t.name as tenant_name,
     w.name as workspace_name,
     d.filename,
@@ -395,7 +395,7 @@ LEFT JOIN rag.document_types dt ON d.document_type_id = dt.id;
 
 -- Tenant usage summary
 CREATE OR REPLACE VIEW rag.tenant_usage AS
-SELECT 
+SELECT
     t.id as tenant_id,
     t.name as tenant_name,
     COUNT(DISTINCT d.id) as total_documents,
@@ -412,7 +412,7 @@ GROUP BY t.id, t.name;
 
 -- Processing queue status
 CREATE OR REPLACE VIEW rag.queue_status AS
-SELECT 
+SELECT
     t.name as tenant_name,
     pq.status,
     COUNT(*) as count,

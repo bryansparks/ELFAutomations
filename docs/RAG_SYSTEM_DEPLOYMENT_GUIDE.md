@@ -141,7 +141,7 @@ result = await client.call_tool(
 ### Check Processing Queue
 ```sql
 -- In Supabase SQL Editor
-SELECT * FROM rag_processing_queue 
+SELECT * FROM rag_processing_queue
 WHERE status = 'pending'
 ORDER BY created_at DESC;
 ```

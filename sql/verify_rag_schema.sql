@@ -2,13 +2,13 @@
 -- Run this in Supabase SQL Editor to check if the schema was created correctly
 
 -- Check if schema exists
-SELECT schema_name 
-FROM information_schema.schemata 
+SELECT schema_name
+FROM information_schema.schemata
 WHERE schema_name = 'rag';
 
 -- List all tables in rag schema
-SELECT table_name 
-FROM information_schema.tables 
+SELECT table_name
+FROM information_schema.tables
 WHERE table_schema = 'rag'
 ORDER BY table_name;
 
@@ -35,14 +35,14 @@ SELECT 'rag.api_usage', COUNT(*) FROM rag.api_usage
 ORDER BY table_name;
 
 -- Check if RLS is enabled
-SELECT tablename, rowsecurity 
-FROM pg_tables 
+SELECT tablename, rowsecurity
+FROM pg_tables
 WHERE schemaname = 'rag'
 ORDER BY tablename;
 
 -- List all functions in rag schema
-SELECT routine_name 
-FROM information_schema.routines 
+SELECT routine_name
+FROM information_schema.routines
 WHERE routine_schema = 'rag'
 ORDER BY routine_name;
 
