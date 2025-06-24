@@ -144,6 +144,38 @@ class MCPMarketplace:
                 verified=False,
                 stars=65,
             ),
+            ExternalMCP(
+                name="google-docs",
+                description="Read and write Google Docs documents",
+                source="@modelcontextprotocol/server-google-docs",
+                install_type="npm",
+                install_command="npx -y @modelcontextprotocol/server-google-docs",
+                capabilities=[
+                    "read_document",
+                    "write_document",
+                    "create_document",
+                    "format_text",
+                ],
+                author="Anthropic",
+                verified=True,
+                stars=130,
+            ),
+            ExternalMCP(
+                name="google-drive",
+                description="Access and manage Google Drive files",
+                source="@modelcontextprotocol/server-google-drive",
+                install_type="npm",
+                install_command="npx -y @modelcontextprotocol/server-google-drive",
+                capabilities=[
+                    "list_files",
+                    "upload_file",
+                    "download_file",
+                    "create_folder",
+                ],
+                author="Anthropic",
+                verified=True,
+                stars=110,
+            ),
         ]
 
     def search_marketplace(self, query: Optional[str] = None):

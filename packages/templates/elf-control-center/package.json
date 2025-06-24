@@ -1,0 +1,49 @@
+{
+  "name": "elf-control-center",
+  "version": "1.0.0",
+  "description": "ELF Control Center - Comprehensive dashboard for ELF Automations",
+  "private": true,
+  "scripts": {
+    "dev": "next dev -p 3002",
+    "build": "next build",
+    "start": "next start -p 3002",
+    "lint": "next lint",
+    "type-check": "tsc --noEmit",
+    "format": "prettier --write ."
+  },
+  "dependencies": {
+    "@elf/ui": "file:../../ui",
+    "@radix-ui/react-slot": "^1.2.3",
+    "@tanstack/react-query": "^5.18.1",
+    "@tanstack/react-table": "^8.11.7",
+    "axios": "^1.6.7",
+    "class-variance-authority": "^0.7.1",
+    "clsx": "^2.1.1",
+    "date-fns": "^3.3.1",
+    "framer-motion": "^11.0.3",
+    "immer": "^10.0.3",
+    "lucide-react": "^0.322.0",
+    "next": "^14.1.0",
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0",
+    "react-hook-form": "^7.49.3",
+    "recharts": "^2.10.4",
+    "socket.io-client": "^4.7.4",
+    "tailwind-merge": "^3.3.1",
+    "tailwindcss-animate": "^1.0.7",
+    "zod": "^3.22.4",
+    "zustand": "^4.5.0"
+  },
+  "devDependencies": {
+    "@types/node": "^20.11.17",
+    "@types/react": "^18.2.55",
+    "@types/react-dom": "^18.2.19",
+    "autoprefixer": "^10.4.17",
+    "eslint": "^8.56.0",
+    "eslint-config-next": "^14.1.0",
+    "postcss": "^8.4.35",
+    "prettier": "^3.2.5",
+    "tailwindcss": "^3.4.1",
+    "typescript": "^5.3.3"
+  }
+}

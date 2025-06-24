@@ -37,7 +37,7 @@ CREATE POLICY rag_workspace_access ON rag_workspaces
     USING (
         -- Either no tenant context is set (initial setup)
         -- Or the workspace belongs to the current tenant
-        current_setting('app.current_tenant_id', true) IS NULL 
+        current_setting('app.current_tenant_id', true) IS NULL
         OR tenant_id = current_setting('app.current_tenant_id', true)::uuid
     );
 
@@ -45,7 +45,7 @@ CREATE POLICY rag_workspace_access ON rag_workspaces
 CREATE POLICY rag_document_access ON rag_documents
     FOR ALL
     USING (
-        current_setting('app.current_tenant_id', true) IS NULL 
+        current_setting('app.current_tenant_id', true) IS NULL
         OR tenant_id = current_setting('app.current_tenant_id', true)::uuid
     );
 
@@ -53,7 +53,7 @@ CREATE POLICY rag_document_access ON rag_documents
 CREATE POLICY rag_chunk_access ON rag_document_chunks
     FOR ALL
     USING (
-        current_setting('app.current_tenant_id', true) IS NULL 
+        current_setting('app.current_tenant_id', true) IS NULL
         OR tenant_id = current_setting('app.current_tenant_id', true)::uuid
     );
 
@@ -61,7 +61,7 @@ CREATE POLICY rag_chunk_access ON rag_document_chunks
 CREATE POLICY rag_queue_access ON rag_processing_queue
     FOR ALL
     USING (
-        current_setting('app.current_tenant_id', true) IS NULL 
+        current_setting('app.current_tenant_id', true) IS NULL
         OR tenant_id = current_setting('app.current_tenant_id', true)::uuid
     );
 
@@ -69,7 +69,7 @@ CREATE POLICY rag_queue_access ON rag_processing_queue
 CREATE POLICY rag_entity_access ON rag_entities
     FOR ALL
     USING (
-        current_setting('app.current_tenant_id', true) IS NULL 
+        current_setting('app.current_tenant_id', true) IS NULL
         OR tenant_id = current_setting('app.current_tenant_id', true)::uuid
     );
 
@@ -77,7 +77,7 @@ CREATE POLICY rag_entity_access ON rag_entities
 CREATE POLICY rag_relationship_access ON rag_relationships
     FOR ALL
     USING (
-        current_setting('app.current_tenant_id', true) IS NULL 
+        current_setting('app.current_tenant_id', true) IS NULL
         OR tenant_id = current_setting('app.current_tenant_id', true)::uuid
     );
 
@@ -85,7 +85,7 @@ CREATE POLICY rag_relationship_access ON rag_relationships
 CREATE POLICY rag_search_access ON rag_search_queries
     FOR ALL
     USING (
-        current_setting('app.current_tenant_id', true) IS NULL 
+        current_setting('app.current_tenant_id', true) IS NULL
         OR tenant_id = current_setting('app.current_tenant_id', true)::uuid
     );
 
@@ -93,7 +93,7 @@ CREATE POLICY rag_search_access ON rag_search_queries
 CREATE POLICY rag_api_usage_access ON rag_api_usage
     FOR ALL
     USING (
-        current_setting('app.current_tenant_id', true) IS NULL 
+        current_setting('app.current_tenant_id', true) IS NULL
         OR tenant_id = current_setting('app.current_tenant_id', true)::uuid
     );
 
@@ -110,7 +110,7 @@ DROP POLICY IF EXISTS rag_oauth_events_access ON rag_oauth_events;
 CREATE POLICY rag_oauth_events_access ON rag_oauth_events
     FOR ALL
     USING (
-        current_setting('app.current_tenant_id', true) IS NULL 
+        current_setting('app.current_tenant_id', true) IS NULL
         OR tenant_id = current_setting('app.current_tenant_id', true)::uuid
     );
 
