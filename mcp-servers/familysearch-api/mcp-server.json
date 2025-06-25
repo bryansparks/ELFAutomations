@@ -1,0 +1,22 @@
+{
+  "type": "mcp-server",
+  "server_type": "external",
+  "name": "familysearch-api",
+  "displayName": "FamilySearch API Gateway",
+  "description": "Intelligent wrapper for FamilySearch genealogy APIs",
+  "language": "typescript",
+  "transport": "http",
+  "template": "api-facade",
+  "exposes": {
+    "tools": 3,
+    "resources": 0,
+    "prompts": 0
+  },
+  "api_config": {
+    "docs_url": "https://www.familysearch.org/developers/docs/api/swagger.json",
+    "base_url": "https://api.familysearch.org",
+    "requires_api_key": false,
+    "api_key_name": null,
+    "api_key_type": null
+  }
+}

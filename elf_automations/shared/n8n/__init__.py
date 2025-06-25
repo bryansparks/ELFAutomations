@@ -12,11 +12,18 @@ from .config import (
     WorkflowConfig,
     WorkflowDefaults,
 )
-from .exceptions import N8NError, WorkflowExecutionError, WorkflowNotFoundError
+from .exceptions import (
+    N8NError,
+    WorkflowExecutionError,
+    WorkflowNotFoundError,
+    WorkflowValidationError,
+)
 from .models import (
+    ValidationStatus,
     WorkflowCategory,
     WorkflowExecution,
     WorkflowInfo,
+    WorkflowSource,
     WorkflowSpec,
     WorkflowStatus,
     WorkflowTriggerType,
@@ -31,6 +38,9 @@ from .patterns import (
     detect_pattern,
     generate_pattern_nodes,
 )
+from .workflow_exporter import WorkflowExporter
+from .workflow_importer import WorkflowImporter
+from .workflow_validator import ValidationReport, WorkflowValidator
 
 __all__ = [
     # Client and exceptions
@@ -38,6 +48,7 @@ __all__ = [
     "N8NError",
     "WorkflowExecutionError",
     "WorkflowNotFoundError",
+    "WorkflowValidationError",
     # Models
     "WorkflowSpec",
     "WorkflowExecution",
@@ -45,6 +56,13 @@ __all__ = [
     "WorkflowCategory",
     "WorkflowTriggerType",
     "WorkflowInfo",
+    "WorkflowSource",
+    "ValidationStatus",
+    # Import/Export/Validation
+    "WorkflowImporter",
+    "WorkflowExporter",
+    "WorkflowValidator",
+    "ValidationReport",
     # Patterns
     "WorkflowPattern",
     "WorkflowPatterns",

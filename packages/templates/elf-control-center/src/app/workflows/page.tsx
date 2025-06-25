@@ -7,12 +7,18 @@ import { MetricCard } from '@/components/ui/metric-card'
 import { useState, useEffect } from 'react'
 import { api, WorkflowStatus } from '@/services/api'
 import { Loading } from '@/components/ui/loading'
-import { Plus, Workflow, Play, Pause, RefreshCw, Clock, CheckCircle, XCircle } from 'lucide-react'
+import { Plus, Workflow, Play, Pause, RefreshCw, Clock, CheckCircle, XCircle, Sparkles, Upload, Download } from 'lucide-react'
+import { StateBadge } from '@/components/ui/state-badge'
 import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip } from 'recharts'
+import { WorkflowCreator } from '@/components/workflows/WorkflowCreator'
+import { TemplateGallery } from '@/components/workflows/TemplateGallery'
+import { WorkflowImporter } from '@/components/workflows/WorkflowImporter'
 
 export default function WorkflowsPage() {
   const [workflows, setWorkflows] = useState<WorkflowStatus[]>([])
   const [loading, setLoading] = useState(true)
+  const [activeView, setActiveView] = useState<'workflows' | 'templates'>('workflows')
+  const [showImporter, setShowImporter] = useState(false)
 
   useEffect(() => {
     fetchWorkflows()
@@ -41,6 +47,31 @@ export default function WorkflowsPage() {
     success: w.success_rate
   }))
 
+  const handleSelectTemplate = (template: any) => {
+    // Handle template selection - could open creator with pre-filled data
+    console.log('Selected template:', template)
+  }
+
+  const handleDeployTemplate = async (template: any) => {
+    // Handle direct template deployment
+    console.log('Deploy template:', template)
+    await fetchWorkflows()
+  }
+
+  const handleImportSuccess = (workflowId: string) => {
+    console.log('Workflow imported:', workflowId)
+    fetchWorkflows()
+  }
+
+  const handleExportWorkflow = async (workflowId: string) => {
+    try {
+      // Use direct navigation to trigger download
+      window.location.href = `/api/workflows/${workflowId}/export`
+    } catch (error) {
+      console.error('Failed to export workflow:', error)
+    }
+  }
+
   return (
     <PageTransition variant="fade">
       <div className="p-6 space-y-6">
@@ -51,11 +82,40 @@ export default function WorkflowsPage() {
               Monitor and control your N8N workflows
             </p>
           </div>
-          <Button variant="gradient" className="gap-2">
-            <Plus className="h-4 w-4" />
-            Create Workflow
+          <div className="flex gap-2">
+            <WorkflowCreator onWorkflowCreated={fetchWorkflows} />
+            <Button onClick={() => setShowImporter(true)} variant="outline">
+              <Upload className="h-4 w-4 mr-2" />
+              Import
+            </Button>
+          </div>
+        </div>
+
+        {/* View Toggle */}
+        <div className="flex gap-2">
+          <Button
+            variant={activeView === 'workflows' ? 'default' : 'outline'}
+            onClick={() => setActiveView('workflows')}
+          >
+            <Workflow className="h-4 w-4 mr-2" />
+            Active Workflows
+          </Button>
+          <Button
+            variant={activeView === 'templates' ? 'default' : 'outline'}
+            onClick={() => setActiveView('templates')}
+          >
+            <Sparkles className="h-4 w-4 mr-2" />
+            Templates Gallery
           </Button>
         </div>
+
+        {activeView === 'templates' ? (
+          <TemplateGallery
+            onSelectTemplate={handleSelectTemplate}
+            onDeployTemplate={handleDeployTemplate}
+          />
+        ) : (
+          <>
 
         {/* Metrics */}
         <div className="grid gap-4 md:grid-cols-4">
@@ -176,6 +236,9 @@ export default function WorkflowsPage() {
                         <Button size="sm" variant="ghost">
                           <RefreshCw className="h-4 w-4" />
                         </Button>
+                        <Button size="sm" variant="ghost" onClick={() => handleExportWorkflow(workflow.id)}>
+                          <Download className="h-4 w-4" />
+                        </Button>
                       </div>
                     </div>
                   </div>
@@ -184,6 +247,15 @@ export default function WorkflowsPage() {
             )}
           </CardContent>
         </Card>
+          </>
+        )}
+
+        {/* Import Dialog */}
+        <WorkflowImporter
+          isOpen={showImporter}
+          onClose={() => setShowImporter(false)}
+          onImportSuccess={handleImportSuccess}
+        />
       </div>
     </PageTransition>
   )

@@ -23,8 +23,16 @@ from supabase import Client, create_client
 sys.path.append(str(Path(__file__).parent.parent.parent))
 
 from elf_automations.shared.monitoring.cost_monitor import CostMonitor
+from elf_automations.shared.n8n.context_loader import (
+    N8NContextLoader,
+    WorkflowContextEnhancer,
+)
+from elf_automations.shared.n8n.workflow_analyzer import WorkflowAnalyzer
 from elf_automations.shared.registry.client import TeamRegistryClient
 from elf_automations.shared.utils.config import get_supabase_client
+from elf_automations.shared.utils.llm_factory import LLMFactory
+from tools.n8n_workflow_factory_v2 import EnhancedWorkflowFactory
+from tools.n8n_workflow_factory_v3 import AIEnhancedWorkflowFactory
 
 # Configure logging
 logger = structlog.get_logger(__name__)
@@ -121,6 +129,53 @@ class DashboardData(BaseModel):
     workflows: List[WorkflowStatus]
     recent_activities: List[Activity]
     alerts: List[Dict[str, Any]]
+
+
+class WorkflowGenerateRequest(BaseModel):
+    description: str
+    name: str
+    team: str
+    category: str = "automation"
+
+
+class WorkflowDeployRequest(BaseModel):
+    workflow: Dict[str, Any]
+    metadata: Dict[str, Any]
+
+
+class ChatMessage(BaseModel):
+    role: str  # 'user' or 'assistant'
+    content: str
+
+
+class ChatRequest(BaseModel):
+    messages: List[ChatMessage]
+    currentDescription: Optional[str] = None
+    context: str = "workflow_creation"
+
+
+class ChatResponse(BaseModel):
+    content: str
+    suggestions: Optional[List[str]] = None
+
+
+class WorkflowAnalysisRequest(BaseModel):
+    workflow: Dict[str, Any]
+
+
+class WorkflowAnalysisResponse(BaseModel):
+    issues: List[Dict[str, Any]]
+    metrics: Dict[str, Any]
+    suggestions: List[Dict[str, Any]]
+    estimated_cost: float
+
+
+class AIWorkflowRequest(BaseModel):
+    description: str
+    name: str
+    team: str
+    category: str = "ai-automation"
+    use_ai: bool = True
 
 
 @app.on_event("startup")
@@ -431,6 +486,248 @@ async def get_dashboard_data():
         )
     except Exception as e:
         logger.error(f"Error getting dashboard data: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.post("/api/workflows/generate")
+async def generate_workflow(request: WorkflowGenerateRequest):
+    """Generate a workflow using AI from natural language description"""
+    try:
+        factory = EnhancedWorkflowFactory(team_name=request.team)
+
+        # Generate workflow
+        result = await factory.create_workflow(
+            description=request.description,
+            name=request.name,
+            team=request.team,
+            category=request.category,
+            force_custom=False,
+        )
+
+        return result
+    except Exception as e:
+        logger.error(f"Error generating workflow: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.post("/api/workflows/deploy")
+async def deploy_workflow(request: WorkflowDeployRequest):
+    """Deploy a workflow to N8N"""
+    try:
+        # Save workflow to registry
+        workflow_data = {
+            "name": request.workflow.get("name"),
+            "description": request.metadata.get("description"),
+            "category": request.metadata.get("category"),
+            "owner_team": request.metadata.get("team"),
+            "trigger_type": request.metadata.get("trigger_type", "webhook"),
+            "workflow_json": request.workflow,
+            "is_active": True,
+            "created_by": "control_center",
+        }
+
+        # Insert into registry
+        result = (
+            supabase_client.table("n8n_workflow_registry")
+            .insert(workflow_data)
+            .execute()
+        )
+
+        # TODO: Actually deploy to N8N via API
+        # For now, just register it
+
+        return {
+            "success": True,
+            "workflow_id": result.data[0]["id"] if result.data else None,
+            "message": "Workflow registered successfully. Manual import to N8N required.",
+        }
+    except Exception as e:
+        logger.error(f"Error deploying workflow: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.post("/api/workflows/generate-ai")
+async def generate_ai_workflow(request: AIWorkflowRequest):
+    """Generate an AI-powered workflow with advanced capabilities"""
+    try:
+        if request.use_ai:
+            # Use V3 factory with AI enhancements
+            factory = AIEnhancedWorkflowFactory(team_name=request.team)
+            result = await factory.create_ai_workflow(
+                description=request.description,
+                name=request.name,
+                team=request.team,
+                category=request.category,
+            )
+        else:
+            # Fall back to V2 factory
+            factory = EnhancedWorkflowFactory(team_name=request.team)
+            result = await factory.create_workflow(
+                description=request.description,
+                name=request.name,
+                team=request.team,
+                category=request.category,
+            )
+
+        return result
+    except Exception as e:
+        logger.error(f"Error generating AI workflow: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.post("/api/workflows/analyze", response_model=WorkflowAnalysisResponse)
+async def analyze_workflow(request: WorkflowAnalysisRequest):
+    """Analyze a workflow for issues and optimization opportunities"""
+    try:
+        analyzer = WorkflowAnalyzer()
+        issues, metrics = analyzer.analyze_workflow(request.workflow)
+        suggestions = analyzer.suggest_optimizations(request.workflow, issues)
+
+        # Convert to response format
+        issues_data = [
+            {
+                "type": issue.type.value,
+                "severity": issue.severity.value,
+                "node_id": issue.node_id,
+                "title": issue.title,
+                "description": issue.description,
+                "recommendation": issue.recommendation,
+                "estimated_impact": issue.estimated_impact,
+            }
+            for issue in issues
+        ]
+
+        suggestions_data = [
+            {
+                "title": suggestion.title,
+                "description": suggestion.description,
+                "expected_improvement": suggestion.expected_improvement,
+                "implementation_steps": suggestion.implementation_steps,
+                "complexity": suggestion.complexity,
+            }
+            for suggestion in suggestions
+        ]
+
+        metrics_data = {
+            "node_count": metrics.node_count,
+            "connection_count": metrics.connection_count,
+            "complexity_score": metrics.complexity_score,
+            "estimated_execution_time": metrics.estimated_execution_time,
+            "estimated_cost_per_run": metrics.estimated_cost_per_run,
+            "parallel_execution_opportunities": metrics.parallel_execution_opportunities,
+            "ai_node_count": metrics.ai_node_count,
+            "external_api_calls": metrics.external_api_calls,
+            "database_operations": metrics.database_operations,
+        }
+
+        return WorkflowAnalysisResponse(
+            issues=issues_data,
+            metrics=metrics_data,
+            suggestions=suggestions_data,
+            estimated_cost=metrics.estimated_cost_per_run,
+        )
+    except Exception as e:
+        logger.error(f"Error analyzing workflow: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/api/workflows/templates")
+async def get_workflow_templates(category: str = None):
+    """Get curated workflow templates"""
+    try:
+        # TODO: Load from database or file system
+        # For now, return mock data
+        templates = [
+            {
+                "id": "ai-support",
+                "name": "AI Customer Support Agent",
+                "description": "Multi-channel support with AI agent, memory, and escalation",
+                "category": "ai-powered",
+                "tags": ["ai", "support", "email", "slack", "memory"],
+                "difficulty": "intermediate",
+                "success_rate": 94.5,
+                "usage_count": 1523,
+            },
+            {
+                "id": "rag-analysis",
+                "name": "Document Analysis with RAG",
+                "description": "Extract insights from documents using vector search and AI",
+                "category": "ai-powered",
+                "tags": ["ai", "rag", "documents", "analysis", "vector"],
+                "difficulty": "advanced",
+                "success_rate": 91.2,
+                "usage_count": 892,
+            },
+        ]
+
+        if category:
+            templates = [t for t in templates if t["category"] == category]
+
+        return {"templates": templates}
+    except Exception as e:
+        logger.error(f"Error fetching templates: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.post("/api/workflows/chat", response_model=ChatResponse)
+async def chat_with_workflow_assistant(request: ChatRequest):
+    """Chat with AI assistant about workflow creation"""
+    try:
+        # Create LLM instance
+        llm = LLMFactory.create_llm(
+            preferred_provider="anthropic",
+            preferred_model="claude-3-sonnet-20240229",
+            temperature=0.7,
+            enable_fallback=True,
+        )
+
+        # Build context-aware prompt
+        system_prompt = """You are Claude, an AI assistant specialized in creating n8n workflows.
+You help users refine their workflow ideas, suggest improvements, and provide best practices.
+
+Key capabilities:
+- Understand business processes and translate them to workflows
+- Suggest appropriate n8n nodes and configurations
+- Identify edge cases and error handling needs
+- Recommend integrations and data transformations
+- Provide clear, actionable workflow descriptions
+
+When users describe workflows, help them be more specific about:
+- Triggers (webhooks, schedules, events)
+- Data sources and formats
+- Processing steps and transformations
+- Conditions and branching logic
+- Output destinations and formats
+- Error handling and notifications
+
+Always provide practical suggestions and examples."""
+
+        # Add current description context if provided
+        if request.currentDescription:
+            system_prompt += f"\n\nThe user is currently working on this workflow description:\n{request.currentDescription}"
+
+        # Convert messages to format expected by LLM
+        messages = [{"role": "system", "content": system_prompt}]
+        for msg in request.messages:
+            messages.append({"role": msg.role, "content": msg.content})
+
+        # Get response from LLM
+        response = llm.invoke(messages)
+
+        # Extract suggestions from response
+        suggestions = []
+        if "?" in response.content:
+            # Suggest follow-up questions
+            suggestions = [
+                "Tell me more about the data format",
+                "What should happen on errors?",
+                "How often should this run?",
+                "Who should be notified?",
+            ]
+
+        return ChatResponse(content=response.content, suggestions=suggestions)
+    except Exception as e:
+        logger.error(f"Error in workflow chat: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
 

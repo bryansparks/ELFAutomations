@@ -64,6 +64,93 @@ export interface WorkflowStatus {
   executions_today: number;
 }
 
+export interface WorkflowGenerateRequest {
+  description: string;
+  name: string;
+  team: string;
+  category: string;
+}
+
+export interface WorkflowGenerateResponse {
+  workflow: any;
+  metadata: {
+    description: string;
+    team: string;
+    category: string;
+    pattern?: string;
+    trigger_type?: string;
+    services?: any;
+    created_at: string;
+  };
+}
+
+export interface WorkflowDeployRequest {
+  workflow: any;
+  metadata: any;
+}
+
+export interface ChatMessage {
+  role: 'user' | 'assistant';
+  content: string;
+}
+
+export interface ChatRequest {
+  messages: ChatMessage[];
+  currentDescription?: string;
+  context: string;
+}
+
+export interface WorkflowAnalysisRequest {
+  workflow: any;
+}
+
+export interface WorkflowAnalysisResponse {
+  issues: Array<{
+    type: string;
+    severity: string;
+    node_id: string | null;
+    title: string;
+    description: string;
+    recommendation: string;
+    estimated_impact?: string;
+  }>;
+  metrics: {
+    node_count: number;
+    connection_count: number;
+    complexity_score: number;
+    estimated_execution_time: number;
+    estimated_cost_per_run: number;
+    parallel_execution_opportunities: number;
+    ai_node_count: number;
+    external_api_calls: number;
+    database_operations: number;
+  };
+  suggestions: Array<{
+    title: string;
+    description: string;
+    expected_improvement: string;
+    implementation_steps: string[];
+    complexity: string;
+  }>;
+  estimated_cost: number;
+}
+
+export interface WorkflowTemplate {
+  id: string;
+  name: string;
+  description: string;
+  category: string;
+  tags: string[];
+  difficulty: string;
+  success_rate: number;
+  usage_count: number;
+}
+
+export interface ChatResponse {
+  content: string;
+  suggestions?: string[];
+}
+
 export interface Activity {
   id: string;
   timestamp: string;
@@ -113,6 +200,91 @@ class ControlCenterAPI {
   async getWorkflows(): Promise<WorkflowStatus[]> {
     const response = await fetch(`${this.baseUrl}/api/workflows`);
     if (!response.ok) throw new Error('Failed to fetch workflows');
+    return response.json();
+  }
+
+  async generateWorkflow(request: WorkflowGenerateRequest): Promise<WorkflowGenerateResponse> {
+    const response = await fetch(`${this.baseUrl}/api/workflows/generate`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(request),
+    });
+    if (!response.ok) {
+      const error = await response.text();
+      throw new Error(error || 'Failed to generate workflow');
+    }
+    return response.json();
+  }
+
+  async generateAIWorkflow(request: WorkflowGenerateRequest & { use_ai: boolean }): Promise<WorkflowGenerateResponse> {
+    const response = await fetch(`${this.baseUrl}/api/workflows/generate-ai`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(request),
+    });
+    if (!response.ok) {
+      const error = await response.text();
+      throw new Error(error || 'Failed to generate AI workflow');
+    }
+    return response.json();
+  }
+
+  async analyzeWorkflow(request: WorkflowAnalysisRequest): Promise<WorkflowAnalysisResponse> {
+    const response = await fetch(`${this.baseUrl}/api/workflows/analyze`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(request),
+    });
+    if (!response.ok) {
+      const error = await response.text();
+      throw new Error(error || 'Failed to analyze workflow');
+    }
+    return response.json();
+  }
+
+  async getWorkflowTemplates(category?: string): Promise<{ templates: WorkflowTemplate[] }> {
+    const url = category
+      ? `${this.baseUrl}/api/workflows/templates?category=${category}`
+      : `${this.baseUrl}/api/workflows/templates`;
+
+    const response = await fetch(url);
+    if (!response.ok) throw new Error('Failed to fetch templates');
+    return response.json();
+  }
+
+  async deployWorkflow(request: WorkflowDeployRequest): Promise<any> {
+    const response = await fetch(`${this.baseUrl}/api/workflows/deploy`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(request),
+    });
+    if (!response.ok) {
+      const error = await response.text();
+      throw new Error(error || 'Failed to deploy workflow');
+    }
+    return response.json();
+  }
+
+  async chatWithWorkflowAssistant(request: ChatRequest): Promise<ChatResponse> {
+    const response = await fetch(`${this.baseUrl}/api/workflows/chat`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(request),
+    });
+    if (!response.ok) {
+      const error = await response.text();
+      throw new Error(error || 'Failed to chat with assistant');
+    }
     return response.json();
   }
 

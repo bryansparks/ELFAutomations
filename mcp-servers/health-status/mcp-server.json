@@ -1,0 +1,14 @@
+{
+  "type": "mcp-server",
+  "server_type": "internal",
+  "name": "health-status",
+  "displayName": "Health Status",
+  "description": "This MCP Server will monitor the infractructure parts of this system and make sure they are healthy. This will include the Qdrant Vecctor DB, the Neo4j db, the N8N service, the kubernetes secrets manager, and others.",
+  "language": "typescript",
+  "transport": "http",
+  "exposes": {
+    "tools": 4,
+    "resources": 0,
+    "prompts": 0
+  }
+}

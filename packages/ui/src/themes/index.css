@@ -1,0 +1,193 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    /* Default Light Theme */
+    --background: 0 0% 100%;
+    --foreground: 222.2 84% 4.9%;
+    --card: 0 0% 100%;
+    --card-foreground: 222.2 84% 4.9%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 222.2 84% 4.9%;
+    --primary: 199 89% 48%;
+    --primary-foreground: 210 40% 98%;
+    --secondary: 210 40% 96.1%;
+    --secondary-foreground: 222.2 47.4% 11.2%;
+    --muted: 210 40% 96.1%;
+    --muted-foreground: 215.4 16.3% 46.9%;
+    --accent: 210 40% 96.1%;
+    --accent-foreground: 222.2 47.4% 11.2%;
+    --destructive: 0 84.2% 60.2%;
+    --destructive-foreground: 210 40% 98%;
+    --border: 214.3 31.8% 91.4%;
+    --input: 214.3 31.8% 91.4%;
+    --ring: 199 89% 48%;
+    --radius: 0.5rem;
+
+    /* Gradient Colors */
+    --gradient-start: 199 89% 48%;
+    --gradient-middle: 217 91% 60%;
+    --gradient-end: 280 87% 65%;
+  }
+
+  .dark {
+    --background: 222.2 84% 4.9%;
+    --foreground: 210 40% 98%;
+    --card: 222.2 84% 4.9%;
+    --card-foreground: 210 40% 98%;
+    --popover: 222.2 84% 4.9%;
+    --popover-foreground: 210 40% 98%;
+    --primary: 199 89% 48%;
+    --primary-foreground: 222.2 47.4% 11.2%;
+    --secondary: 217.2 32.6% 17.5%;
+    --secondary-foreground: 210 40% 98%;
+    --muted: 217.2 32.6% 17.5%;
+    --muted-foreground: 215 20.2% 65.1%;
+    --accent: 217.2 32.6% 17.5%;
+    --accent-foreground: 210 40% 98%;
+    --destructive: 0 62.8% 30.6%;
+    --destructive-foreground: 210 40% 98%;
+    --border: 217.2 32.6% 17.5%;
+    --input: 217.2 32.6% 17.5%;
+    --ring: 199 89% 48%;
+
+    /* Gradient Colors Dark */
+    --gradient-start: 199 89% 48%;
+    --gradient-middle: 217 91% 40%;
+    --gradient-end: 280 87% 45%;
+  }
+
+  /* Ocean Theme */
+  .theme-ocean {
+    --primary: 201 96% 32%;
+    --primary-foreground: 210 40% 98%;
+    --gradient-start: 201 96% 32%;
+    --gradient-middle: 195 100% 39%;
+    --gradient-end: 188 94% 43%;
+  }
+
+  /* Sunset Theme */
+  .theme-sunset {
+    --primary: 14 93% 53%;
+    --primary-foreground: 0 0% 100%;
+    --gradient-start: 14 93% 53%;
+    --gradient-middle: 334 86% 67%;
+    --gradient-end: 292 84% 61%;
+  }
+
+  /* Forest Theme */
+  .theme-forest {
+    --primary: 142 76% 36%;
+    --primary-foreground: 0 0% 100%;
+    --gradient-start: 142 76% 36%;
+    --gradient-middle: 162 63% 41%;
+    --gradient-end: 88 50% 53%;
+  }
+
+  /* Neon Theme */
+  .theme-neon {
+    --primary: 271 91% 65%;
+    --primary-foreground: 0 0% 100%;
+    --gradient-start: 271 91% 65%;
+    --gradient-middle: 282 100% 50%;
+    --gradient-end: 199 89% 48%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+  body {
+    @apply bg-background text-foreground;
+    font-feature-settings: "rlig" 1, "calt" 1;
+  }
+}
+
+@layer utilities {
+  /* Text Gradients */
+  .text-gradient {
+    @apply bg-gradient-to-r from-elf-500 via-violet-500 to-purple-500 bg-clip-text text-transparent;
+  }
+
+  /* Background Patterns */
+  .bg-grid {
+    background-image: url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%239C92AC' fill-opacity='0.05'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E");
+  }
+
+  .bg-dots {
+    background-image: radial-gradient(circle, rgba(0,0,0,0.1) 1px, transparent 1px);
+    background-size: 20px 20px;
+  }
+
+  /* Glass Morphism */
+  .glass {
+    @apply backdrop-blur-lg bg-white/10 border border-white/20;
+  }
+
+  .glass-dark {
+    @apply backdrop-blur-lg bg-black/10 border border-white/10;
+  }
+
+  /* Neumorphism */
+  .neu {
+    @apply bg-background;
+    box-shadow: 5px 5px 10px rgba(0,0,0,0.1), -5px -5px 10px rgba(255,255,255,0.1);
+  }
+
+  .neu-inset {
+    @apply bg-background;
+    box-shadow: inset 5px 5px 10px rgba(0,0,0,0.1), inset -5px -5px 10px rgba(255,255,255,0.1);
+  }
+
+  /* Glow Effects */
+  .glow {
+    @apply relative;
+  }
+
+  .glow::before {
+    @apply absolute -inset-0.5 bg-gradient-to-r from-elf-500 to-purple-500 rounded-lg blur opacity-30 transition duration-500;
+    content: '';
+  }
+
+  .glow:hover::before {
+    @apply opacity-50;
+  }
+
+  /* Loading Shimmer */
+  .shimmer {
+    @apply relative overflow-hidden;
+  }
+
+  .shimmer::before {
+    @apply absolute inset-0 -translate-x-full;
+    background: linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent);
+    content: '';
+    animation: shimmer 2s infinite;
+  }
+
+  /* Smooth Scroll */
+  .smooth-scroll {
+    scroll-behavior: smooth;
+  }
+
+  /* Custom Scrollbar */
+  .custom-scrollbar::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+  }
+
+  .custom-scrollbar::-webkit-scrollbar-track {
+    @apply bg-muted rounded-full;
+  }
+
+  .custom-scrollbar::-webkit-scrollbar-thumb {
+    @apply bg-primary/20 rounded-full transition-colors;
+  }
+
+  .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+    @apply bg-primary/30;
+  }
+}

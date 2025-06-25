@@ -9,20 +9,31 @@ import json
 import logging
 import os
 from datetime import datetime
-from typing import Any, Dict, List, Optional
+from pathlib import Path
+from typing import Any, Dict, List, Optional, Union
 
 import aiohttp
 from supabase import Client, create_client
 
-from .exceptions import N8NError, WorkflowExecutionError, WorkflowNotFoundError
+from .exceptions import (
+    N8NError,
+    WorkflowExecutionError,
+    WorkflowNotFoundError,
+    WorkflowValidationError,
+)
 from .models import (
+    ValidationStatus,
     WorkflowCategory,
     WorkflowExecution,
     WorkflowInfo,
+    WorkflowSource,
     WorkflowSpec,
     WorkflowStatus,
     WorkflowTriggerType,
 )
+from .workflow_exporter import WorkflowExporter
+from .workflow_importer import WorkflowImporter
+from .workflow_validator import WorkflowValidator
 
 logger = logging.getLogger(__name__)
 
@@ -68,6 +79,11 @@ class N8NClient:
 
         self.supabase: Client = create_client(supabase_url, supabase_key)
         self.session: Optional[aiohttp.ClientSession] = None
+
+        # Initialize import/export/validation services
+        self.importer = WorkflowImporter(self.supabase)
+        self.exporter = WorkflowExporter(self.supabase)
+        self.validator = WorkflowValidator()
 
     async def __aenter__(self):
         """Async context manager entry"""
@@ -408,3 +424,269 @@ class N8NClient:
             output_data=data.get("output_data"),
             error_message=data.get("error_message"),
         )
+
+    # Import/Export Methods
+
+    def import_workflow(
+        self,
+        workflow_json: Union[Dict[str, Any], str],
+        name: str,
+        category: Union[WorkflowCategory, str],
+        owner_team: str,
+        imported_by: str,
+        description: Optional[str] = None,
+        tags: Optional[List[str]] = None,
+        source: Union[WorkflowSource, str] = WorkflowSource.N8N_EXPORT,
+    ) -> Dict[str, Any]:
+        """
+        Import a workflow into the database
+
+        Args:
+            workflow_json: N8N workflow JSON (dict or JSON string)
+            name: Workflow name
+            category: Workflow category
+            owner_team: Team that owns this workflow
+            imported_by: User/system importing the workflow
+            description: Optional description
+            tags: Optional tags
+            source: Source of the workflow
+
+        Returns:
+            Created workflow record
+        """
+        # Convert string enums to enum types
+        if isinstance(category, str):
+            category = WorkflowCategory.from_string(category)
+        if isinstance(source, str):
+            source = WorkflowSource(source)
+
+        return self.importer.import_workflow(
+            workflow_json=workflow_json,
+            name=name,
+            category=category,
+            owner_team=owner_team,
+            imported_by=imported_by,
+            description=description,
+            tags=tags,
+            source=source,
+        )
+
+    def import_from_file(self, file_path: Union[str, Path], **kwargs) -> Dict[str, Any]:
+        """
+        Import workflow from a JSON file
+
+        Args:
+            file_path: Path to workflow JSON file
+            **kwargs: Additional arguments passed to import_workflow
+
+        Returns:
+            Created workflow record
+        """
+        from pathlib import Path
+
+        return self.importer.import_from_file(file_path, **kwargs)
+
+    def export_workflow(
+        self,
+        workflow_id: Optional[str] = None,
+        workflow_slug: Optional[str] = None,
+        version: Optional[int] = None,
+        include_metadata: bool = True,
+    ) -> Dict[str, Any]:
+        """
+        Export a workflow to N8N format
+
+        Args:
+            workflow_id: Workflow ID (provide either this or slug)
+            workflow_slug: Workflow slug (provide either this or ID)
+            version: Specific version to export (latest if not specified)
+            include_metadata: Include export metadata
+
+        Returns:
+            Workflow in N8N format with optional metadata
+        """
+        return self.exporter.export_workflow(
+            workflow_id=workflow_id,
+            workflow_slug=workflow_slug,
+            version=version,
+            include_metadata=include_metadata,
+        )
+
+    def export_to_file(
+        self,
+        workflow_id: Optional[str] = None,
+        workflow_slug: Optional[str] = None,
+        output_path: Optional[Union[str, Path]] = None,
+        version: Optional[int] = None,
+        include_metadata: bool = True,
+    ) -> Path:
+        """
+        Export workflow to a JSON file
+
+        Args:
+            workflow_id: Workflow ID
+            workflow_slug: Workflow slug
+            output_path: Output file path (auto-generated if not provided)
+            version: Specific version to export
+            include_metadata: Include export metadata
+
+        Returns:
+            Path to exported file
+        """
+        from pathlib import Path
+
+        return self.exporter.export_to_file(
+            workflow_id=workflow_id,
+            workflow_slug=workflow_slug,
+            output_path=output_path,
+            version=version,
+            include_metadata=include_metadata,
+        )
+
+    def validate_workflow(
+        self,
+        workflow_json: Dict[str, Any],
+        owner_team: Optional[str] = None,
+        check_permissions: bool = True,
+        deep_validation: bool = True,
+    ) -> Dict[str, Any]:
+        """
+        Validate a workflow
+
+        Args:
+            workflow_json: N8N workflow JSON
+            owner_team: Team that will own this workflow
+            check_permissions: Check team permissions for resources
+            deep_validation: Perform deep analysis (slower but more thorough)
+
+        Returns:
+            Validation result dictionary
+        """
+        result = self.validator.validate_workflow(
+            workflow_json=workflow_json,
+            owner_team=owner_team,
+            check_permissions=check_permissions,
+            deep_validation=deep_validation,
+        )
+        return result.to_dict()
+
+    async def import_workflow(
+        self,
+        source: str,
+        source_type: str = "json",  # json, file, url
+        owner_team: str = "default",
+        category: str = "imported",
+        validate: bool = True,
+        process: bool = True,
+        auto_fix: bool = False,
+    ) -> Dict[str, Any]:
+        """
+        Import a workflow from various sources
+
+        Args:
+            source: The workflow source (JSON string, file path, or URL)
+            source_type: Type of source - json, file, or url
+            owner_team: Team that will own this workflow
+            category: Category to assign to the workflow
+            validate: Whether to validate the workflow
+            process: Whether to process the workflow for compatibility
+            auto_fix: Whether to auto-fix common issues
+
+        Returns:
+            Dictionary with workflow_id and validation report
+        """
+        workflow_id, validation_report = await self.importer.import_workflow(
+            source=source,
+            source_type=source_type,
+            owner_team=owner_team,
+            category=category,
+            validate=validate,
+            process=process,
+            auto_fix=auto_fix,
+        )
+
+        return {
+            "workflow_id": workflow_id,
+            "validation_report": validation_report.__dict__
+            if validation_report
+            else None,
+            "success": workflow_id is not None,
+        }
+
+    async def sync_with_n8n(
+        self, sync_all: bool = False, workflow_ids: Optional[List[str]] = None
+    ) -> Dict[str, Any]:
+        """
+        Sync workflows between database and N8N instance
+
+        Args:
+            sync_all: Sync all workflows
+            workflow_ids: Specific workflow IDs to sync
+
+        Returns:
+            Sync results
+        """
+        if not self.session:
+            self.session = aiohttp.ClientSession()
+
+        results = {"synced": [], "failed": [], "skipped": []}
+
+        # Get workflows to sync
+        query = self.supabase.table("workflow_registry").select("*")
+
+        if not sync_all and workflow_ids:
+            query = query.in_("id", workflow_ids)
+        elif not sync_all:
+            # Only sync active workflows by default
+            query = query.in_("status", ["running", "deployed"])
+
+        workflows = query.execute()
+
+        for workflow in workflows.data:
+            try:
+                # Skip if no N8N ID
+                if not workflow.get("n8n_workflow_id"):
+                    results["skipped"].append(
+                        {
+                            "id": workflow["id"],
+                            "name": workflow["name"],
+                            "reason": "No N8N workflow ID",
+                        }
+                    )
+                    continue
+
+                # Fetch workflow from N8N
+                url = f"{self.n8n_url}/api/v1/workflows/{workflow['n8n_workflow_id']}"
+
+                async with self.session.get(
+                    url, headers=self._get_headers()
+                ) as response:
+                    if response.status == 200:
+                        n8n_workflow = await response.json()
+
+                        # Update workflow in database
+                        self.importer.update_workflow(
+                            workflow_id=workflow["id"],
+                            workflow_json=n8n_workflow,
+                            change_summary="Synced from N8N",
+                            changed_by="sync_process",
+                        )
+
+                        results["synced"].append(
+                            {"id": workflow["id"], "name": workflow["name"]}
+                        )
+                    else:
+                        results["failed"].append(
+                            {
+                                "id": workflow["id"],
+                                "name": workflow["name"],
+                                "error": f"N8N returned status {response.status}",
+                            }
+                        )
+
+            except Exception as e:
+                results["failed"].append(
+                    {"id": workflow["id"], "name": workflow["name"], "error": str(e)}
+                )
+
+        return results
