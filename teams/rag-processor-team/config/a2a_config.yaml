@@ -1,0 +1,78 @@
+a2a:
+  team_id: rag-processor-team
+  capabilities:
+    - document_processing
+    - entity_extraction
+    - smart_chunking
+    - embedding_generation
+    - graph_building
+    - vector_storage
+    - multi_store_coordination
+  endpoints:
+    - name: process_document
+      path: /process
+      method: POST
+      description: Process a document through the complete RAG pipeline
+      parameters:
+        - name: document_id
+          type: string
+          required: true
+          description: Unique identifier for the document
+        - name: tenant_id
+          type: string
+          required: true
+          description: Tenant identifier for multi-tenancy
+        - name: source_path
+          type: string
+          required: true
+          description: Path to the document in storage
+        - name: priority
+          type: integer
+          required: false
+          description: Processing priority (1-10, default 5)
+    - name: get_status
+      path: /status/{document_id}
+      method: GET
+      description: Get processing status for a document
+      parameters:
+        - name: document_id
+          type: string
+          required: true
+          description: Document ID to check status for
+    - name: search
+      path: /search
+      method: POST
+      description: Search processed documents using semantic search
+      parameters:
+        - name: query
+          type: string
+          required: true
+          description: Search query
+        - name: tenant_id
+          type: string
+          required: true
+          description: Tenant to search within
+        - name: limit
+          type: integer
+          required: false
+          description: Maximum number of results (default 10)
+        - name: include_entities
+          type: boolean
+          required: false
+          description: Include entity information in results
+  success_criteria:
+    document_processing:
+      - All entities extracted with confidence > 0.7
+      - Chunks created with appropriate boundaries
+      - Embeddings generated and stored in Qdrant
+      - Graph relationships established in Neo4j
+      - Document status updated in Supabase
+    search:
+      - Results ranked by relevance
+      - Entity enrichment when requested
+      - Response time < 2 seconds
+  communication_protocols:
+    - accepts: A2A task requests for document processing
+    - emits: Processing status updates via webhook (if configured)
+    - timeout: 300 seconds for document processing
+    - retry_policy: exponential backoff with max 3 retries

@@ -11,6 +11,8 @@ resources:
 - deployment.yaml
 - service.yaml
 - monitoring.yaml
+- ingress.yaml
+- auth-secret.yaml
 
 commonLabels:
   app: agentgateway

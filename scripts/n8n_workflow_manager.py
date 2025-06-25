@@ -246,6 +246,60 @@ async def main():
     # Stats command
     stats_parser = subparsers.add_parser("stats", help="Show workflow statistics")
 
+    # Import command
+    import_parser = subparsers.add_parser("import", help="Import workflow from file")
+    import_parser.add_argument("file", help="Path to workflow JSON file")
+    import_parser.add_argument("--name", help="Override workflow name")
+    import_parser.add_argument(
+        "--category",
+        required=True,
+        choices=[
+            "customer-onboarding",
+            "order-processing",
+            "data-pipeline",
+            "data-sync",
+            "reporting",
+            "marketing-automation",
+            "team-coordination",
+            "maintenance",
+            "integration",
+            "notification",
+            "approval",
+            "automation",
+            "other",
+        ],
+    )
+    import_parser.add_argument("--team", required=True, help="Owner team")
+    import_parser.add_argument("--description", help="Workflow description")
+    import_parser.add_argument("--tags", nargs="+", help="Tags for the workflow")
+    import_parser.add_argument(
+        "--validate", action="store_true", help="Validate after import"
+    )
+
+    # Export command
+    export_parser = subparsers.add_parser("export", help="Export workflow to file")
+    export_parser.add_argument("workflow", help="Workflow name or ID")
+    export_parser.add_argument("--output", help="Output file path")
+    export_parser.add_argument("--version", type=int, help="Export specific version")
+    export_parser.add_argument(
+        "--no-metadata", action="store_true", help="Export without metadata"
+    )
+
+    # Validate command
+    validate_parser = subparsers.add_parser("validate", help="Validate workflow")
+    validate_parser.add_argument("workflow", help="Workflow name, ID, or JSON file")
+    validate_parser.add_argument(
+        "--deep", action="store_true", help="Perform deep validation"
+    )
+    validate_parser.add_argument("--team", help="Team for permission checks")
+
+    # Sync command
+    sync_parser = subparsers.add_parser("sync", help="Sync workflows with N8N")
+    sync_parser.add_argument("--all", action="store_true", help="Sync all workflows")
+    sync_parser.add_argument(
+        "--workflows", nargs="+", help="Specific workflow IDs to sync"
+    )
+
     args = parser.parse_args()
 
     if not args.command:
@@ -294,6 +348,173 @@ async def main():
 
     elif args.command == "stats":
         await manager.show_stats()
+
+    elif args.command == "import":
+        # Import workflow from file
+        async with manager.client as client:
+            try:
+                # Normalize category
+                category = args.category.replace("-", "_")
+
+                result = client.import_from_file(
+                    file_path=args.file,
+                    name=args.name,
+                    category=category,
+                    owner_team=args.team,
+                    imported_by="cli",
+                    description=args.description,
+                    tags=args.tags,
+                )
+
+                print(f"✓ Workflow imported successfully")
+                print(f"  ID: {result['id']}")
+                print(f"  Slug: {result['slug']}")
+                print(f"  Status: {result['status']}")
+
+                # Validate if requested
+                if args.validate:
+                    print("\nValidating workflow...")
+                    validation = client.validate_workflow(
+                        workflow_json=result["n8n_workflow_json"],
+                        owner_team=args.team,
+                        deep_validation=True,
+                    )
+
+                    print(f"\nValidation Status: {validation['status']}")
+                    if validation["summary"]["error_count"] > 0:
+                        print(f"  Errors: {validation['summary']['error_count']}")
+                        for error in validation["errors"]:
+                            print(f"    - {error['message']}")
+                    if validation["summary"]["warning_count"] > 0:
+                        print(f"  Warnings: {validation['summary']['warning_count']}")
+                        for warning in validation["warnings"][:5]:  # Show first 5
+                            print(f"    - {warning['message']}")
+
+            except Exception as e:
+                print(f"✗ Import failed: {e}")
+
+    elif args.command == "export":
+        # Export workflow to file
+        async with manager.client as client:
+            try:
+                # Determine if input is ID (UUID) or name
+                import uuid
+
+                workflow_id = None
+                workflow_slug = None
+
+                try:
+                    uuid.UUID(args.workflow)
+                    workflow_id = args.workflow
+                except ValueError:
+                    workflow_slug = args.workflow
+
+                output_path = client.export_to_file(
+                    workflow_id=workflow_id,
+                    workflow_slug=workflow_slug,
+                    output_path=args.output,
+                    version=args.version,
+                    include_metadata=not args.no_metadata,
+                )
+
+                print(f"✓ Workflow exported to: {output_path}")
+
+            except Exception as e:
+                print(f"✗ Export failed: {e}")
+
+    elif args.command == "validate":
+        # Validate workflow
+        async with manager.client as client:
+            try:
+                # Check if input is a file
+                if args.workflow.endswith(".json"):
+                    with open(args.workflow, "r") as f:
+                        workflow_json = json.load(f)
+                else:
+                    # Get workflow from database
+                    import uuid
+
+                    try:
+                        uuid.UUID(args.workflow)
+                        workflow = client.export_workflow(
+                            workflow_id=args.workflow, include_metadata=False
+                        )
+                    except ValueError:
+                        workflow = client.export_workflow(
+                            workflow_slug=args.workflow, include_metadata=False
+                        )
+
+                    workflow_json = workflow
+
+                # Validate
+                validation = client.validate_workflow(
+                    workflow_json=workflow_json,
+                    owner_team=args.team,
+                    deep_validation=args.deep,
+                )
+
+                print(f"Validation Status: {validation['status']}")
+                print(f"\nSummary:")
+                print(f"  Errors: {validation['summary']['error_count']}")
+                print(f"  Warnings: {validation['summary']['warning_count']}")
+                print(f"  Suggestions: {validation['summary']['suggestion_count']}")
+                print(
+                    f"  Security Issues: {validation['summary']['security_issue_count']}"
+                )
+
+                if validation["errors"]:
+                    print("\nErrors:")
+                    for error in validation["errors"]:
+                        print(f"  - [{error['code']}] {error['message']}")
+
+                if validation["security_issues"]:
+                    print("\nSecurity Issues:")
+                    for issue in validation["security_issues"]:
+                        print(f"  - [{issue['code']}] {issue['message']}")
+
+                if validation["warnings"]:
+                    print("\nWarnings:")
+                    for warning in validation["warnings"][:10]:  # Show first 10
+                        print(f"  - [{warning['code']}] {warning['message']}")
+
+                if validation["metrics"]:
+                    print("\nMetrics:")
+                    for key, value in validation["metrics"].items():
+                        print(f"  {key}: {value}")
+
+            except Exception as e:
+                print(f"✗ Validation failed: {e}")
+
+    elif args.command == "sync":
+        # Sync workflows with N8N
+        async with manager.client as client:
+            try:
+                results = await client.sync_with_n8n(
+                    sync_all=args.all, workflow_ids=args.workflows
+                )
+
+                print("Sync Results:")
+                print(f"  Synced: {len(results['synced'])}")
+                print(f"  Failed: {len(results['failed'])}")
+                print(f"  Skipped: {len(results['skipped'])}")
+
+                if results["synced"]:
+                    print("\nSynced workflows:")
+                    for wf in results["synced"]:
+                        print(f"  ✓ {wf['name']}")
+
+                if results["failed"]:
+                    print("\nFailed workflows:")
+                    for wf in results["failed"]:
+                        print(f"  ✗ {wf['name']}: {wf['error']}")
+
+                if results["skipped"] and args.all:
+                    print("\nSkipped workflows:")
+                    for wf in results["skipped"][:5]:  # Show first 5
+                        print(f"  - {wf['name']}: {wf['reason']}")
+
+            except Exception as e:
+                print(f"✗ Sync failed: {e}")
 
 
 if __name__ == "__main__":

@@ -1,0 +1,194 @@
+team:
+  name: rag-processor-team
+  display_name: "RAG Document Processor Team"
+  description: "Processes documents through extraction, chunking, and embedding pipeline"
+  framework: langgraph
+  llm_provider: openai
+  llm_model: gpt-4
+  fallback_llm_provider: anthropic
+  fallback_llm_model: claude-3-opus-20240229
+
+agents:
+  - name: queue_monitor
+    role: "Queue Monitor"
+    goal: "Monitor document processing queue and dispatch documents"
+    backstory: "An efficient coordinator that ensures documents flow smoothly through the pipeline"
+    llm_temperature: 0.1
+    tools:
+      - monitor_queue
+      - update_document_status
+      - get_extraction_schema
+
+  - name: document_classifier
+    role: "Document Classifier"
+    goal: "Identify document types and select appropriate processing strategies"
+    backstory: "An expert at recognizing document patterns and structures"
+    llm_temperature: 0.2
+    tools:
+      - classify_document
+      - get_document_metadata
+      - update_classification
+
+  - name: entity_extractor
+    role: "Entity Extractor"
+    goal: "Extract entities and relationships based on document type"
+    backstory: "A detail-oriented analyst who finds every important piece of information"
+    llm_temperature: 0.1
+    tools:
+      - extract_entities
+      - extract_relationships
+      - normalize_entities
+      - store_extracted_data
+
+  - name: smart_chunker
+    role: "Smart Chunker"
+    goal: "Split documents into optimal chunks while preserving context"
+    backstory: "A structural expert who understands how to segment information meaningfully"
+    llm_temperature: 0.2
+    tools:
+      - chunk_document
+      - create_chunk_relationships
+      - validate_chunks
+
+  - name: embedding_generator
+    role: "Embedding Generator"
+    goal: "Generate high-quality embeddings for document chunks"
+    backstory: "A semantic specialist who captures meaning in vector space"
+    llm_temperature: 0.1
+    tools:
+      - generate_embeddings
+      - store_vectors
+      - update_embedding_metadata
+
+  - name: graph_builder
+    role: "Graph Builder"
+    goal: "Build Neo4j knowledge graph from extracted entities and relationships"
+    backstory: "A connection specialist who weaves information into rich networks"
+    llm_temperature: 0.1
+    tools:
+      - create_nodes
+      - create_relationships
+      - update_graph_metadata
+      - validate_graph_integrity
+
+  - name: storage_coordinator
+    role: "Storage Coordinator"
+    goal: "Ensure all data is properly stored across multiple systems"
+    backstory: "A meticulous organizer who ensures nothing is lost and everything is findable"
+    llm_temperature: 0.1
+    tools:
+      - coordinate_storage
+      - verify_storage_integrity
+      - update_document_status
+      - handle_storage_errors
+
+workflow:
+  type: state_machine
+  states:
+    - QUEUED
+    - CLASSIFYING
+    - EXTRACTING
+    - CHUNKING
+    - EMBEDDING
+    - STORING
+    - COMPLETED
+    - FAILED
+    - RETRY
+
+  transitions:
+    - from: QUEUED
+      to: CLASSIFYING
+      condition: document_ready
+
+    - from: CLASSIFYING
+      to: EXTRACTING
+      condition: classification_complete
+
+    - from: EXTRACTING
+      to: CHUNKING
+      condition: extraction_complete
+
+    - from: CHUNKING
+      to: EMBEDDING
+      condition: chunking_complete
+
+    - from: EMBEDDING
+      to: STORING
+      condition: embedding_complete
+
+    - from: STORING
+      to: COMPLETED
+      condition: storage_complete
+
+    - from: ANY
+      to: FAILED
+      condition: unrecoverable_error
+
+    - from: ANY
+      to: RETRY
+      condition: recoverable_error
+
+resources:
+  supabase:
+    tables:
+      - rag_processing_queue
+      - rag_documents
+      - rag_extraction_schemas
+      - rag_extracted_entities
+      - rag_entity_relationships
+      - rag_document_chunks
+      - rag_chunk_relationships
+
+  neo4j:
+    database: rag_knowledge_graph
+    indexes:
+      - entity_name
+      - document_id
+
+  qdrant:
+    collections:
+      - document_embeddings
+      - entity_embeddings
+
+monitoring:
+  metrics:
+    - documents_processed
+    - extraction_accuracy
+    - processing_time_per_document
+    - embeddings_generated
+    - graph_nodes_created
+    - errors_by_type
+
+  alerts:
+    - name: high_error_rate
+      condition: error_rate > 0.1
+      severity: warning
+
+    - name: slow_processing
+      condition: avg_processing_time > 300s
+      severity: info
+
+    - name: storage_failure
+      condition: storage_errors > 0
+      severity: critical
+
+deployment:
+  replicas: 2
+  resources:
+    requests:
+      memory: "1Gi"
+      cpu: "500m"
+    limits:
+      memory: "2Gi"
+      cpu: "1000m"
+
+  environment:
+    - OPENAI_API_KEY
+    - ANTHROPIC_API_KEY
+    - SUPABASE_URL
+    - SUPABASE_KEY
+    - NEO4J_URI
+    - NEO4J_USER
+    - NEO4J_PASSWORD
+    - QDRANT_URL
+    - QDRANT_API_KEY

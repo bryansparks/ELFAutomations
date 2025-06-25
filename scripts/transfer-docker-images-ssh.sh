@@ -38,13 +38,13 @@ for IMAGE in "${IMAGES_TO_TRANSFER[@]}"; do
         echo "   ✅ Transferred to $ARGOCD_HOST:$REMOTE_DIR/$FILENAME"
 
         # Load on remote machine
-        echo "   Loading on remote machine..."
-        ssh $ARGOCD_USER@$ARGOCD_HOST "docker load < $REMOTE_DIR/$FILENAME"
+#        echo "   Loading on remote machine..."
+#        ssh $ARGOCD_USER@$ARGOCD_HOST "docker load < $REMOTE_DIR/$FILENAME"
 
         # Clean up remote tar file
-        ssh $ARGOCD_USER@$ARGOCD_HOST "rm $REMOTE_DIR/$FILENAME"
+#        ssh $ARGOCD_USER@$ARGOCD_HOST "rm $REMOTE_DIR/$FILENAME"
 
-        echo "   ✅ Image loaded on ArgoCD machine"
+#        echo "   ✅ Image loaded on ArgoCD machine"
     else
         echo "   ⚠️  Image not found locally"
     fi

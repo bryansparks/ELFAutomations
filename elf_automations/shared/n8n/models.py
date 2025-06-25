@@ -9,10 +9,21 @@ from typing import Any, Dict, List, Optional
 
 
 class WorkflowStatus(Enum):
-    """Workflow execution status"""
+    """Workflow lifecycle status"""
 
+    IMPORTED = "imported"  # Just imported, not yet validated
+    VALIDATING = "validating"  # Currently being validated
+    VALIDATED = "validated"  # Passed validation, ready for testing
+    TESTING = "testing"  # Under test/validation
+    APPROVED = "approved"  # Approved and ready for deployment
+    DEPLOYED = "deployed"  # Actively deployed in n8n
+    RUNNING = "running"  # Active and executable
+    PAUSED = "paused"  # Temporarily disabled
+    DEPRECATED = "deprecated"  # Phased out, kept for history
+    ARCHIVED = "archived"  # Archived, not active
+
+    # Legacy execution statuses (for backward compatibility)
     PENDING = "pending"
-    RUNNING = "running"
     SUCCESS = "success"
     FAILED = "failed"
 
@@ -29,11 +40,56 @@ class WorkflowTriggerType(Enum):
 class WorkflowCategory(Enum):
     """Categories of workflows"""
 
-    DATA_PIPELINE = "data-pipeline"
+    CUSTOMER_ONBOARDING = "customer_onboarding"
+    ORDER_PROCESSING = "order_processing"
+    DATA_PIPELINE = "data_pipeline"
+    DATA_SYNC = "data_sync"
+    REPORTING = "reporting"
+    MARKETING_AUTOMATION = "marketing_automation"
+    TEAM_COORDINATION = "team_coordination"
+    MAINTENANCE = "maintenance"
     INTEGRATION = "integration"
-    AUTOMATION = "automation"
     NOTIFICATION = "notification"
     APPROVAL = "approval"
+    AUTOMATION = "automation"
+    OTHER = "other"
+
+    # Legacy values for compatibility
+    DATA_PIPELINE_LEGACY = "data-pipeline"
+
+    @classmethod
+    def from_string(cls, value: str) -> "WorkflowCategory":
+        """Convert string to enum, handling legacy formats"""
+        # Handle legacy hyphenated values
+        normalized = value.replace("-", "_")
+        try:
+            return cls(normalized)
+        except ValueError:
+            # Try exact match first
+            for member in cls:
+                if member.value == value:
+                    return member
+            # Default to OTHER
+            return cls.OTHER
+
+
+class WorkflowSource(Enum):
+    """Source of workflow"""
+
+    N8N_EXPORT = "n8n_export"  # Exported from N8N UI
+    TEMPLATE = "template"  # Created from template
+    API_IMPORT = "api_import"  # Imported via API
+    TEAM_CREATED = "team_created"  # Created by a team
+    MIGRATION = "migration"  # Migrated from another system
+
+
+class ValidationStatus(Enum):
+    """Validation status"""
+
+    PENDING = "pending"
+    PASSED = "passed"
+    FAILED = "failed"
+    WARNING = "warning"
 
 
 @dataclass

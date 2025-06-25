@@ -16,12 +16,14 @@ import {
   ChevronRight,
   Brain,
   Shield,
-  Activity
+  Activity,
+  Package
 } from 'lucide-react'
 import { useState } from 'react'
 
 const navigation = [
   { name: 'Dashboard', href: '/', icon: Home },
+  { name: 'Resources', href: '/resources', icon: Package },
   { name: 'Teams', href: '/teams', icon: Users },
   { name: 'Workflows', href: '/workflows', icon: Workflow },
   { name: 'MCPs', href: '/mcps', icon: Network },

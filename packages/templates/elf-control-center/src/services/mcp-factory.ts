@@ -8,11 +8,13 @@ export interface MCPFactoryConfig {
   displayName: string
   description: string
   language: 'typescript' | 'python'
-  useTemplate: boolean
-  template?: string
+  template: 'tool-focused' | 'resource-focused' | 'prompt-focused' | 'balanced' | 'api-facade' | 'custom'
+  serverType: 'internal' | 'external'
+  transport: 'stdio' | 'http' | 'sse'
   tools: Tool[]
-  hasResources: boolean
   resources?: Resource[]
+  prompts?: Prompt[]
+  apiConfig?: ApiConfig
   complexity: 'simple' | 'moderate' | 'complex'
   dependencies?: string[]
   useMock?: boolean
@@ -38,9 +40,30 @@ export interface ToolParameter {
 }
 
 export interface Resource {
+  uri: string
   name: string
   description: string
-  schema: Record<string, any>
+  mimeType: string
+}
+
+export interface Prompt {
+  name: string
+  description: string
+  arguments: PromptArgument[]
+}
+
+export interface PromptArgument {
+  name: string
+  description: string
+  required: boolean
+}
+
+export interface ApiConfig {
+  docsUrl: string
+  baseUrl: string
+  requiresApiKey: boolean
+  apiKeyName?: string
+  apiKeyType?: 'header' | 'query' | 'bearer'
 }
 
 class MCPFactoryService {
@@ -83,47 +106,59 @@ class MCPFactoryService {
    * Generate Python script command for manual execution
    */
   generateFactoryCommand(config: MCPFactoryConfig): string {
-    // This generates the command that would be run to create the MCP
-    const scriptPath = 'tools/mcp_factory.py'
+    // This generates the equivalent of running the interactive factory
+    const scriptPath = 'tools/mcp_server_factory.py'
 
-    // Create a config file content
-    const configContent = {
-      name: config.name,
-      display_name: config.displayName,
-      description: config.description,
-      language: config.language,
-      tools: config.tools.map(tool => ({
-        name: tool.name,
-        description: tool.description,
-        parameters: tool.parameters.reduce((acc, param) => {
-          acc[param.name] = {
-            type: param.type,
-            description: param.description,
-            required: param.required,
-            ...(param.default !== undefined && { default: param.default }),
-            ...(param.enumValues && { enum: param.enumValues }),
-            ...(param.pattern && { pattern: param.pattern }),
-            ...(param.minValue !== undefined && { minimum: param.minValue }),
-            ...(param.maxValue !== undefined && { maximum: param.maxValue }),
-          }
-          return acc
-        }, {} as Record<string, any>),
-      })),
-      ...(config.hasResources && { resources: config.resources }),
-      ...(config.dependencies && { dependencies: config.dependencies }),
-      ...(config.useMock && { use_mock: true }),
-      ...(config.environment && { environment: config.environment }),
-    }
+    // Generate the answers that would be given to the interactive factory
+    const answers = [
+      `${['tool-focused', 'resource-focused', 'prompt-focused', 'balanced', 'api-facade', 'custom'].indexOf(config.template) + 1}`, // Template selection
+      config.serverType, // Server type
+      config.name, // Name
+      config.displayName, // Display name
+      config.description, // Description
+      ...(config.apiConfig ? [
+        config.apiConfig.docsUrl,
+        config.apiConfig.baseUrl,
+        config.apiConfig.requiresApiKey ? 'y' : 'n',
+        ...(config.apiConfig.requiresApiKey ? [
+          config.apiConfig.apiKeyName || 'X-API-Key',
+          config.apiConfig.apiKeyType || 'header'
+        ] : [])
+      ] : []),
+      config.language, // Language
+      config.transport, // Transport
+      'y', // Use template suggestions for tools
+      ...config.tools.map(() => 'y'), // Accept each suggested tool
+      'n', // No additional custom tools
+      config.resources && config.resources.length > 0 ? 'y' : 'n', // Has resources
+      ...(config.resources && config.resources.length > 0 ? ['y', ...config.resources.map(() => 'y'), 'n'] : []), // Resource suggestions
+      config.prompts && config.prompts.length > 0 ? 'y' : 'n', // Has prompts
+      ...(config.prompts && config.prompts.length > 0 ? ['y', ...config.prompts.map(() => 'y'), 'n'] : []), // Prompt suggestions
+    ]
 
-    // Generate command to create config file and run factory
     return `
-# Save this configuration to mcp_config.json
-cat > mcp_config.json << 'EOF'
-${JSON.stringify(configContent, null, 2)}
-EOF
+# Run the MCP Server factory with these answers:
+# ${answers.map((a, i) => `${i + 1}. ${a}`).join('\n# ')}
 
-# Run the MCP factory
-python ${scriptPath} --config mcp_config.json
+# To run interactively:
+python ${scriptPath}
+
+# To run with config file (alternative):
+cat > mcp_server_config.json << 'EOF'
+{
+  "template": "${config.template}",
+  "server_type": "${config.serverType}",
+  "name": "${config.name}",
+  "display_name": "${config.displayName}",
+  "description": "${config.description}",
+  "language": "${config.language}",
+  "transport": "${config.transport}",
+  ${config.apiConfig ? `"api_config": ${JSON.stringify(config.apiConfig, null, 4)},` : ''}
+  "tools": ${JSON.stringify(config.tools, null, 2)},
+  "resources": ${JSON.stringify(config.resources || [], null, 2)},
+  "prompts": ${JSON.stringify(config.prompts || [], null, 2)}
+}
+EOF
 `
   }
 
@@ -141,16 +176,47 @@ python ${scriptPath} --config mcp_config.json
       errors.push('Description is required')
     }
 
-    if (!config.tools || config.tools.length === 0) {
-      errors.push('At least one tool must be defined')
+    if (!config.template) {
+      errors.push('Template selection is required')
     }
 
+    // API Facade specific validation
+    if (config.template === 'api-facade') {
+      if (!config.apiConfig?.docsUrl) {
+        errors.push('API Documentation URL is required for API Facade servers')
+      }
+      if (!config.apiConfig?.baseUrl) {
+        errors.push('API Base URL is required for API Facade servers')
+      }
+    }
+
+    // Tool validation (optional for some templates)
     config.tools?.forEach((tool, index) => {
       if (!tool.name || !/^[a-z_][a-z0-9_]*$/.test(tool.name)) {
         errors.push(`Tool ${index + 1}: Name must be a valid function name`)
       }
       if (!tool.description) {
         errors.push(`Tool ${index + 1}: Description is required`)
+      }
+    })
+
+    // Resource validation
+    config.resources?.forEach((resource, index) => {
+      if (!resource.uri) {
+        errors.push(`Resource ${index + 1}: URI is required`)
+      }
+      if (!resource.name) {
+        errors.push(`Resource ${index + 1}: Name is required`)
+      }
+    })
+
+    // Prompt validation
+    config.prompts?.forEach((prompt, index) => {
+      if (!prompt.name) {
+        errors.push(`Prompt ${index + 1}: Name is required`)
+      }
+      if (!prompt.description) {
+        errors.push(`Prompt ${index + 1}: Description is required`)
       }
     })
 
@@ -166,35 +232,61 @@ python ${scriptPath} --config mcp_config.json
   getTemplates() {
     return [
       {
-        value: 'file-system',
-        label: 'File System Operations',
-        description: 'Read, write, and manage files',
-        tools: ['read_file', 'write_file', 'list_directory', 'delete_file'],
+        value: 'tool-focused',
+        label: 'Tool-Focused MCP Server',
+        description: 'Server that primarily exposes tools for MCP Clients to call',
+        focus: 'tools',
+        icon: '🔧',
+        suggestedTools: ['process_data', 'validate_data'],
+        example: 'Data processing servers with tools like process_data, validate_data'
       },
       {
-        value: 'database',
-        label: 'Database Operations',
-        description: 'CRUD operations for databases',
-        tools: ['query', 'insert', 'update', 'delete'],
+        value: 'resource-focused',
+        label: 'Resource-Focused MCP Server',
+        description: 'Server that primarily provides access to data resources',
+        focus: 'resources',
+        icon: '📂',
+        suggestedResources: ['documents', 'search-results'],
+        suggestedTools: ['search_knowledge'],
+        example: 'Knowledge base servers with document access and search'
       },
       {
-        value: 'api-client',
-        label: 'API Client',
-        description: 'Make HTTP requests to external APIs',
-        tools: ['get', 'post', 'put', 'delete', 'patch'],
+        value: 'prompt-focused',
+        label: 'Prompt-Focused MCP Server',
+        description: 'Server that primarily provides prompts to enhance LLM interactions',
+        focus: 'prompts',
+        icon: '💬',
+        suggestedPrompts: ['code_review', 'documentation'],
+        suggestedTools: ['customize_prompt'],
+        example: 'Template servers providing structured prompts for code review, documentation'
       },
       {
-        value: 'data-processing',
-        label: 'Data Processing',
-        description: 'Transform and analyze data',
-        tools: ['parse_csv', 'transform_data', 'aggregate', 'export'],
+        value: 'balanced',
+        label: 'Balanced MCP Server',
+        description: 'Server that provides a mix of tools, resources, and prompts',
+        focus: 'balanced',
+        icon: '⚖️',
+        example: 'Multi-purpose servers with comprehensive tools, resources, and prompts'
       },
       {
-        value: 'integration',
-        label: 'Third-party Integration',
-        description: 'Connect to external services',
-        tools: ['authenticate', 'fetch_data', 'sync_data', 'webhook'],
+        value: 'api-facade',
+        label: 'API Facade MCP Server',
+        description: 'Intelligent wrapper for external APIs with high-level operations',
+        focus: 'api-facade',
+        icon: '🌐',
+        requiresApiConfig: true,
+        suggestedTools: ['query_api', 'search_capabilities', 'get_api_schema'],
+        suggestedResources: ['api-docs', 'endpoints'],
+        example: 'Smart facade for external APIs (e.g., FamilySearch, GitHub, Slack)'
       },
+      {
+        value: 'custom',
+        label: 'Custom MCP Server',
+        description: 'Start from scratch with no predefined suggestions',
+        focus: 'custom',
+        icon: '🎨',
+        example: 'Completely custom implementation'
+      }
     ]
   }
 
@@ -203,16 +295,19 @@ python ${scriptPath} --config mcp_config.json
    */
   estimateComplexity(config: Partial<MCPFactoryConfig>): 'simple' | 'moderate' | 'complex' {
     const toolCount = config.tools?.length || 0
+    const resourceCount = config.resources?.length || 0
+    const promptCount = config.prompts?.length || 0
     const hasComplexTypes = config.tools?.some(tool =>
       tool.parameters.some(p => ['object', 'array'].includes(p.type))
     ) || false
-    const hasResources = config.hasResources || false
     const hasDependencies = (config.dependencies?.length || 0) > 0
+    const isApiFacade = config.template === 'api-facade'
 
-    if (toolCount > 10 || hasComplexTypes || hasResources || hasDependencies) {
+    // API Facade servers are inherently more complex
+    if (isApiFacade || toolCount > 10 || hasComplexTypes || hasDependencies) {
       return 'complex'
     }
-    if (toolCount > 5) {
+    if (toolCount > 5 || resourceCount > 3 || promptCount > 3) {
       return 'moderate'
     }
     return 'simple'
