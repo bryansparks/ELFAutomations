@@ -26,7 +26,7 @@ images:
 configMapGenerator:
 - name: agentgateway-config
   files:
-  - config.json=../../../config/agentgateway/config.json
+  - config.json=../../../config/agentgateway/mcp-config.json
 
 generatorOptions:
   disableNameSuffixHash: true

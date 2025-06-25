@@ -1,0 +1,29 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: elf-mcps
+  namespace: argocd
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  project: default
+  source:
+    repoURL: https://github.com/bryansparks/ELFAutomations.git
+    targetRevision: main
+    path: k8s/mcps
+    directory:
+      recurse: true
+      include: '{*.yaml,**/*.yaml}'
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: elf-mcps
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+      allowEmpty: false
+    syncOptions:
+    - CreateNamespace=true
+    - PrunePropagationPolicy=foreground
+    - PruneLast=true
+  revisionHistoryLimit: 10

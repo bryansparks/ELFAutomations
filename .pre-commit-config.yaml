@@ -15,5 +15,8 @@ repos:
       - id: trailing-whitespace
       - id: end-of-file-fixer
       - id: check-yaml
+        exclude: '^(k8s/|.*\.k8s\.yaml|.*helm.*\.yaml)'
       - id: check-added-large-files
+        args: ['--maxkb=2000']
+        exclude: 'package-lock\.json|yarn\.lock|pnpm-lock\.yaml'
       - id: check-merge-conflict

@@ -1,0 +1,38 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: rag-processor-config
+  namespace: elf-teams
+data:
+  team_config.yaml: |
+    team:
+      name: rag-processor-team
+      display_name: "RAG Document Processor Team"
+      description: "Processes documents through extraction, chunking, and embedding pipeline"
+      framework: langgraph
+      llm_provider: openai
+      llm_model: gpt-4
+      fallback_llm_provider: anthropic
+      fallback_llm_model: claude-3-opus-20240229
+
+  a2a_config.yaml: |
+    a2a:
+      team_id: rag-processor-team
+      capabilities:
+        - document_processing
+        - entity_extraction
+        - embedding_generation
+        - graph_building
+      endpoints:
+        - name: process_document
+          path: /process
+          method: POST
+          description: Process a document through the pipeline
+        - name: get_status
+          path: /status/{document_id}
+          method: GET
+          description: Get processing status for a document
+        - name: search
+          path: /search
+          method: POST
+          description: Search processed documents

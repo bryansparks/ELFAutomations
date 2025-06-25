@@ -1,0 +1,77 @@
+{
+  "type": "static",
+  "listeners": [
+    {
+      "name": "sse",
+      "protocol": "MCP",
+      "sse": {
+        "address": "[::]",
+        "port": 3000
+      }
+    }
+  ],
+  "targets": {
+    "mcp": [
+      {
+        "name": "supabase",
+        "stdio": {
+          "cmd": "npx",
+          "args": ["-y", "@modelcontextprotocol/server-supabase"],
+          "env": {
+            "SUPABASE_URL": "${SUPABASE_URL}",
+            "SUPABASE_ANON_KEY": "${SUPABASE_ANON_KEY}"
+          }
+        }
+      },
+      {
+        "name": "team-registry",
+        "stdio": {
+          "cmd": "node",
+          "args": ["/mcp/typescript/servers/team-registry/dist/server.js"]
+        }
+      },
+      {
+        "name": "business-tools",
+        "stdio": {
+          "cmd": "python",
+          "args": ["-m", "business_tools"],
+          "cwd": "/mcp/python"
+        }
+      },
+      {
+        "name": "google-drive-watcher",
+        "stdio": {
+          "cmd": "node",
+          "args": ["/mcps/google-drive-watcher/dist/index.js"],
+          "env": {
+            "GOOGLE_CLIENT_ID": "${GOOGLE_CLIENT_ID}",
+            "GOOGLE_CLIENT_SECRET": "${GOOGLE_CLIENT_SECRET}",
+            "SUPABASE_URL": "${SUPABASE_URL}",
+            "SUPABASE_ANON_KEY": "${SUPABASE_ANON_KEY}"
+          }
+        }
+      },
+      {
+        "name": "project-management",
+        "stdio": {
+          "cmd": "node",
+          "args": ["/mcp/typescript/servers/project-management/dist/server.js"]
+        }
+      },
+      {
+        "name": "memory-learning",
+        "stdio": {
+          "cmd": "node",
+          "args": ["/mcp/typescript/servers/memory-learning/dist/server.js"]
+        }
+      },
+      {
+        "name": "everything",
+        "stdio": {
+          "cmd": "npx",
+          "args": ["-y", "@modelcontextprotocol/server-everything"]
+        }
+      }
+    ]
+  }
+}
