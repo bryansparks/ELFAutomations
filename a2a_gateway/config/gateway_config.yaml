@@ -1,0 +1,99 @@
+gateway:
+  name: "ELF A2A Gateway"
+  version: "1.0.0"
+  description: "Central routing and discovery service for team-to-team A2A communication"
+  
+server:
+  host: "0.0.0.0"
+  port: 8080
+  workers: 4
+  
+health_monitoring:
+  check_interval_seconds: 30
+  timeout_seconds: 5
+  consecutive_failures_for_circuit_breaker: 3
+  circuit_breaker_timeout_minutes: 5
+  
+routing:
+  default_timeout_seconds: 3600
+  retry_enabled: true
+  max_retries: 2
+  retry_delay_seconds: 1
+  
+  # Load balancing strategy: round-robin, least-response-time, random
+  load_balancing_strategy: "least-response-time"
+  
+  # Capability matching
+  capability_matching:
+    exact_match_required: false
+    use_nlp_inference: true
+    
+discovery:
+  # How teams can discover the gateway
+  well_known_path: "/.well-known/a2a-gateway.json"
+  
+  # Auto-discovery of teams in Kubernetes
+  kubernetes:
+    enabled: true
+    namespace: "elf-teams"
+    label_selector: "a2a-enabled=true"
+    
+persistence:
+  # Supabase configuration (can be overridden by environment variables)
+  supabase:
+    project_ref: "${SUPABASE_PROJECT_REF}"
+    
+logging:
+  level: "INFO"
+  format: "json"
+  
+  # Log all routing decisions
+  log_routing_decisions: true
+  
+  # Log request/response bodies (be careful with sensitive data)
+  log_request_bodies: false
+  log_response_bodies: false
+  
+security:
+  # Authentication for team registration
+  require_registration_token: true
+  registration_token: "${GATEWAY_REGISTRATION_TOKEN}"
+  
+  # Rate limiting
+  rate_limiting:
+    enabled: true
+    requests_per_minute: 100
+    burst_size: 20
+    
+  # CORS settings
+  cors:
+    enabled: true
+    allowed_origins: ["*"]
+    allowed_methods: ["GET", "POST", "DELETE", "OPTIONS"]
+    allowed_headers: ["Content-Type", "Authorization"]
+    
+metrics:
+  # Prometheus metrics
+  prometheus:
+    enabled: true
+    path: "/metrics"
+    
+  # Custom metrics
+  track_capability_usage: true
+  track_team_performance: true
+  track_routing_patterns: true
+  
+integrations:
+  # MCP integration for tool access
+  mcp:
+    enabled: true
+    gateway_url: "http://agentgateway-service:3003"
+    
+  # Slack notifications for critical events
+  slack:
+    enabled: false
+    webhook_url: "${SLACK_WEBHOOK_URL}"
+    notify_on:
+      - "team_registration"
+      - "circuit_breaker_open"
+      - "high_error_rate"

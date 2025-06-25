@@ -1,0 +1,141 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: a2a-gateway
+  namespace: elf-teams
+  labels:
+    app: a2a-gateway
+    component: gateway
+    version: "1.0.0"
+spec:
+  replicas: 2  # HA setup
+  selector:
+    matchLabels:
+      app: a2a-gateway
+  template:
+    metadata:
+      labels:
+        app: a2a-gateway
+        component: gateway
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "8080"
+        prometheus.io/path: "/metrics"
+    spec:
+      serviceAccountName: a2a-gateway
+      containers:
+      - name: gateway
+        image: elf-automations/a2a-gateway:latest
+        imagePullPolicy: Never  # For local development
+        ports:
+        - containerPort: 8080
+          name: http
+          protocol: TCP
+        env:
+        - name: PORT
+          value: "8080"
+        - name: HOST
+          value: "0.0.0.0"
+        - name: LOG_LEVEL
+          value: "INFO"
+        - name: SUPABASE_URL
+          valueFrom:
+            secretKeyRef:
+              name: supabase-credentials
+              key: url
+        - name: SUPABASE_ANON_KEY
+          valueFrom:
+            secretKeyRef:
+              name: supabase-credentials
+              key: anon-key
+        - name: GATEWAY_REGISTRATION_TOKEN
+          valueFrom:
+            secretKeyRef:
+              name: a2a-gateway-secrets
+              key: registration-token
+        - name: GATEWAY_URL
+          value: "http://a2a-gateway-service:8080"
+        resources:
+          requests:
+            memory: "256Mi"
+            cpu: "100m"
+          limits:
+            memory: "512Mi"
+            cpu: "500m"
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: http
+          initialDelaySeconds: 10
+          periodSeconds: 30
+          timeoutSeconds: 5
+          failureThreshold: 3
+        readinessProbe:
+          httpGet:
+            path: /health
+            port: http
+          initialDelaySeconds: 5
+          periodSeconds: 10
+          timeoutSeconds: 3
+          failureThreshold: 3
+        volumeMounts:
+        - name: config
+          mountPath: /app/config
+          readOnly: true
+      volumes:
+      - name: config
+        configMap:
+          name: a2a-gateway-config
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: a2a-gateway-service
+  namespace: elf-teams
+  labels:
+    app: a2a-gateway
+    component: gateway
+spec:
+  type: ClusterIP
+  selector:
+    app: a2a-gateway
+  ports:
+  - name: http
+    port: 8080
+    targetPort: http
+    protocol: TCP
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: a2a-gateway
+  namespace: elf-teams
+  labels:
+    app: a2a-gateway
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: a2a-gateway
+  namespace: elf-teams
+rules:
+- apiGroups: [""]
+  resources: ["pods", "services", "endpoints"]
+  verbs: ["get", "list", "watch"]
+- apiGroups: ["apps"]
+  resources: ["deployments"]
+  verbs: ["get", "list", "watch"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: a2a-gateway
+  namespace: elf-teams
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: a2a-gateway
+subjects:
+- kind: ServiceAccount
+  name: a2a-gateway
+  namespace: elf-teams

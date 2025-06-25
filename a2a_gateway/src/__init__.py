@@ -1,0 +1,1 @@
+"""A2A Gateway - Central routing and discovery for team communication"""
