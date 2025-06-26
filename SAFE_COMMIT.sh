@@ -10,12 +10,19 @@ fi
 
 echo "🔍 Running safety checks..."
 
-# Check for .env files
-env_files=$(find . -name "*.env*" -not -path "./.git/*" -not -name "*.example" -type f)
-if [ -n "$env_files" ]; then
-    echo "⚠️  Warning: Found .env files:"
-    echo "$env_files"
-    echo "These files should not be committed. Add them to .gitignore!"
+# Check for .env files that are NOT in gitignore
+unignored_env_files=""
+all_env_files=$(find . -name "*.env*" -not -path "./.git/*" -not -name "*.example" -type f)
+for file in $all_env_files; do
+    if ! git check-ignore "$file" > /dev/null 2>&1; then
+        unignored_env_files="$unignored_env_files$file\n"
+    fi
+done
+
+if [ -n "$unignored_env_files" ]; then
+    echo "⚠️  Warning: Found .env files NOT in .gitignore:"
+    echo -e "$unignored_env_files"
+    echo "These files should be added to .gitignore!"
     read -p "Continue anyway? (y/N) " -n 1 -r
     echo
     if [[ ! $REPLY =~ ^[Yy]$ ]]; then
@@ -23,10 +30,13 @@ if [ -n "$env_files" ]; then
     fi
 fi
 
-# Check for secrets in staged files
-if git diff --cached | grep -E "sk-[a-zA-Z0-9]{48}|api[_-]?key|secret|password" > /dev/null; then
+# Check for secrets in staged files (look for actual secret patterns, not just words)
+if git diff --cached | grep -E "sk-[a-zA-Z0-9]{48}|['\"][a-zA-Z0-9_-]{32,}['\"]" | grep -v -E "example|template|your-|placeholder|<.*>|\$\{.*\}" > /dev/null; then
     echo "⚠️  Warning: Possible secrets detected in staged files!"
     echo "Please review your changes carefully."
+    # Show what was detected
+    echo "Detected patterns:"
+    git diff --cached | grep -E "sk-[a-zA-Z0-9]{48}|['\"][a-zA-Z0-9_-]{32,}['\"]" | grep -v -E "example|template|your-|placeholder|<.*>|\$\{.*\}" | head -5
     read -p "Continue anyway? (y/N) " -n 1 -r
     echo
     if [[ ! $REPLY =~ ^[Yy]$ ]]; then
