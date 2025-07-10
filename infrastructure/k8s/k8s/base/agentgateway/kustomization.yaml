@@ -1,0 +1,32 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+metadata:
+  name: agentgateway-base
+  namespace: virtual-ai-platform
+
+resources:
+- rbac.yaml
+- configmap.yaml
+- deployment.yaml
+- service.yaml
+- monitoring.yaml
+- ingress.yaml
+- auth-secret.yaml
+
+commonLabels:
+  app: agentgateway
+  version: v1.0.0
+  component: mcp-infrastructure
+
+images:
+- name: agentgateway/agentgateway
+  newTag: latest
+
+configMapGenerator:
+- name: agentgateway-config
+  files:
+  - config.json=../../../config/agentgateway/mcp-config.json
+
+generatorOptions:
+  disableNameSuffixHash: true

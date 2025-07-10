@@ -1,0 +1,67 @@
+{
+  "timestamp": "2025-06-26T13:07:16.971401",
+  "files_moved": 15,
+  "errors": [],
+  "migrations": [
+    [
+      "scripts/check_team_registry.py",
+      "scripts/testing/check_team_registry.py"
+    ],
+    [
+      "scripts/check_existing_tables.py",
+      "scripts/testing/check_existing_tables.py"
+    ],
+    [
+      "scripts/check_registry_via_mcp.py",
+      "scripts/testing/check_registry_via_mcp.py"
+    ],
+    [
+      "scripts/check_team_registry_direct.py",
+      "scripts/testing/check_team_registry_direct.py"
+    ],
+    [
+      "scripts/check_team_registry_tables.py",
+      "scripts/testing/check_team_registry_tables.py"
+    ],
+    [
+      "scripts/n8n_workflow_manager.py",
+      "scripts/utilities/n8n_workflow_manager.py"
+    ],
+    [
+      "scripts/fix_langchain_versions.py",
+      "scripts/utilities/fix_langchain_versions.py"
+    ],
+    [
+      "scripts/update_test_workflow.py",
+      "scripts/utilities/update_test_workflow.py"
+    ],
+    [
+      "scripts/rag_query_analyzer.py",
+      "scripts/analysis/rag_query_analyzer.py"
+    ],
+    [
+      "elf_automations",
+      "src/elf_automations"
+    ],
+    [
+      "teams",
+      "src/teams"
+    ],
+    [
+      "mcps/google-drive-watcher",
+      "src/mcps/google-drive-watcher"
+    ],
+    [
+      "mcp-servers/health-status",
+      "src/mcps/health-status"
+    ],
+    [
+      "mcp-servers/familysearch-api",
+      "src/mcps/familysearch-api"
+    ],
+    [
+      "k8s",
+      "infrastructure/k8s"
+    ]
+  ]
+}

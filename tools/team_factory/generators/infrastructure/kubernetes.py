@@ -113,7 +113,13 @@ spec:
           valueFrom:
             secretKeyRef:
               name: supabase-credentials
-              key: service-key
+              key: service-key{f'''
+        - name: JWT_SECRET_KEY
+          valueFrom:
+            secretKeyRef:
+              name: jwt-credentials
+              key: secret-key
+              optional: true''' if team_spec.enable_chat_interface else ''}
         resources:
           requests:
             cpu: {cpu_request}
@@ -151,7 +157,12 @@ metadata:
   name: {team_spec.name}-service
   namespace: elf-teams
   labels:
-    app: {team_spec.name}
+    app: {team_spec.name}{f'''
+  annotations:
+    # WebSocket support for chat interface
+    service.beta.kubernetes.io/aws-load-balancer-backend-protocol: "tcp"
+    nginx.ingress.kubernetes.io/proxy-read-timeout: "3600"
+    nginx.ingress.kubernetes.io/proxy-send-timeout: "3600"''' if team_spec.enable_chat_interface else ''}
 spec:
   selector:
     app: {team_spec.name}
@@ -195,5 +206,46 @@ roleRef:
 subjects:
 - kind: ServiceAccount
   name: {team_spec.name}-sa
-  namespace: elf-teams
+  namespace: elf-teams{self._generate_ingress(team_spec) if team_spec.enable_chat_interface else ''}
 """
+
+    def _generate_ingress(self, team_spec: TeamSpecification) -> str:
+        """Generate Ingress resource for teams with chat interface."""
+        return f"""
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: {team_spec.name}-ingress
+  namespace: elf-teams
+  annotations:
+    nginx.ingress.kubernetes.io/rewrite-target: /
+    # WebSocket support
+    nginx.ingress.kubernetes.io/proxy-read-timeout: "3600"
+    nginx.ingress.kubernetes.io/proxy-send-timeout: "3600"
+    nginx.ingress.kubernetes.io/websocket-services: "{team_spec.name}-service"
+    nginx.ingress.kubernetes.io/upstream-hash-by: "$binary_remote_addr"
+    # Enable WebSocket upgrade
+    nginx.ingress.kubernetes.io/configuration-snippet: |
+      proxy_set_header Upgrade $http_upgrade;
+      proxy_set_header Connection "upgrade";
+spec:
+  ingressClassName: nginx
+  rules:
+  - host: {team_spec.name}.elf-teams.local
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: {team_spec.name}-service
+            port:
+              number: 80
+      - path: /chat
+        pathType: Exact
+        backend:
+          service:
+            name: {team_spec.name}-service
+            port:
+              number: 80"""

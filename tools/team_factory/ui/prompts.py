@@ -68,7 +68,9 @@ def prompt_choice(
         if len(matches) == 1:
             return matches[0]
 
-        console.print(f"[yellow]Invalid choice. Please select from: {', '.join(choices)}[/yellow]")
+        console.print(
+            f"[yellow]Invalid choice. Please select from: {', '.join(choices)}[/yellow]"
+        )
 
 
 def confirm(message: str, default: bool = False) -> bool:
@@ -157,6 +159,7 @@ def modify_team_interactive(spec: Dict[str, Any]) -> Dict[str, Any]:
                 "Change team name",
                 "Change framework",
                 "Change department",
+                "Configure chat interface",
                 "Done",
             ],
             default="Done",
@@ -182,7 +185,92 @@ def modify_team_interactive(spec: Dict[str, Any]) -> Dict[str, Any]:
             spec["department"] = prompt_text(
                 "Enter department", default=spec.get("department", "")
             )
+        elif action == "Configure chat interface":
+            spec = configure_chat_interface(spec)
 
+    return spec
+
+
+def configure_chat_interface(spec: Dict[str, Any]) -> Dict[str, Any]:
+    """Configure chat interface settings for the team."""
+    console.print("\n[bold cyan]Chat Interface Configuration[/bold cyan]")
+    console.print(
+        "[dim]Enable direct chat with team managers for interactive task delegation[/dim]\n"
+    )
+
+    # Check if this is a top-level team
+    is_top_level = confirm(
+        "Is this a top-level team (e.g., department head, executive)?",
+        default=spec.get("is_top_level", False),
+    )
+    spec["is_top_level"] = is_top_level
+
+    if not is_top_level:
+        console.print("[yellow]Only top-level teams can have chat interfaces[/yellow]")
+        spec["enable_chat_interface"] = False
+        return spec
+
+    # Enable chat interface
+    enable_chat = confirm(
+        "Enable chat interface for this team's manager?",
+        default=spec.get("enable_chat_interface", True),
+    )
+    spec["enable_chat_interface"] = enable_chat
+
+    if not enable_chat:
+        return spec
+
+    # Configure chat settings
+    console.print("\n[cyan]Chat Configuration Settings:[/cyan]")
+
+    if "chat_config" not in spec:
+        spec["chat_config"] = {}
+
+    # Allowed roles
+    console.print("\nWho can chat with this team? (comma-separated)")
+    allowed_roles_str = prompt_text(
+        "Allowed roles",
+        default=",".join(spec["chat_config"].get("allowed_roles", ["admin", "user"])),
+    )
+    spec["chat_config"]["allowed_roles"] = [
+        r.strip() for r in allowed_roles_str.split(",")
+    ]
+
+    # Session limits
+    spec["chat_config"]["max_session_duration_minutes"] = int(
+        prompt_text(
+            "Maximum session duration (minutes)",
+            default=str(spec["chat_config"].get("max_session_duration_minutes", 60)),
+        )
+    )
+
+    spec["chat_config"]["max_messages_per_session"] = int(
+        prompt_text(
+            "Maximum messages per session",
+            default=str(spec["chat_config"].get("max_messages_per_session", 100)),
+        )
+    )
+
+    # Advanced settings
+    if confirm("\nConfigure advanced settings?", default=False):
+        spec["chat_config"]["enable_delegation_preview"] = confirm(
+            "Show delegation preview before sending?",
+            default=spec["chat_config"].get("enable_delegation_preview", True),
+        )
+
+        spec["chat_config"]["require_user_confirmation"] = confirm(
+            "Require user confirmation for delegations?",
+            default=spec["chat_config"].get("require_user_confirmation", True),
+        )
+
+        spec["chat_config"]["context_window_messages"] = int(
+            prompt_text(
+                "Context window size (messages)",
+                default=str(spec["chat_config"].get("context_window_messages", 20)),
+            )
+        )
+
+    console.print("\n[green]✓ Chat interface configured successfully![/green]")
     return spec
 
 
@@ -297,10 +385,12 @@ def display_team_summary(team_spec: TeamSpecification):
 def dict_to_team_spec(data: Dict[str, Any]) -> TeamSpecification:
     """Convert dictionary to TeamSpecification."""
     # Check if we have an enhanced spec from LLM analysis
-    if "_enhanced_spec" in data and isinstance(data["_enhanced_spec"], TeamSpecification):
+    if "_enhanced_spec" in data and isinstance(
+        data["_enhanced_spec"], TeamSpecification
+    ):
         # Return the already-enhanced specification with LLM-optimized prompts
         return data["_enhanced_spec"]
-    
+
     # Otherwise, convert member dictionaries to TeamMember objects
     members = []
     for i, member_data in enumerate(data.get("members", [])):
@@ -329,30 +419,34 @@ def dict_to_team_spec(data: Dict[str, Any]) -> TeamSpecification:
         reporting_to=data.get("reports_to"),
         natural_language_description=data.get("natural_language_description", ""),
         charter=data.get("charter"),  # Include charter if present
+        is_top_level=data.get("is_top_level", False),
+        enable_chat_interface=data.get("enable_chat_interface", False),
+        chat_config=data.get("chat_config", {}),
     )
 
 
 def get_team_charter() -> TeamCharter:
     """
     Capture team charter information from user.
-    
+
     Returns:
         TeamCharter with mission, objectives, and operating principles
     """
     console.print("\n[bold cyan]Let's define your team's charter[/bold cyan]\n")
-    console.print("[dim]A clear charter ensures every agent understands their purpose and how to achieve it.[/dim]\n")
-    
+    console.print(
+        "[dim]A clear charter ensures every agent understands their purpose and how to achieve it.[/dim]\n"
+    )
+
     # Mission and vision
     mission = prompt_text(
         "Team mission statement (one sentence describing the team's core purpose)",
-        default=""
+        default="",
     )
-    
+
     vision = prompt_text(
-        "Team vision (what does success look like for this team?)",
-        default=""
+        "Team vision (what does success look like for this team?)", default=""
     )
-    
+
     # Objectives
     console.print("\n[cyan]Define 3-5 primary objectives for the team:[/cyan]")
     objectives = []
@@ -366,12 +460,14 @@ def get_team_charter() -> TeamCharter:
             else:
                 break
         objectives.append(obj)
-    
+
     # Success metrics
     console.print("\n[cyan]How will you measure success? (2-3 metrics):[/cyan]")
     metrics = []
     for i in range(3):
-        metric = prompt_text(f"Success metric {i+1} (or press Enter to skip)", default="")
+        metric = prompt_text(
+            f"Success metric {i+1} (or press Enter to skip)", default=""
+        )
         if not metric and i < 2:
             console.print("[yellow]Please provide at least 2 metrics[/yellow]")
             i -= 1
@@ -380,44 +476,45 @@ def get_team_charter() -> TeamCharter:
             metrics.append(metric)
         else:
             break
-    
+
     # Decision making
     decision_process = prompt_choice(
         "\nDecision-making process",
         ["consensus", "hierarchical", "delegated", "data-driven"],
-        default="consensus"
+        default="consensus",
     )
-    
+
     # Multi-team projects
     participates_multi_team = confirm(
-        "\nWill this team participate in multi-team projects?",
-        default=True
+        "\nWill this team participate in multi-team projects?", default=True
     )
-    
+
     # Evolution settings
     console.print("\n[cyan]Team Evolution Settings:[/cyan]")
     enable_evolution = confirm(
-        "Enable continuous improvement through prompt evolution?",
-        default=True
+        "Enable continuous improvement through prompt evolution?", default=True
     )
-    
+
     if enable_evolution:
         improvement_frequency = prompt_choice(
             "How often should the team analyze and improve?",
             ["daily", "weekly", "manual"],
-            default="daily"
+            default="daily",
         )
-        
-        confidence_threshold = float(prompt_text(
-            "Minimum confidence for applying evolutions (0.0-1.0)",
-            default="0.9"
-        ))
+
+        confidence_threshold = float(
+            prompt_text(
+                "Minimum confidence for applying evolutions (0.0-1.0)", default="0.9"
+            )
+        )
     else:
         improvement_frequency = "manual"
         confidence_threshold = 0.9
-    
+
     # Boundaries (optional)
-    console.print("\n[cyan]Define scope boundaries (what this team does NOT do):[/cyan]")
+    console.print(
+        "\n[cyan]Define scope boundaries (what this team does NOT do):[/cyan]"
+    )
     console.print("[dim]Press Enter to skip[/dim]")
     boundaries = []
     for i in range(3):
@@ -426,7 +523,7 @@ def get_team_charter() -> TeamCharter:
             boundaries.append(boundary)
         elif i == 0:
             break
-    
+
     charter = TeamCharter(
         mission_statement=mission,
         vision=vision,
@@ -434,34 +531,34 @@ def get_team_charter() -> TeamCharter:
         success_metrics=metrics,
         decision_making_process=decision_process,
         participates_in_multi_team_projects=participates_multi_team,
-        scope_boundaries=boundaries
+        scope_boundaries=boundaries,
     )
-    
+
     # Store evolution settings in charter for later use
     charter._evolution_settings = {
         "enable_evolution": enable_evolution,
         "improvement_frequency": improvement_frequency,
-        "confidence_threshold": confidence_threshold
+        "confidence_threshold": confidence_threshold,
     }
-    
+
     return charter
 
 
 def get_team_specification() -> Optional[TeamSpecification]:
     """
     Main entry point for getting team specification from user.
-    
+
     Returns:
         TeamSpecification or None if cancelled
     """
     # Step 1: Choose framework
     console.print("\n[bold]Which agentic framework would you like to use?[/bold]\n")
-    
+
     framework_table = Table(show_header=True, header_style="bold magenta")
     framework_table.add_column("Framework", style="cyan")
     framework_table.add_column("Best For", style="green")
     framework_table.add_column("Key Features")
-    
+
     framework_table.add_row(
         "CrewAI",
         "Role-based collaboration",
@@ -472,23 +569,21 @@ def get_team_specification() -> Optional[TeamSpecification]:
         "Complex workflows",
         "• State machine based\n• Advanced control flow\n• Conditional branching",
     )
-    
+
     console.print(framework_table)
-    
+
     framework = prompt_choice(
-        "\nChoose framework", 
-        ["CrewAI", "LangGraph"], 
-        default="CrewAI"
+        "\nChoose framework", ["CrewAI", "LangGraph"], default="CrewAI"
     )
-    
+
     # Step 2: Choose LLM provider
     console.print("\n[bold]Which LLM provider would you like to use?[/bold]")
-    
+
     llm_table = Table(show_header=True, header_style="bold magenta")
     llm_table.add_column("Provider", style="cyan")
     llm_table.add_column("Models", style="green")
     llm_table.add_column("Best For")
-    
+
     llm_table.add_row(
         "OpenAI",
         "GPT-4, GPT-3.5",
@@ -499,81 +594,126 @@ def get_team_specification() -> Optional[TeamSpecification]:
         "Claude 3 Opus/Sonnet",
         "• Complex reasoning\n• Long context\n• Nuanced tasks",
     )
-    
+
     console.print(llm_table)
-    
+
     llm_provider = prompt_choice(
-        "\nChoose LLM provider",
-        ["OpenAI", "Anthropic"],
-        default="OpenAI"
+        "\nChoose LLM provider", ["OpenAI", "Anthropic"], default="OpenAI"
     )
-    
+
     # Select model based on provider
     if llm_provider == "OpenAI":
         llm_model = prompt_choice(
-            "Choose model",
-            ["gpt-4", "gpt-3.5-turbo"],
-            default="gpt-4"
+            "Choose model", ["gpt-4", "gpt-3.5-turbo"], default="gpt-4"
         )
     else:
         llm_model = prompt_choice(
             "Choose model",
             ["claude-3-opus-20240229", "claude-3-sonnet-20240229"],
-            default="claude-3-opus-20240229"
+            default="claude-3-opus-20240229",
         )
-    
+
     # Step 3: Capture team charter FIRST
     charter = get_team_charter()
-    
+
     # Step 4: Offer AI suggestion or manual description
     # Check if charter is well-defined (has mission, objectives, and metrics)
     charter_is_complete = (
-        charter.mission_statement and 
-        len(charter.primary_objectives) >= 3 and 
-        len(charter.success_metrics) >= 2
+        charter.mission_statement
+        and len(charter.primary_objectives) >= 3
+        and len(charter.success_metrics) >= 2
     )
-    
+
     if charter_is_complete:
         console.print("\n[bold]Team Composition Options:[/bold]")
-        console.print("[green]✓ Your charter is well-defined with clear objectives and metrics![/green]")
+        console.print(
+            "[green]✓ Your charter is well-defined with clear objectives and metrics![/green]"
+        )
         console.print("[dim]You can either:[/dim]\n")
-        console.print("1. Let AI suggest an optimal team composition based on your objectives")
+        console.print(
+            "1. Let AI suggest an optimal team composition based on your objectives"
+        )
         console.print("2. Describe the team composition yourself\n")
-        
+
         composition_choice = prompt_choice(
             "How would you like to define the team?",
             ["AI suggestion", "Manual description"],
-            default="AI suggestion"
+            default="AI suggestion",
         )
     else:
         # If charter is incomplete, go straight to manual description
-        console.print("\n[yellow]Note: For AI suggestions, please provide a complete charter with mission, objectives, and metrics.[/yellow]")
+        console.print(
+            "\n[yellow]Note: For AI suggestions, please provide a complete charter with mission, objectives, and metrics.[/yellow]"
+        )
         composition_choice = "Manual description"
-    
+
     if composition_choice == "AI suggestion":
-        console.print("\n[cyan]AI will analyze your charter and suggest an optimal team composition...[/cyan]")
+        console.print(
+            "\n[cyan]AI will analyze your charter and suggest an optimal team composition...[/cyan]"
+        )
         # Create a description based on the charter for the AI to work with
         description = f"Create a team to achieve: {charter.mission_statement}. Objectives: {', '.join(charter.primary_objectives[:3])}. Success metrics: {', '.join(charter.success_metrics[:2])}"
     else:
         console.print("\n[bold]Describe your team's composition:[/bold]")
-        console.print("[dim]Based on your charter, what roles and skills does this team need?[/dim]\n")
-        
+        console.print(
+            "[dim]Based on your charter, what roles and skills does this team need?[/dim]\n"
+        )
+
         description = prompt_text("Team composition description")
         if not description:
             return None
-    
+
     # Step 5: Get department info
     console.print("\n[bold]What department/area does this team belong to?[/bold]")
-    console.print("[dim]Examples: marketing, engineering, sales, operations, etc.[/dim]\n")
-    
+    console.print(
+        "[dim]Examples: marketing, engineering, sales, operations, etc.[/dim]\n"
+    )
+
     department = prompt_text("Department", default="general")
-    
+
     # Step 6: Organizational placement
     console.print("\n[bold]Does this team report to anyone?[/bold]")
     console.print("[dim]Leave empty for independent teams[/dim]\n")
-    
+
     reports_to = prompt_text("Reports to (optional)", default="")
-    
+
+    # Step 7: Chat interface configuration (for top-level teams)
+    is_top_level = False
+    enable_chat_interface = False
+    chat_config = {}
+
+    if not reports_to or reports_to.lower() in ["none", "independent"]:
+        console.print("\n[bold]Chat Interface Configuration[/bold]")
+        console.print(
+            "[dim]Top-level teams can have chat interfaces for direct user interaction[/dim]\n"
+        )
+
+        is_top_level = confirm(
+            "Is this a top-level team (e.g., department head, executive)?", default=True
+        )
+
+        if is_top_level:
+            enable_chat_interface = confirm(
+                "Enable chat interface for this team's manager?", default=True
+            )
+
+            if enable_chat_interface:
+                # Quick chat config
+                chat_config = {
+                    "allowed_roles": ["admin", "user"],
+                    "max_session_duration_minutes": 60,
+                    "max_messages_per_session": 100,
+                    "enable_delegation_preview": True,
+                    "context_window_messages": 20,
+                    "require_user_confirmation": True,
+                }
+                console.print(
+                    "[green]✓ Chat interface will be enabled with default settings[/green]"
+                )
+                console.print(
+                    "[dim]You can customize these settings later using 'Configure chat interface'[/dim]"
+                )
+
     # Create initial specification
     initial_spec = {
         "name": f"{department}-team",
@@ -586,15 +726,19 @@ def get_team_specification() -> Optional[TeamSpecification]:
         "reports_to": reports_to or None,
         "natural_language_description": description,
         "charter": charter,  # Include the full charter
-        "members": []  # Will be populated by factory analysis
+        "members": [],  # Will be populated by factory analysis
+        "is_top_level": is_top_level,
+        "enable_chat_interface": enable_chat_interface,
+        "chat_config": chat_config,
     }
-    
+
     # Create team specification for LLM analysis
     from ..core.factory import TeamFactory
+
     factory = TeamFactory()
-    
+
     # Create initial spec with charter and evolution settings
-    evolution_settings = getattr(charter, '_evolution_settings', {})
+    evolution_settings = getattr(charter, "_evolution_settings", {})
     initial_team_spec = TeamSpecification(
         name=f"{department}-team",
         description=description,
@@ -607,19 +751,30 @@ def get_team_specification() -> Optional[TeamSpecification]:
         charter=charter,
         natural_language_description=description,
         members=[],  # Will be populated by LLM
-        enable_evolution=evolution_settings.get('enable_evolution', True),
-        enable_conversation_logging=evolution_settings.get('enable_evolution', True),  # Same as evolution
-        improvement_cycle_frequency=evolution_settings.get('improvement_frequency', 'daily'),
-        evolution_confidence_threshold=evolution_settings.get('confidence_threshold', 0.9)
+        enable_evolution=evolution_settings.get("enable_evolution", True),
+        enable_conversation_logging=evolution_settings.get(
+            "enable_evolution", True
+        ),  # Same as evolution
+        improvement_cycle_frequency=evolution_settings.get(
+            "improvement_frequency", "daily"
+        ),
+        evolution_confidence_threshold=evolution_settings.get(
+            "confidence_threshold", 0.9
+        ),
+        is_top_level=is_top_level,
+        enable_chat_interface=enable_chat_interface,
+        chat_config=chat_config,
     )
-    
+
     # Use LLM to analyze and generate optimal team composition
-    console.print("\n[cyan]Using AI to analyze team requirements and generate optimal composition...[/cyan]\n")
-    
+    console.print(
+        "\n[cyan]Using AI to analyze team requirements and generate optimal composition...[/cyan]\n"
+    )
+
     try:
         # Analyze with LLM
         enhanced_spec = factory.analyze_request(initial_team_spec)
-        
+
         # Convert to dict for compatibility with prompt_team_details
         initial_spec["members"] = [
             {
@@ -628,52 +783,132 @@ def get_team_specification() -> Optional[TeamSpecification]:
                 "personality": member.personality,
                 "is_manager": member.is_manager,
                 "responsibilities": member.responsibilities,
-                "skills": member.skills
+                "skills": member.skills,
             }
             for member in enhanced_spec.members
         ]
-        
+
         # Store the enhanced spec for later use
         initial_spec["_enhanced_spec"] = enhanced_spec
-        
+
     except Exception as e:
-        console.print(f"[yellow]AI analysis unavailable, using template: {str(e)}[/yellow]\n")
-        
+        console.print(
+            f"[yellow]AI analysis unavailable, using template: {str(e)}[/yellow]\n"
+        )
+
         # Fallback to template-based approach
         if "executive" in department.lower() or "leadership" in description.lower():
             # Executive team
             initial_spec["members"] = [
-                {"name": "ceo", "role": "Chief Executive Officer", "personality": "visionary", "is_manager": True},
-                {"name": "cto", "role": "Chief Technology Officer", "personality": "analytical"},
-                {"name": "cmo", "role": "Chief Marketing Officer", "personality": "creative"},
-                {"name": "coo", "role": "Chief Operating Officer", "personality": "pragmatic"},
-                {"name": "cfo", "role": "Chief Financial Officer", "personality": "detail_oriented"},
+                {
+                    "name": "ceo",
+                    "role": "Chief Executive Officer",
+                    "personality": "visionary",
+                    "is_manager": True,
+                },
+                {
+                    "name": "cto",
+                    "role": "Chief Technology Officer",
+                    "personality": "analytical",
+                },
+                {
+                    "name": "cmo",
+                    "role": "Chief Marketing Officer",
+                    "personality": "creative",
+                },
+                {
+                    "name": "coo",
+                    "role": "Chief Operating Officer",
+                    "personality": "pragmatic",
+                },
+                {
+                    "name": "cfo",
+                    "role": "Chief Financial Officer",
+                    "personality": "detail_oriented",
+                },
             ]
         elif "marketing" in department.lower():
             # Marketing team
             initial_spec["members"] = [
-                {"name": "marketing_manager", "role": "Marketing Manager", "personality": "collaborative", "is_manager": True},
-                {"name": "content_creator", "role": "Content Creator", "personality": "creative"},
-                {"name": "social_media_manager", "role": "Social Media Manager", "personality": "enthusiastic"},
-                {"name": "analyst", "role": "Marketing Analyst", "personality": "analytical"},
+                {
+                    "name": "marketing_manager",
+                    "role": "Marketing Manager",
+                    "personality": "collaborative",
+                    "is_manager": True,
+                },
+                {
+                    "name": "content_creator",
+                    "role": "Content Creator",
+                    "personality": "creative",
+                },
+                {
+                    "name": "social_media_manager",
+                    "role": "Social Media Manager",
+                    "personality": "enthusiastic",
+                },
+                {
+                    "name": "analyst",
+                    "role": "Marketing Analyst",
+                    "personality": "analytical",
+                },
             ]
-        elif "engineering" in department.lower() or "development" in description.lower():
+        elif (
+            "engineering" in department.lower() or "development" in description.lower()
+        ):
             # Engineering team
             initial_spec["members"] = [
-                {"name": "tech_lead", "role": "Technical Lead", "personality": "methodical", "is_manager": True},
-                {"name": "senior_engineer", "role": "Senior Engineer", "personality": "analytical"},
-                {"name": "backend_engineer", "role": "Backend Engineer", "personality": "detail_oriented"},
-                {"name": "frontend_engineer", "role": "Frontend Engineer", "personality": "creative"},
-                {"name": "qa_engineer", "role": "QA Engineer", "personality": "skeptical"},
+                {
+                    "name": "tech_lead",
+                    "role": "Technical Lead",
+                    "personality": "methodical",
+                    "is_manager": True,
+                },
+                {
+                    "name": "senior_engineer",
+                    "role": "Senior Engineer",
+                    "personality": "analytical",
+                },
+                {
+                    "name": "backend_engineer",
+                    "role": "Backend Engineer",
+                    "personality": "detail_oriented",
+                },
+                {
+                    "name": "frontend_engineer",
+                    "role": "Frontend Engineer",
+                    "personality": "creative",
+                },
+                {
+                    "name": "qa_engineer",
+                    "role": "QA Engineer",
+                    "personality": "skeptical",
+                },
             ]
         else:
             # Generic team
             initial_spec["members"] = [
-                {"name": "team_lead", "role": "Team Lead", "personality": "collaborative", "is_manager": True},
-                {"name": "specialist_1", "role": "Specialist", "personality": "analytical"},
-                {"name": "specialist_2", "role": "Specialist", "personality": "creative"},
-                {"name": "coordinator", "role": "Coordinator", "personality": "pragmatic"},
+                {
+                    "name": "team_lead",
+                    "role": "Team Lead",
+                    "personality": "collaborative",
+                    "is_manager": True,
+                },
+                {
+                    "name": "specialist_1",
+                    "role": "Specialist",
+                    "personality": "analytical",
+                },
+                {
+                    "name": "specialist_2",
+                    "role": "Specialist",
+                    "personality": "creative",
+                },
+                {
+                    "name": "coordinator",
+                    "role": "Coordinator",
+                    "personality": "pragmatic",
+                },
             ]
-    
+
     # Let user review and modify
     return prompt_team_details(initial_spec)

@@ -1,0 +1,127 @@
+{
+  "mcp": {
+    "name": "google-drive-watcher",
+    "displayName": "Google Drive Watcher",
+    "description": "Monitor Google Drive folders and queue documents for RAG processing",
+    "version": "1.0.0",
+    "protocol": "stdio",
+    "runtime": {
+      "type": "node",
+      "command": "node",
+      "args": ["dist/server.js"],
+      "workingDirectory": "/app"
+    },
+    "tools": [
+      {
+        "name": "authenticate",
+        "description": "Set up Google OAuth authentication",
+        "category": "authentication"
+      },
+      {
+        "name": "get_auth_url",
+        "description": "Get Google OAuth authentication URL",
+        "category": "authentication"
+      },
+      {
+        "name": "add_watch_folder",
+        "description": "Add a folder to monitor for changes",
+        "category": "folder-management"
+      },
+      {
+        "name": "remove_watch_folder",
+        "description": "Stop monitoring a folder",
+        "category": "folder-management"
+      },
+      {
+        "name": "list_watch_folders",
+        "description": "List all monitored folders",
+        "category": "folder-management"
+      },
+      {
+        "name": "list_documents",
+        "description": "List documents in a folder",
+        "category": "document-operations"
+      },
+      {
+        "name": "get_document_metadata",
+        "description": "Get detailed metadata for a document",
+        "category": "document-operations"
+      },
+      {
+        "name": "download_document",
+        "description": "Download a document from Google Drive",
+        "category": "document-operations"
+      },
+      {
+        "name": "queue_document",
+        "description": "Queue a document for RAG processing",
+        "category": "rag-integration"
+      },
+      {
+        "name": "start_monitoring",
+        "description": "Start monitoring folders for changes",
+        "category": "monitoring"
+      },
+      {
+        "name": "stop_monitoring",
+        "description": "Stop monitoring folders",
+        "category": "monitoring"
+      },
+      {
+        "name": "process_changes",
+        "description": "Manually check for and process folder changes",
+        "category": "monitoring"
+      }
+    ],
+    "requiredEnvironment": [
+      "GOOGLE_CLIENT_ID",
+      "GOOGLE_CLIENT_SECRET",
+      "SUPABASE_URL",
+      "SUPABASE_KEY"
+    ],
+    "optionalEnvironment": [
+      "GOOGLE_REDIRECT_URI"
+    ],
+    "categories": {
+      "authentication": {
+        "displayName": "Authentication",
+        "description": "Google OAuth authentication management"
+      },
+      "folder-management": {
+        "displayName": "Folder Management",
+        "description": "Manage monitored Google Drive folders"
+      },
+      "document-operations": {
+        "displayName": "Document Operations",
+        "description": "Operations on Google Drive documents"
+      },
+      "rag-integration": {
+        "displayName": "RAG Integration",
+        "description": "Integration with RAG processing pipeline"
+      },
+      "monitoring": {
+        "displayName": "Monitoring",
+        "description": "Document monitoring and change detection"
+      }
+    },
+    "healthCheck": {
+      "enabled": true,
+      "interval": "30s",
+      "timeout": "5s",
+      "tool": "list_watch_folders"
+    },
+    "rateLimiting": {
+      "enabled": true,
+      "rules": [
+        {
+          "category": "authentication",
+          "rate": "10/hour"
+        },
+        {
+          "category": "document-operations",
+          "rate": "100/minute"
+        }
+      ]
+    }
+  }
+}

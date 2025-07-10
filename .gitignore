@@ -215,3 +215,21 @@ dev/
 Thumbs.db
 ehthumbs.db
 tools/team_factory.py.backup
+
+# Archive directory
+archive/
+
+
+# Archive directory
+archive/
+
+# Backup files
+*.bak
+*_backup*
+*_old*
+
+# Database backups
+database/backups/
+
+# Local test files
+test_local_*

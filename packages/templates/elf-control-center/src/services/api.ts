@@ -32,6 +32,16 @@ export interface TeamInfo {
   is_manager: boolean;
   reports_to?: string;
   subordinate_teams: string[];
+  is_top_level?: boolean;
+  enable_chat_interface?: boolean;
+  chat_config?: {
+    allowed_roles?: string[];
+    max_session_duration_minutes?: number;
+    max_messages_per_session?: number;
+    enable_delegation_preview?: boolean;
+    context_window_messages?: number;
+    require_user_confirmation?: boolean;
+  };
 }
 
 export interface CostMetrics {
@@ -200,6 +210,21 @@ class ControlCenterAPI {
   async getWorkflows(): Promise<WorkflowStatus[]> {
     const response = await fetch(`${this.baseUrl}/api/workflows`);
     if (!response.ok) throw new Error('Failed to fetch workflows');
+    return response.json();
+  }
+
+  async getChatToken(teamId: string): Promise<{ token: string; expires_in: number }> {
+    const response = await fetch(`${this.baseUrl}/api/teams/${teamId}/chat/token`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        // Include auth headers if available
+        ...(localStorage.getItem('auth_token') && {
+          'Authorization': `Bearer ${localStorage.getItem('auth_token')}`
+        })
+      }
+    });
+    if (!response.ok) throw new Error('Failed to get chat token');
     return response.json();
   }
 

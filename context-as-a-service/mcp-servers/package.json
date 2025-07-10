@@ -1,0 +1,19 @@
+{
+  "name": "context-mcp-servers",
+  "version": "1.0.0",
+  "description": "MCP servers for Context-as-a-Service",
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsx watch src/server.ts"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^0.6.0",
+    "googleapis": "^128.0.0",
+    "zod": "^3.22.0"
+  },
+  "devDependencies": {
+    "@types/node": "^20.0.0",
+    "typescript": "^5.0.0",
+    "tsx": "^4.0.0"
+  }
+}

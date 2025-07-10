@@ -1,0 +1,94 @@
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: agentgateway
+  namespace: virtual-ai-platform
+  labels:
+    app: agentgateway
+    component: monitoring
+spec:
+  selector:
+    matchLabels:
+      app: agentgateway
+      component: metrics
+  endpoints:
+  - port: metrics
+    interval: 30s
+    path: /metrics
+    scheme: http
+  namespaceSelector:
+    matchNames:
+    - virtual-ai-platform
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: agentgateway-grafana-dashboard
+  namespace: virtual-ai-platform
+  labels:
+    app: agentgateway
+    component: monitoring
+    grafana_dashboard: "1"
+data:
+  agentgateway-dashboard.json: |
+    {
+      "dashboard": {
+        "id": null,
+        "title": "AgentGateway MCP Infrastructure",
+        "tags": ["agentgateway", "mcp", "ai-agents"],
+        "style": "dark",
+        "timezone": "browser",
+        "panels": [
+          {
+            "id": 1,
+            "title": "MCP Request Rate",
+            "type": "stat",
+            "targets": [
+              {
+                "expr": "rate(agentgateway_mcp_requests_total[5m])",
+                "legendFormat": "{{target}}"
+              }
+            ],
+            "gridPos": {"h": 8, "w": 12, "x": 0, "y": 0}
+          },
+          {
+            "id": 2,
+            "title": "MCP Response Time",
+            "type": "stat",
+            "targets": [
+              {
+                "expr": "histogram_quantile(0.95, rate(agentgateway_mcp_duration_seconds_bucket[5m]))",
+                "legendFormat": "95th percentile"
+              }
+            ],
+            "gridPos": {"h": 8, "w": 12, "x": 12, "y": 0}
+          },
+          {
+            "id": 3,
+            "title": "Active Connections",
+            "type": "graph",
+            "targets": [
+              {
+                "expr": "agentgateway_active_connections",
+                "legendFormat": "{{listener}}"
+              }
+            ],
+            "gridPos": {"h": 8, "w": 24, "x": 0, "y": 8}
+          },
+          {
+            "id": 4,
+            "title": "Tool Federation Health",
+            "type": "table",
+            "targets": [
+              {
+                "expr": "agentgateway_target_health",
+                "legendFormat": "{{target}}"
+              }
+            ],
+            "gridPos": {"h": 8, "w": 24, "x": 0, "y": 16}
+          }
+        ],
+        "time": {"from": "now-1h", "to": "now"},
+        "refresh": "30s"
+      }
+    }

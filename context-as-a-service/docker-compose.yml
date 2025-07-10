@@ -1,0 +1,141 @@
+version: '3.8'
+
+services:
+  # Context API Service
+  context-api:
+    build:
+      context: .
+      dockerfile: deployment/docker/Dockerfile.api
+    container_name: context-api
+    ports:
+      - "8080:8080"
+    environment:
+      - SUPABASE_URL=${SUPABASE_URL}
+      - SUPABASE_KEY=${SUPABASE_KEY}
+      - SUPABASE_SERVICE_KEY=${SUPABASE_SERVICE_KEY}
+      - QDRANT_URL=http://qdrant:6333
+      - QDRANT_API_KEY=${QDRANT_API_KEY:-}
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}
+      - AGENTGATEWAY_URL=http://agentgateway:8081
+      - LOG_LEVEL=${LOG_LEVEL:-info}
+    depends_on:
+      - qdrant
+      - agentgateway
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    networks:
+      - context-network
+
+  # AgentGateway for MCP Management
+  agentgateway:
+    build: ./infrastructure/agentgateway
+    container_name: agentgateway
+    ports:
+      - "8081:8081"
+    environment:
+      - RUST_LOG=info
+      - AGENTGATEWAY_PORT=8081
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8081/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    networks:
+      - context-network
+
+  # Qdrant Vector Database
+  qdrant:
+    image: qdrant/qdrant:latest
+    container_name: qdrant
+    ports:
+      - "6333:6333"
+      - "6334:6334"  # GRPC port
+    volumes:
+      - qdrant_data:/qdrant/storage
+    environment:
+      - QDRANT__SERVICE__HTTP_PORT=6333
+      - QDRANT__SERVICE__GRPC_PORT=6334
+      - QDRANT__LOG_LEVEL=INFO
+    networks:
+      - context-network
+
+  # UI System Context MCP
+  ui-system-mcp:
+    build:
+      context: ./mcp-servers
+      dockerfile: ui-system/Dockerfile
+    container_name: ui-system-mcp
+    environment:
+      - CONTEXT_API_URL=http://context-api:8080
+      - CONTEXT_API_KEY=${CONTEXT_API_KEY}
+      - MCP_PORT=8090
+    depends_on:
+      - context-api
+    networks:
+      - context-network
+
+  # Architecture Context MCP
+  architecture-mcp:
+    build:
+      context: ./mcp-servers
+      dockerfile: architecture/Dockerfile
+    container_name: architecture-mcp
+    environment:
+      - CONTEXT_API_URL=http://context-api:8080
+      - CONTEXT_API_KEY=${CONTEXT_API_KEY}
+      - MCP_PORT=8091
+    depends_on:
+      - context-api
+    networks:
+      - context-network
+
+  # Google Drive Watcher
+  drive-watcher:
+    build:
+      context: ./mcp-servers/google-drive-watcher
+    container_name: drive-watcher
+    environment:
+      - GOOGLE_CLIENT_ID=${GOOGLE_CLIENT_ID}
+      - GOOGLE_CLIENT_SECRET=${GOOGLE_CLIENT_SECRET}
+      - GOOGLE_REFRESH_TOKEN=${GOOGLE_REFRESH_TOKEN}
+      - CONTEXT_API_URL=http://context-api:8080
+      - CONTEXT_API_KEY=${CONTEXT_API_KEY}
+      - WATCH_FOLDER_ID=${DRIVE_WATCH_FOLDER_ID}
+      - POLL_INTERVAL_SECONDS=300
+    depends_on:
+      - context-api
+    networks:
+      - context-network
+
+  # RAG Processor (Background Worker)
+  rag-processor:
+    build:
+      context: .
+      dockerfile: deployment/docker/Dockerfile.processor
+    container_name: rag-processor
+    environment:
+      - SUPABASE_URL=${SUPABASE_URL}
+      - SUPABASE_KEY=${SUPABASE_KEY}
+      - QDRANT_URL=http://qdrant:6333
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+      - PROCESSOR_MODE=worker
+      - BATCH_SIZE=10
+      - POLL_INTERVAL=30
+    depends_on:
+      - qdrant
+      - context-api
+    networks:
+      - context-network
+
+volumes:
+  qdrant_data:
+    driver: local
+
+networks:
+  context-network:
+    driver: bridge
